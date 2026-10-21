@@ -1,0 +1,76 @@
+# IDE and build output
+*.iml
+.gradle/
+.kotlin/
+build/
+**/build/
+.externalNativeBuild/
+.cxx/
+.DS_Store
+
+# Local SDK, signing and distribution configuration
+/local.properties
+/keystore.properties
+/.env
+/.apk_build_history.json
+*.jks
+*.keystore
+*.p12
+*.pem
+
+# Temporary diagnostics and generated files
+/.local/
+/.maintenance/
+/.work/
+/artifacts/
+/captures/
+/logs/
+/shots/
+/scratch/
+__pycache__/
+*.py[cod]
+
+# Brand originals and private project material
+/branding/
+/private/
+/.private/
+/exports/
+/recordings/
+/backups/
+
+# Internal documentation and development tooling
+/docs/
+/ARCHITECTURE.md
+/CONTRIBUTING.md
+/scripts/
+/app/src/test/
+/app/src/androidTest/
+/providers/**/src/test/
+/providers/**/src/androidTest/
+*.bundle
+
+# Local editor and tool directories
+/.*/
+!/.github/
+
+# Environment overrides and credentials
+.env.*
+*.pfx
+*.key
+**/service-account*.json
+**/google-services.json
+
+# Distributable binaries and runtime diagnostics
+*.apk
+*.aab
+*.apks
+*.xapk
+*.log
+*.log.*
+*.hprof
+*.heapdump
+*.trace
+*.perfetto-trace
+*.dmp
+*.db-wal
+*.db-shm

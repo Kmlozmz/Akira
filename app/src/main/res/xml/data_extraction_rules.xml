@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backup rules for API 31+ (cloud backup + device-to-device transfer).
+  Same rationale as backup_rules.xml: DataStore carries the onboarding flag,
+  Room carries MediaStore-bound favorites. Both must start fresh on reinstall.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="datastore/user_music_preferences.preferences_pb" />
+        <exclude domain="sharedpref" path="akira_ui_snapshot.xml" />
+        <exclude domain="sharedpref" path="akira_widget.xml" />
+        <exclude domain="sharedpref" path="akira_online.xml" />
+        <exclude domain="root" path="app_webview/" />
+        <exclude domain="database" path="akira_music.db" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="datastore/user_music_preferences.preferences_pb" />
+        <exclude domain="sharedpref" path="akira_ui_snapshot.xml" />
+        <exclude domain="sharedpref" path="akira_widget.xml" />
+        <exclude domain="sharedpref" path="akira_online.xml" />
+        <exclude domain="root" path="app_webview/" />
+        <exclude domain="database" path="akira_music.db" />
+    </device-transfer>
+</data-extraction-rules>

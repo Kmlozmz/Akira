@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <cache-path name="logs" path="exports/logs/" />
+    <cache-path name="lyrics" path="exports/lyrics/" />
+    <cache-path name="updates" path="updates/" />
+</paths>
