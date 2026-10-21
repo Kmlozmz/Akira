@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Auto Backup rules (API 23-30).
+  The onboarding flag + playback state live in DataStore: excluding it forces
+  a fresh setup (permissions + library scan) after reinstall instead of
+  silently restoring a stale "onboarding completed" state with no permission.
+  Room holds favorites/history keyed by MediaStore IDs that are meaningless
+  on a fresh install, so it is excluded as well.
+-->
+<full-backup-content>
+    <exclude domain="file" path="datastore/user_music_preferences.preferences_pb" />
+    <exclude domain="sharedpref" path="akira_ui_snapshot.xml" />
+    <exclude domain="sharedpref" path="akira_widget.xml" />
+    <exclude domain="sharedpref" path="akira_online.xml" />
+    <exclude domain="root" path="app_webview/" />
+    <exclude domain="database" path="akira_music.db" />
+</full-backup-content>

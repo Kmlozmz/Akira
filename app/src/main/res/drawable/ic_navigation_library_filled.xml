@@ -1,0 +1,9 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="23dp" android:height="28dp"
+    android:viewportWidth="72" android:viewportHeight="88">
+    <!-- Stacked albums with a transparent double-note counter. -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M23,2H49C51,2 52,3.5 52,6H20C20,3.5 21,2 23,2ZM19,11H53C56,11 58,13 58,15H14C14,13 16,11 19,11Z" />
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+        android:pathData="M18,22H54C62,22 67,27 67,35V73C67,81 62,86 54,86H18C10,86 5,81 5,73V35C5,27 10,22 18,22ZM28,42C28,40 29,39 31,38.5L49,34C51,33.5 52,34.5 52,36.5V63C52,67 48,70 44,70C40,70 38,68 38,65C38,62 41,59 45,59H47V44L33,47V68C33,72 29,75 25,75C21,75 19,73 19,70C19,67 22,64 26,64H28Z" />
+</vector>

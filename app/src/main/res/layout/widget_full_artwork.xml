@@ -1,0 +1,14 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/widget_round_background" android:clipToOutline="true">
+    <ImageView android:id="@+id/widget_background" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_gravity="bottom"
+        android:orientation="vertical" android:padding="14dp">
+        <TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/app_name" android:textColor="#FFFFFF" android:textSize="16sp" android:maxLines="2" android:ellipsize="end"
+            android:fontFamily="@font/roboto_flex_semibold" android:includeFontPadding="false" />
+        <TextView android:id="@+id/widget_artist" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="4dp" android:textColor="#E0FFFFFF" android:textSize="13sp" android:maxLines="1" android:ellipsize="end"
+            android:fontFamily="@font/roboto_flex_regular" android:includeFontPadding="false" />
+    </LinearLayout>
+</FrameLayout>

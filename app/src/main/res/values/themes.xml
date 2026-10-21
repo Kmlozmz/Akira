@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Akira" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#0A0C11</item>
+        <item name="android:navigationBarColor">#0A0C11</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <!-- Match the entrance surface before the first Compose frame. -->
+    <style name="Theme.Akira.Starting" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/akira_starting_background</item>
+        <item name="android:statusBarColor">@color/akira_starting_background</item>
+        <item name="android:navigationBarColor">@color/akira_starting_background</item>
+        <item name="android:windowLightStatusBar">@bool/akira_starting_light_bars</item>
+    </style>
+    <style name="Theme.Akira.WidgetLaunch" parent="Theme.Akira.Starting">
+        <!-- Keep the launcher visible until Compose draws the widget snapshot. An
+             opaque starting surface caused a two-frame black flash before the
+             expansion even though the activity itself became translucent later. -->
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+    <style name="Theme.Akira.WidgetLegacy" parent="Theme.Akira.Starting">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>

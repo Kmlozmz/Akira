@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Solo para la variante debug. El applicationId lleva sufijo .debug y el
+        nombre visible lo dice, para no confundir el APK de pruebas con el de
+        distribución cuando conviven en el mismo teléfono.
+    -->
+    <string name="app_name">Akira Debug</string>
+</resources>
