@@ -1,5 +1,6 @@
 package com.akira.app.core.datastore
 
+import com.akira.app.core.design.glass.AkiraGlassDefaults
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -39,9 +40,8 @@ data class UserPreferences(
     val navBarStyle: String = "FLOATING_PILL", // "FLOATING_PILL" o "DOCKED_BAR"
     val libraryHeaderStyle: String = "COMPACT_PILL", // "COMPACT_PILL" o "TAB_ROW"
     val liquidGlassEnabled: Boolean = false,
-    val liquidGlassOpacity: Float = .25f,
-    val liquidGlassDiffusion: Float = 8f, // Background scattering, dp; independent of tint.
-    val dockBackgroundDiffusion: Boolean = false,
+    val liquidGlassOpacity: Float = AkiraGlassDefaults.Opacity,
+    val liquidGlassDiffusion: Float = AkiraGlassDefaults.Diffusion, // Background scattering, dp; independent of tint.
     val fullscreenPlayerArtwork: Boolean = false,
     val animatedPlayerArtwork: Boolean = true,
     val favoriteArtists: Set<String> = emptySet(),
@@ -117,7 +117,6 @@ class UserPreferencesRepository(private val context: Context) {
         val LIQUID_GLASS = booleanPreferencesKey("pref_liquid_glass_enabled")
         val LIQUID_GLASS_OPACITY = floatPreferencesKey("pref_liquid_glass_opacity")
         val LIQUID_GLASS_DIFFUSION = floatPreferencesKey("pref_liquid_glass_diffusion")
-        val DOCK_BACKGROUND_DIFFUSION = booleanPreferencesKey("pref_dock_background_diffusion")
         val FULLSCREEN_PLAYER_ARTWORK = booleanPreferencesKey("pref_fullscreen_player_artwork")
         val ANIMATED_PLAYER_ARTWORK = booleanPreferencesKey("pref_animated_player_artwork")
         val FAVORITE_ARTISTS = stringSetPreferencesKey("pref_favorite_artists")
@@ -183,9 +182,8 @@ class UserPreferencesRepository(private val context: Context) {
             navBarStyle = prefs[Keys.NAV_BAR_STYLE] ?: "FLOATING_PILL",
             libraryHeaderStyle = prefs[Keys.LIBRARY_HEADER_STYLE] ?: "COMPACT_PILL",
             liquidGlassEnabled = prefs[Keys.LIQUID_GLASS] ?: false,
-            liquidGlassDiffusion = (prefs[Keys.LIQUID_GLASS_DIFFUSION] ?: 8f).takeIf { it.isFinite() }?.coerceIn(0f,24f) ?: 8f,
-            dockBackgroundDiffusion = prefs[Keys.DOCK_BACKGROUND_DIFFUSION] ?: false,
-            liquidGlassOpacity = (prefs[Keys.LIQUID_GLASS_OPACITY] ?: .25f).takeIf { it.isFinite() }?.coerceIn(0f,1f) ?: .25f,
+            liquidGlassDiffusion = (prefs[Keys.LIQUID_GLASS_DIFFUSION] ?: AkiraGlassDefaults.Diffusion).takeIf { it.isFinite() }?.coerceIn(0f,24f) ?: AkiraGlassDefaults.Diffusion,
+            liquidGlassOpacity = (prefs[Keys.LIQUID_GLASS_OPACITY] ?: AkiraGlassDefaults.Opacity).takeIf { it.isFinite() }?.coerceIn(0f,1f) ?: AkiraGlassDefaults.Opacity,
             fullscreenPlayerArtwork = prefs[Keys.FULLSCREEN_PLAYER_ARTWORK] ?: false,
             animatedPlayerArtwork = prefs[Keys.ANIMATED_PLAYER_ARTWORK] ?: true,
             favoriteArtists = prefs[Keys.FAVORITE_ARTISTS] ?: emptySet(),
@@ -384,13 +382,10 @@ class UserPreferencesRepository(private val context: Context) {
 
     suspend fun setLiquidGlassEnabled(enabled: Boolean) { context.dataStore.edit { it[Keys.LIQUID_GLASS] = enabled } }
     suspend fun setLiquidGlassOpacity(value: Float) {
-        context.dataStore.edit { it[Keys.LIQUID_GLASS_OPACITY] = value.takeIf { it.isFinite() }?.coerceIn(0f,1f) ?: .25f }
+        context.dataStore.edit { it[Keys.LIQUID_GLASS_OPACITY] = value.takeIf { it.isFinite() }?.coerceIn(0f,1f) ?: AkiraGlassDefaults.Opacity }
     }
     suspend fun setLiquidGlassDiffusion(value: Float) {
-        context.dataStore.edit { it[Keys.LIQUID_GLASS_DIFFUSION] = value.takeIf { it.isFinite() }?.coerceIn(0f,24f) ?: 8f }
-    }
-    suspend fun setDockBackgroundDiffusion(enabled: Boolean) {
-        context.dataStore.edit { it[Keys.DOCK_BACKGROUND_DIFFUSION] = enabled }
+        context.dataStore.edit { it[Keys.LIQUID_GLASS_DIFFUSION] = value.takeIf { it.isFinite() }?.coerceIn(0f,24f) ?: AkiraGlassDefaults.Diffusion }
     }
     suspend fun setFullscreenPlayerArtwork(enabled: Boolean) { context.dataStore.edit { it[Keys.FULLSCREEN_PLAYER_ARTWORK] = enabled } }
     suspend fun setAnimatedPlayerArtwork(enabled: Boolean) { context.dataStore.edit { it[Keys.ANIMATED_PLAYER_ARTWORK] = enabled } }

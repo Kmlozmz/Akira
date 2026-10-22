@@ -27,6 +27,7 @@ data class OnlineCollection(val item: YTItem, val description: String? = null, v
 data class OnlinePage(val title: String, val shelves: List<OnlineShelf>, val continuation: String? = null,
     val collection: OnlineCollection? = null)
 data class OnlineStream(val url: String, val headers: Map<String, String>)
+data class OnlineSearchCategory(val title: String, val color: Long, val endpoint: BrowseEndpoint)
 
 /** Page's provider, kept separate from the MediaStore library and its database. */
 class OnlineRepository private constructor(context: Context) {
@@ -66,6 +67,15 @@ class OnlineRepository private constructor(context: Context) {
     private val streams = mutableMapOf<String, Pair<Long, OnlineStream>>()
     private val rouletteWinners = ArrayDeque<String>()
     private val browsePages = linkedMapOf<String, Triple<OnlineAccount, OnlinePage, Long>>()
+    private val pageStore = OnlinePageCache(app)
+    private val pageWriteLock = Mutex()
+    private var pageWriteJob: Job? = null
+    private val sessionGeneration = java.util.concurrent.atomic.AtomicLong()
+    private val homeRequestLock = Mutex()
+    private var homeRequest: Pair<OnlineAccount, Deferred<OnlinePage>>? = null
+    private val _homePages = MutableStateFlow<Pair<OnlineAccount, OnlinePage>?>(null)
+    val homePages = _homePages.asStateFlow()
+    @Volatile private var categoryCache: List<OnlineSearchCategory>? = null
     private val _recentSearches = MutableStateFlow<List<String>>(runCatching {
         val stored = org.json.JSONArray(prefs.getString("search_history", "[]"))
         (0 until stored.length()).map { stored.getString(it) }.take(12)
@@ -92,7 +102,10 @@ class OnlineRepository private constructor(context: Context) {
             } catch (_: Exception) {
                 YouTube.cookie = null; YouTube.dataSyncId = null; YouTube.visitorData = null
                 YouTube.useLoginForBrowse = false
-            } finally { _sessionReady.value = true; initialized.complete(Unit) }
+            } finally {
+                restorePages(_account.value)
+                _sessionReady.value = true; initialized.complete(Unit)
+            }
         }
         scope.launch {
             combine(enabled, account) { mode, user -> mode && user.connected }.collectLatest { connected ->
@@ -102,7 +115,18 @@ class OnlineRepository private constructor(context: Context) {
             }
         }
     }
-    fun setEnabled(value: Boolean) { prefs.edit().putBoolean("enabled", value).apply(); _enabled.value = value }
+    fun setEnabled(value: Boolean) {
+        prefs.edit().putBoolean("enabled", value).apply(); _enabled.value = value
+        if (value) prefetchHome() else homeRequest?.second?.cancel()
+    }
+    fun prefetchHome() {
+        if (!_enabled.value) return
+        scope.launch {
+            try { home() }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { /* The foreground request reports failures with its cached content. */ }
+        }
+    }
     fun rememberSearch(query: String) {
         val text = query.trim().take(200)
         if(text.isBlank()) return
@@ -117,14 +141,42 @@ class OnlineRepository private constructor(context: Context) {
         browsePages[key]?.takeIf { it.first == user && _account.value == user }?.second
     }
     fun hasFreshPage(key: String, user: OnlineAccount): Boolean = synchronized(browsePages) {
-        browsePages[key]?.let { it.first == user && _account.value == user &&
+        browsePages[key]?.let { it.first == user && _account.value == user && it.third > 0 &&
             android.os.SystemClock.elapsedRealtime() - it.third < 300_000L } == true
     }
-    fun cachePage(key: String, page: OnlinePage, user: OnlineAccount) = synchronized(browsePages) {
+    fun cachePage(key: String, page: OnlinePage, user: OnlineAccount, fresh: Boolean = true) = synchronized(browsePages) {
         if(_account.value == user) {
             browsePages.remove(key)
-            browsePages[key] = Triple(user, page, android.os.SystemClock.elapsedRealtime())
-            if(browsePages.size > 20) browsePages.remove(browsePages.keys.first())
+            browsePages[key] = Triple(user, page, if (fresh) android.os.SystemClock.elapsedRealtime() else 0)
+            if(browsePages.size > 32) browsePages.keys.firstOrNull { it != "home" && !it.startsWith("library:") }
+                ?.let { browsePages.remove(it) }
+            if (fresh && persistentPage(key)) schedulePageWrite(user)
+        }
+    }
+    private fun persistentPage(key: String) = key == "home" || key.startsWith("library:") ||
+        key.startsWith("detail:") || key == "search-discovery"
+
+    private suspend fun restorePages(user: OnlineAccount) {
+        val started = android.os.SystemClock.elapsedRealtime()
+        val pages = pageWriteLock.withLock { pageStore.read(historyScope) }
+        synchronized(browsePages) { pages.forEach { (key, page) -> browsePages[key] = Triple(user, catalog(page), 0) } }
+        pages["home"]?.let { _homePages.value = user to it }
+        if (com.akira.app.BuildConfig.DEBUG) android.util.Log.d("AkiraOnlineTiming",
+            "cache_restore_ms=${android.os.SystemClock.elapsedRealtime()-started} pages=${pages.size}")
+    }
+
+    private fun schedulePageWrite(user: OnlineAccount) {
+        val generation = sessionGeneration.get()
+        val profile = historyScope
+        pageWriteJob?.cancel()
+        pageWriteJob = scope.launch {
+            delay(500)
+            pageWriteLock.withLock {
+                if (generation != sessionGeneration.get() || _account.value != user) return@withLock
+                val pages = synchronized(browsePages) { browsePages.filter { persistentPage(it.key) && it.value.first == user }
+                    .mapValues { it.value.second } }
+                runCatching { pageStore.write(profile, pages) }
+            }
         }
     }
     fun recordRouletteChoice(song: Song) = synchronized(rouletteWinners) {
@@ -155,12 +207,15 @@ class OnlineRepository private constructor(context: Context) {
                 val userScope = accountHistoryScope(info.channelHandle ?: info.email ?: info.name)
                 saved.put("name", info.name).put("image", info.thumbnailUrl.orEmpty()).put("history_scope", userScope)
                 sessionStore.write(saved)
+                sessionGeneration.incrementAndGet(); homeRequest?.second?.cancel(); _homePages.value = null
                 streams.clear()
                 _likedIds.value = emptySet(); likeOverrides.clear(); knownSongs.clear()
                 synchronized(rouletteWinners) { rouletteWinners.clear() }
                 synchronized(browsePages) { browsePages.clear() }
                 loadHistory(userScope)
                 _account.value = OnlineAccount(true, info.name, info.thumbnailUrl)
+                restorePages(_account.value)
+                prefetchHome()
             } catch (e: Exception) {
                 sessionStore.read()?.let(::applySession) ?: run { YouTube.cookie = null; YouTube.dataSyncId = null; YouTube.useLoginForBrowse = false }
                 throw e
@@ -169,6 +224,10 @@ class OnlineRepository private constructor(context: Context) {
     }
     suspend fun disconnect() = withContext(Dispatchers.IO) {
         initialized.await()
+        val previousProfile = historyScope
+        sessionGeneration.incrementAndGet(); homeRequest?.second?.cancel(); pageWriteJob?.cancel()
+        _homePages.value = null
+        pageWriteLock.withLock { pageStore.clear(previousProfile) }
         synchronized(browsePages) { browsePages.clear() }
         _account.value = OnlineAccount()
         _likedIds.value = emptySet(); likeOverrides.clear(); knownSongs.clear()
@@ -185,7 +244,9 @@ class OnlineRepository private constructor(context: Context) {
             }
             _likedIds.value = guestFavorites().map { it.id }.toSet()
             loadHistory("guest")
+            restorePages(_account.value)
         }
+        prefetchHome()
     }
     private suspend fun ready() {
         initialized.await()
@@ -257,7 +318,10 @@ class OnlineRepository private constructor(context: Context) {
             })
     private suspend fun refreshLikes() {
         ready()
+        val user = _account.value
         val first = YouTube.playlist("LM").getOrThrow()
+        cachePage("library:songs", catalog(OnlinePage("Library", listOf(OnlineShelf(
+            if (Locale.getDefault().language == "es") "Tus Me gusta" else "Liked songs", first.songs)), first.songsContinuation)), user)
         val ids = first.songs.map { it.id }.toMutableSet()
         fun publish() {
             if (_account.value.connected) _likedIds.value = (ids + likeOverrides.filterValues { it }.keys) - likeOverrides.filterValues { !it }.keys
@@ -338,6 +402,7 @@ class OnlineRepository private constructor(context: Context) {
         return OnlineShelf(title, items, label, thumbnail, layout)
     }
     private suspend fun artistCollections(shelves: List<OnlineShelf>): List<OnlineShelf> = supervisorScope {
+        val user = _account.value
         val artists = shelves.filter { it.layout == OnlineShelfLayout.ARTISTS }.flatMap { it.items }
             .filterIsInstance<ArtistItem>().distinctBy { it.id }.take(4)
         withTimeoutOrNull(4_000) {
@@ -346,6 +411,9 @@ class OnlineRepository private constructor(context: Context) {
                     if (artistReleases.size >= 128) artistReleases.clear()
                     artistReleases[artist.id] = page.sections.flatMap { it.items }.filterIsInstance<AlbumItem>().distinctBy { it.id }.take(4)
                     artistPortraits[artist.id] = page.artist
+                    cachePage("detail:ArtistItem:${artist.id}", catalog(OnlinePage(page.artist.title,
+                        page.sections.map { OnlineShelf(it.title, it.items) }, collection = OnlineCollection(page.artist,
+                            page.description, page.monthlyListenerCount ?: page.subscriberCountText))), user)
                 }
             } }.awaitAll()
         }
@@ -355,25 +423,73 @@ class OnlineRepository private constructor(context: Context) {
                 artistReleases[item.id]?.takeIf { it.size >= 2 }?.let { item.id to it }
             }.toMap()) }
     }
-    suspend fun home(continuation: String? = null, seed: Song? = null): OnlinePage = withContext(Dispatchers.IO) {
-        ready()
+    suspend fun home(continuation: String? = null, seed: Song? = null, force: Boolean = false): OnlinePage = withContext(Dispatchers.IO) {
+        initialized.await()
         if (continuation != null) {
+            ready()
             val next = YouTube.home(continuation).getOrThrow()
-            return@withContext catalog(OnlinePage("Home", artistCollections(next.sections.map { it.asOnlineShelf() }), next.continuation))
+            return@withContext catalog(OnlinePage("Home", next.sections.map { it.asOnlineShelf() }, next.continuation))
         }
-        supervisorScope {
+        val user = _account.value
+        if (!force && hasFreshPage("home", user)) cachedPage("home", user)?.let { return@withContext it }
+        val request = homeRequestLock.withLock {
+            homeRequest?.takeIf { it.first == user && it.second.isActive }?.second ?: scope.async {
+                loadHome(seed, user, sessionGeneration.get())
+            }.also { homeRequest = user to it }
+        }
+        request.await()
+    }
+
+    private suspend fun loadHome(seed: Song?, user: OnlineAccount, generation: Long): OnlinePage {
+        val started = android.os.SystemClock.elapsedRealtime()
+        val segments = linkedMapOf<String, List<OnlineShelf>>()
+        val previous = cachedPage("home", user)
+        var continuation: String? = null
+        var firstRemote = true
+        fun publish(slot: String, shelves: List<OnlineShelf>, token: String? = null) = synchronized(segments) {
+            if (_account.value != user || sessionGeneration.get() != generation || !_enabled.value) return@synchronized
+            if (slot == "feed") continuation = token
+            segments[slot] = shelves
+            val order = listOf("recent", "popular", "related", "artists", "albums", "history", "feed", "charts", "releases")
+            val fresh = order.flatMap { segments[it].orEmpty() }.filter { it.items.isNotEmpty() }
+            val combined = (fresh + previous?.shelves.orEmpty()).distinctBy { it.title }.take(24)
+            if (combined.isEmpty()) return@synchronized
+            val snapshot = catalog(OnlinePage("Home", combined, continuation))
+            cachePage("home", snapshot, user, fresh = false)
+            if (slot in listOf("feed", "charts", "releases")) schedulePageWrite(user)
+            _homePages.value = user to snapshot
+            if (firstRemote && slot !in listOf("recent", "popular", "history") && shelves.any { it.items.isNotEmpty() }) {
+                firstRemote = false
+                if (com.akira.app.BuildConfig.DEBUG) android.util.Log.d("AkiraOnlineTiming",
+                    "home_first_remote_ms=${android.os.SystemClock.elapsedRealtime()-started}")
+            }
+        }
         val spanish = Locale.getDefault().language == "es"
+        fun recentShelves(history: List<SongItem>) = (_recentSongs.value + history).distinctBy { it.id }.take(30).let { recent ->
+            if (recent.isEmpty()) emptyList() else listOf(OnlineShelf(if (spanish) "Escuchadas recientemente" else "Recently played", recent.take(12)))
+        }
+        publish("recent", recentShelves(emptyList()))
+        if (_mostPlayed.value.isNotEmpty()) publish("popular", listOf(OnlineShelf(if (spanish) "Más escuchadas" else "Most played",
+            _mostPlayed.value.take(18), layout = OnlineShelfLayout.RANKED_TRACKS)))
+        ready()
+        return supervisorScope {
         val initialSource = seed?.takeIf { it.contentUri.startsWith("akira-youtube:") }
             ?: _recentSongs.value.firstOrNull()?.asOnlineSong()
         val home = async {
-            try { withTimeout(9_000) { YouTube.home() } }
+            try { withTimeout(9_000) { YouTube.home() }.also { result ->
+                result.getOrNull()?.let { publish("feed", it.sections.map { section -> section.asOnlineShelf() }, it.continuation) }
+            } }
             catch(timeout: TimeoutCancellationException) { Result.failure(timeout) }
         }
         val history = async { if (_account.value.connected) withTimeoutOrNull(6_000) {
             YouTube.musicHistory().getOrNull()?.sections.orEmpty().flatMap { it.songs }
-        }.orEmpty() else emptyList() }
-        val releases = async { withTimeoutOrNull(8_000) { YouTube.explore().getOrNull()?.newReleaseAlbums } }
-        val charts = async { withTimeoutOrNull(8_000) { YouTube.getChartsPage().getOrNull() } }
+        }.orEmpty() else emptyList() }.also { request -> launch { publish("recent", recentShelves(request.await())) } }
+        val releases = async { withTimeoutOrNull(8_000) { YouTube.explore().getOrNull()?.newReleaseAlbums }.also { items ->
+            if (!items.isNullOrEmpty()) publish("releases", listOf(OnlineShelf(if (spanish) "Novedades" else "New releases", items)))
+        } }
+        val charts = async { withTimeoutOrNull(8_000) { YouTube.getChartsPage().getOrNull() }.also { chart ->
+            publish("charts", chart?.sections.orEmpty().take(3).map { OnlineShelf(it.title, it.items) })
+        } }
         val related = async { withTimeoutOrNull(8_000) {
             val source = initialSource ?: history.await().firstOrNull()?.asOnlineSong()
             source?.let {
@@ -397,6 +513,7 @@ class OnlineRepository private constructor(context: Context) {
             if (tracks.isNotEmpty()) shelves += OnlineShelf(if (spanish) "Para seguir escuchando" else "Keep listening", tracks,
                 if (spanish) "Porque escuchaste ${source.title}" else "Because you listened to ${source.title}",
                 thumbnail = source.albumArtUri, layout = OnlineShelfLayout.TRACKS)
+            publish("related", shelves.filter { it.layout == OnlineShelfLayout.TRACKS })
             // Some guest radio responses omit the Related tab. Its actual song metadata still identifies artists/albums.
             val artistCandidates = detail?.artists.orEmpty().ifEmpty { tracks.flatMap { song ->
                 song.artists.mapNotNull { artist -> artist.id?.takeIf(String::isNotBlank)?.let { id ->
@@ -423,6 +540,8 @@ class OnlineRepository private constructor(context: Context) {
                 if (spanish) "Porque escuchaste ${source.title}" else "Because you listened to ${source.title}",
                 layout = OnlineShelfLayout.ARTISTS, artistAlbums = artistAlbums)
             if (albums.isNotEmpty()) shelves += OnlineShelf(if (spanish) "Álbumes para descubrir" else "Albums to explore", albums)
+            publish("artists", shelves.filter { it.layout == OnlineShelfLayout.ARTISTS })
+            publish("albums", shelves.filter { it.items.firstOrNull() is AlbumItem })
         }
         if (recent.isNotEmpty()) shelves += OnlineShelf(if (spanish) "Historial" else "History", recent,
             layout = OnlineShelfLayout.TRACKS)
@@ -434,10 +553,27 @@ class OnlineRepository private constructor(context: Context) {
         val unique = shelves.filter { it.items.isNotEmpty() }.distinctBy { it.title to it.items.first().id }
         currentCoroutineContext().ensureActive()
         if (unique.isEmpty() && result.isFailure) result.getOrThrow()
-        catalog(OnlinePage("Home", artistCollections(unique), page?.continuation))
+        val loaded = catalog(OnlinePage("Home", artistCollections(unique), page?.continuation))
+        currentCoroutineContext().ensureActive()
+        if (_account.value == user && sessionGeneration.get() == generation && _enabled.value) {
+            cachePage("home", loaded, user)
+            _homePages.value = user to loaded
+        }
+        if (com.akira.app.BuildConfig.DEBUG) android.util.Log.d("AkiraOnlineTiming",
+            "home_complete_ms=${android.os.SystemClock.elapsedRealtime()-started}")
+        loaded
         }
     }
-    suspend fun discovery(): OnlinePage = withContext(Dispatchers.IO) {
+    suspend fun discovery(force: Boolean = false): OnlinePage = withContext(Dispatchers.IO) {
+        initialized.await()
+        val user = _account.value
+        if (!force) {
+            if (hasFreshPage("search-discovery", user)) cachedPage("search-discovery", user)?.let { return@withContext it }
+            if (hasFreshPage("home", user)) cachedPage("home", user)?.let { home ->
+                val shelves = home.shelves.filter { shelf -> shelf.items.any { it is AlbumItem || it is PlaylistItem } }.take(5)
+                if (shelves.isNotEmpty()) return@withContext OnlinePage("Search", shelves)
+            }
+        }
         ready()
         supervisorScope {
             val releases = async { withTimeoutOrNull(8_000) { YouTube.explore().getOrNull()?.newReleaseAlbums } }
@@ -450,6 +586,55 @@ class OnlineRepository private constructor(context: Context) {
                 shelves += fallback.sections.take(5).map { OnlineShelf(it.title, it.items.take(20), it.label) }
             }
             catalog(OnlinePage("Search", shelves))
+        }
+    }
+    suspend fun searchCategories(): List<OnlineSearchCategory> = withContext(Dispatchers.IO) {
+        ready()
+        categoryCache?.let { return@withContext it }
+        YouTube.moodAndGenres().getOrThrow().flatMap { group -> group.items.map {
+            OnlineSearchCategory(it.title, it.stripeColor, it.endpoint)
+        } }.distinctBy { it.endpoint }.also { categoryCache = it }
+    }
+
+    suspend fun searchCategory(category: OnlineSearchCategory): OnlinePage = withContext(Dispatchers.IO) {
+        ready()
+        val result = YouTube.browse(category.endpoint.browseId, category.endpoint.params).getOrThrow()
+        catalog(OnlinePage(category.title, result.items.map { OnlineShelf(it.title.orEmpty(), it.items) }))
+    }
+
+    suspend fun searchableLibrary(onPage: (OnlinePage) -> Unit = {}): OnlinePage = withContext(Dispatchers.IO) {
+        initialized.await()
+        if (!_account.value.connected) return@withContext library("songs").also(onPage)
+        supervisorScope {
+            val kinds = listOf("songs", "albums", "artists", "playlists")
+            val shelves = mutableMapOf<String, OnlineShelf>()
+            val progressLock = Mutex()
+            val errors = java.util.concurrent.ConcurrentLinkedQueue<Exception>()
+            suspend fun publish(kind: String, shelf: OnlineShelf) = progressLock.withLock {
+                shelves[kind] = shelf
+                onPage(catalog(OnlinePage("Library", kinds.mapNotNull { shelves[it] })))
+            }
+            val pages = kinds.map { kind -> async {
+                try {
+                val first = library(kind)
+                val items = first.shelves.flatMap { it.items }.toMutableList()
+                val title = first.shelves.firstOrNull()?.title.orEmpty()
+                publish(kind, OnlineShelf(title, items.toList()))
+                var token = first.continuation
+                val consumed = mutableSetOf<String>()
+                while (token != null && consumed.add(token)) {
+                    currentCoroutineContext().ensureActive()
+                    val next = if (kind == "songs") morePlaylist(token) else moreLibrary(token)
+                    items += next.shelves.flatMap { it.items }
+                    publish(kind, OnlineShelf(title, items.distinctBy { it.id }))
+                    token = next.continuation
+                }
+                OnlineShelf(title, items.distinctBy { it.id })
+                } catch (cancelled: CancellationException) { throw cancelled }
+                catch (error: Exception) { errors.add(error); null }
+            } }.awaitAll()
+            errors.firstOrNull()?.let { throw it }
+            catalog(OnlinePage("Library", pages.filterNotNull()))
         }
     }
     suspend fun roulette(seed: Song?, visible: List<SongItem>): List<Song> = withContext(Dispatchers.IO) {
@@ -522,7 +707,15 @@ class OnlineRepository private constructor(context: Context) {
         val result = YouTube.searchContinuation(token).getOrThrow()
         catalog(OnlinePage("", listOf(OnlineShelf("", result.items)), result.continuation))
     }
-    suspend fun library(kind: String = "playlists"): OnlinePage = withContext(Dispatchers.IO) {
+    suspend fun library(kind: String = "playlists", force: Boolean = false): OnlinePage = withContext(Dispatchers.IO) {
+        initialized.await()
+        val user = _account.value
+        val key = "library:$kind"
+        if (user.connected && !force && hasFreshPage(key, user)) cachedPage(key, user)?.let { return@withContext it }
+        loadLibrary(kind).also { cachePage(key, it, user) }
+    }
+
+    private suspend fun loadLibrary(kind: String): OnlinePage = withContext(Dispatchers.IO) {
         initialized.await()
         check(_enabled.value) { "Modo online desactivado" }
         val spanish = Locale.getDefault().language == "es"

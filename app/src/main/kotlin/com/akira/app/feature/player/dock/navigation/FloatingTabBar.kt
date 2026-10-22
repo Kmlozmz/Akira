@@ -111,6 +111,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
@@ -129,6 +130,15 @@ import kotlin.math.roundToInt
 
 /** Hoisted so the default is one stable lambda rather than a new one per call. */
 private val DefaultTabBarContentModifier: @Composable () -> Modifier = { Modifier }
+
+/** Alternate navigation geometry within the same dock and accessory lifetime. */
+class DockNavigationReplacement(
+    val progress: Float,
+    val height: Dp,
+    val surfaceAlpha: Float,
+    val accessoryVisibility: Float,
+    val content: @Composable (Modifier) -> Unit,
+)
 
 /**
  * A floating tab bar that can transition between inline and expanded states.
@@ -216,6 +226,7 @@ fun FloatingTabBar(
     // Receives compactness 0..1. Unlike the legacy branch accessories this is
     // composed once and physically measured/placed throughout the whole fold.
     liveAccessory: (@Composable (Modifier, Float) -> Unit)? = null,
+    replacement: DockNavigationReplacement? = null,
     colors: FloatingTabBarColors = FloatingTabBarDefaults.colors(),
     shapes: FloatingTabBarShapes = FloatingTabBarDefaults.shapes(),
     sizes: FloatingTabBarSizes = FloatingTabBarDefaults.sizes(),
@@ -239,7 +250,12 @@ fun FloatingTabBar(
     // Match the content's font-scaled intrinsic heights even before the other
     // layout branch exists (e.g. returning to the app with a compact dock).
     val compactHeight = dockMiniHeightDp(density.fontScale, inline = true).dp
-    val accessoryHeight = dockMiniHeightDp(density.fontScale, inline = false).dp
+    val accessoryVisibility = replacement?.accessoryVisibility ?: 1f
+    val accessoryHeight = (dockMiniHeightDp(density.fontScale, inline = false).dp * accessoryVisibility).coerceAtLeast(.1.dp)
+    val replacementProgress = replacement?.progress?.coerceIn(0f, 1f) ?: 0f
+    val navigationHeight = (47f+14f*density.fontScale).dp * (1f-replacementProgress) +
+        (replacement?.height ?: compactHeight) * replacementProgress
+    val layoutSizes = sizes.copy(componentSpacing = sizes.componentSpacing * accessoryVisibility)
     val compactSlot: (@Composable SharedTransitionScope.(Modifier, AnimatedVisibilityScope) -> Unit)? =
         if (liveAccessory == null) inlineAccessory else { slot, _ ->
             Box(slot.height(compactHeight).onSizeChanged { compactSize = it })
@@ -255,8 +271,7 @@ fun FloatingTabBar(
     val foldStrain=remember(fold) { { fold.strain() } }
     val foldMaterial=remember(fold) { { fold.deformation() } }
     val folding = !fold.settled(scrollConnection.isInline)
-    CompositionLocalProvider(com.akira.app.core.design.glass.LocalIsDockGlass provides true,
-        LocalDockMorphActive provides folding,
+    CompositionLocalProvider(LocalDockMorphActive provides folding,
         LocalDockNavigationGlass provides navigationGlass,
         LocalDockFoldMotion provides fold,
         com.akira.app.core.design.glass.LocalGlassStrain provides foldStrain,
@@ -265,13 +280,15 @@ fun FloatingTabBar(
         Box(Modifier.onSizeChanged { dockWidth = it.width }) {
             if(dockWidth>0) LiveDockNavigationGlass(scrollConnection.isInline,dockWidth,
                 compactHeight,(47f+14f*density.fontScale).dp,navigationGlass,tabBarContentModifier,
-                Modifier.matchParentSize().then(navigationModifier))
+                Modifier.matchParentSize().then(navigationModifier).graphicsLayer {
+                    alpha = replacement?.surfaceAlpha ?: 1f
+                }, replacementProgress)
             if(dockWidth>0) LiveDockFoldSelection(scrollConnection.isInline,dockWidth,
                 compactHeight,(47f+14f*density.fontScale).dp,
                 scope.tabs.size+if(scope.standaloneTab!=null)1 else 0,
                 (scope.tabs+listOfNotNull(scope.standaloneTab)).indexOfFirst { it.key==selectedTabKey },
                 sizes.tabBarContentPadding,sizes.tabSpacing,colors.indicatorColor,folding,
-                Modifier.matchParentSize().then(navigationModifier))
+                Modifier.matchParentSize().then(navigationModifier).graphicsLayer { alpha = 1f-replacementProgress })
             AnimatedContent(
                 targetState = scrollConnection.isInline,
                 transitionSpec = {
@@ -306,10 +323,12 @@ fun FloatingTabBar(
                             isAccessoryShared = isAccessoryShared,
                             colors = colors,
                             shapes = shapes,
-                            sizes = sizes,
+                            sizes = layoutSizes,
                             elevations = elevations,
                             tabBarContentModifier = tabBarContentModifier,
-                            animatedVisibilityScope = this@AnimatedContent
+                            animatedVisibilityScope = this@AnimatedContent,
+                            replacement = replacement,
+                            navigationHeight = navigationHeight,
                         )
                     }
                 }
@@ -328,7 +347,7 @@ fun FloatingTabBar(
                     expandedSize.takeIf { it != IntSize.Zero && measuredWidthMatches } ?: fallbackExpanded,
                     expandedHeight.takeIf { it > 0 && measuredWidthMatches } ?: with(density) {
                         // 25dp glyph + font-scaled 14dp label + 22dp padding.
-                        (accessoryHeight + sizes.componentSpacing + (47f + 14f * density.fontScale).dp).roundToPx()
+                        (accessoryHeight + layoutSizes.componentSpacing + navigationHeight).roundToPx()
                     },
                     Modifier.matchParentSize(), liveAccessory)
             }
@@ -733,7 +752,9 @@ private fun SharedTransitionScope.ExpandedBar(
     sizes: FloatingTabBarSizes,
     elevations: FloatingTabBarElevations,
     tabBarContentModifier: @Composable () -> Modifier,
-    animatedVisibilityScope: AnimatedVisibilityScope
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    replacement: DockNavigationReplacement?,
+    navigationHeight: Dp,
 ) {
     val standaloneTab = scope.standaloneTab
     val hasTabGroup = scope.tabs.isNotEmpty()
@@ -758,6 +779,7 @@ private fun SharedTransitionScope.ExpandedBar(
         }
 
         if (hasTabGroup || standaloneTab != null) {
+            Box(Modifier.fillMaxWidth().height(navigationHeight), contentAlignment = Alignment.BottomCenter) {
             ExpandedTabs(
                 scope = scope,
                 tabs = scope.tabs + listOfNotNull(standaloneTab),
@@ -766,7 +788,16 @@ private fun SharedTransitionScope.ExpandedBar(
                 animatedVisibilityScope = animatedVisibilityScope,
                 tabBarContentModifier = tabBarContentModifier,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp).then(navigationModifier)
+                    .graphicsLayer { alpha = 1f-(replacement?.progress ?: 0f) }
+                    .then(if (replacement != null) Modifier
+                        .clearAndSetSemantics { }
+                        .pointerInput(Unit) { awaitPointerEventScope {
+                            while (true) awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                                .changes.forEach { it.consume() }
+                        } } else Modifier)
             )
+            replacement?.content?.invoke(Modifier.matchParentSize())
+            }
         }
     }
 }

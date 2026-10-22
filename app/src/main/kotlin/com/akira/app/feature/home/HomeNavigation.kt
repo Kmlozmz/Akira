@@ -6,8 +6,10 @@ package com.akira.app.feature.home
 import com.akira.app.feature.player.dock.*
 
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.*
@@ -28,6 +30,8 @@ import com.akira.app.core.model.Song
 import com.akira.app.core.design.components.localizedText
 import com.akira.app.core.design.glass.*
 import com.akira.app.feature.player.dock.navigation.*
+import com.akira.app.feature.search.LocalSearchSession
+import com.akira.app.feature.search.SearchDock
 
 enum class HomeDestination { HOME, SEARCH, LIBRARY, SETTINGS }
 
@@ -91,10 +95,10 @@ fun HomeNavigation(
     pull: MiniPlayerPull?,
     modifier: Modifier = Modifier,
     playerProgress: () -> Float = { 0f },
+    searchEnabled: Boolean = true,
 ) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val reduced = com.akira.app.core.design.components.LocalContentMotionReduced.current
-    val shape = remember { RoundedCornerShape(percent = 50) }
     val contentColor = glassContentColor()
     val selectedContentColor = if(contentColor == Color.Black) Color(0xFFFF2D55) else Color(0xFFFF375F)
     val haptics = rememberHaptics()
@@ -109,6 +113,16 @@ fun HomeNavigation(
     val surface: @Composable () -> Modifier = {
         Modifier.liquidGlass(rememberDockGlassShape())
     }
+    val search = LocalSearchSession.current
+    val searchActive = selected == HomeDestination.SEARCH && searchEnabled && search != null
+    val searchProgress by animateFloatAsState(if (searchActive) 1f else 0f,
+        if (reduced) snap() else spring(dampingRatio = .9f, stiffness = 700f), label = "dockSearch")
+    val editingProgress by animateFloatAsState(if (searchActive && search?.editing == true) 1f else 0f,
+        if (reduced) snap() else spring(dampingRatio = 1f, stiffness = 800f), label = "dockSearchEditing")
+    val searchFraction = searchProgress.coerceIn(0f, 1f)
+    val editingFraction = editingProgress.coerceIn(0f, 1f)
+    val searchHeight = dockMiniHeightDp(density.fontScale, inline = true).dp
+    val navigationHeight = (47f+14f*density.fontScale).dp * (1f-searchFraction) + searchHeight * searchFraction
     val accessory: @Composable (Modifier, Float) -> Unit = { accessoryModifier, compactFraction ->
         val inline = state.scroll.isInline
         song?.let { current ->
@@ -120,7 +134,7 @@ fun HomeNavigation(
                 onMiniPositioned = { state.reportMini(inline, it) },
                 onArtPositioned = { coords, corner -> state.reportArtwork(inline, coords, corner) },
                 pull = pull, modifier = accessoryModifier.graphicsLayer {
-                    alpha = dockMiniReveal(playerProgress())
+                    alpha = dockMiniReveal(playerProgress()) * (1f-editingFraction)
                     translationY = if (reduced) 0f else with(density) { dockMiniReturnOffsetDp(playerProgress()).dp.toPx() }
                 })
         }
@@ -132,6 +146,12 @@ fun HomeNavigation(
         modifier = modifier.fillMaxWidth(),
         tabBarContentModifier = surface,
         liveAccessory = if (song == null) null else accessory,
+        replacement = if (search != null && (searchActive || searchFraction > .001f)) DockNavigationReplacement(
+            searchFraction, searchHeight, 1f-editingFraction, 1f-editingFraction) { slot ->
+            SearchDock(search, onHome = { currentSelect(HomeDestination.HOME) }, onSubmit = { search.submit++ },
+                modifier = slot, reveal = searchFraction, editingProgress = editingFraction,
+                heightOverride = navigationHeight, drawHomeSurface = false, active = searchActive)
+        } else null,
         colors = FloatingTabBarDefaults.colors(backgroundColor = Color.Transparent,
             accessoryBackgroundColor = Color.Transparent, indicatorColor = glassIndicatorColor().copy(alpha = .5f)),
         elevations = FloatingTabBarDefaults.elevations(inlineElevation = 0.dp, expandedElevation = 0.dp),

@@ -61,8 +61,7 @@ internal fun SetupLayout(title: String, subtitle: String, onBack: (() -> Unit)? 
         LocalAppBackdrop provides backdrop, LocalPageHeaderBackdrop provides backdrop,
         LocalLiquidGlassEnabled provides prefs.liquidGlassEnabled,
         LocalLiquidGlassOpacity provides remember { { GlassOpacityPreview.value ?: opacity } },
-        LocalLiquidGlassDiffusion provides remember { { GlassDiffusionPreview.value ?: diffusion } },
-        LocalDockDiffusionEnabled provides prefs.dockBackgroundDiffusion) {
+        LocalLiquidGlassDiffusion provides remember { { GlassDiffusionPreview.value ?: diffusion } }) {
         Box(modifier.fillMaxSize().background(colors.background).safeDrawingPadding()
             .semantics { paneTitle = title; isTraversalGroup = true }) {
             Canvas(Modifier.matchParentSize().layerBackdrop(backdrop).clipToBounds()) {

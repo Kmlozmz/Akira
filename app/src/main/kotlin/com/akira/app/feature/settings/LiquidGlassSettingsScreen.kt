@@ -86,12 +86,12 @@ internal fun LiquidGlassSettingsScreen(prefs: UserPreferences,repo: UserPreferen
             }
             androidx.compose.animation.AnimatedVisibility(prefs.liquidGlassEnabled) {
             Column(Modifier.padding(start=20.dp,end=20.dp,bottom=16.dp)) {
-                GlassOpacityPreviewCard(song,showDock=prefs.dockBackgroundDiffusion)
+                GlassOpacityPreviewCard(song)
                 Spacer(Modifier.height(16.dp))
                 val opacityLabel=com.akira.app.core.design.components.localizedText("Glass opacity","Opacidad del cristal")
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                     Text(opacityLabel,Modifier.weight(1f),style=MaterialTheme.typography.bodyMedium)
-                    Text("${(opacity*100).toInt()}%",style=MaterialTheme.typography.labelLarge)
+                    Text("${kotlin.math.round(opacity*100).toInt()}%",style=MaterialTheme.typography.labelLarge)
                 }
                 ExpressiveAudioSlider(opacity,{ value ->
                     opacity=value;dragging=true;pendingOpacity=null
@@ -113,7 +113,7 @@ internal fun LiquidGlassSettingsScreen(prefs: UserPreferences,repo: UserPreferen
                 val diffusionLabel=com.akira.app.core.design.components.localizedText("Background diffusion","Difuminado del fondo")
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                     Text(diffusionLabel,Modifier.weight(1f),style=MaterialTheme.typography.bodyMedium)
-                    Text("${(diffusion/24f*100).toInt()}%",style=MaterialTheme.typography.labelLarge)
+                    Text("${kotlin.math.round(diffusion/24f*100).toInt()}%",style=MaterialTheme.typography.labelLarge)
                 }
                 ExpressiveAudioSlider(diffusion,{ value ->
                     diffusion=value;diffusing=true;pendingDiffusion=null
@@ -124,20 +124,9 @@ internal fun LiquidGlassSettingsScreen(prefs: UserPreferences,repo: UserPreferen
                         scope.launch { repo.setLiquidGlassDiffusion(selected) }
                     })
                 Text(com.akira.app.core.design.components.localizedText(
-                    "Softens backgrounds in menus and panels without adding tint. The selection lens always stays clear.",
-                    "Suaviza el fondo de menús y paneles sin añadir tinte. La lente de selección siempre permanece nítida."),
+                    "Softens the background of the dock, controls and panels without adding tint. The selection lens stays clear.",
+                    "Suaviza el fondo del dock, los controles y los paneles sin añadir tinte. La lente de selección permanece nítida."),
                     style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                Row(Modifier.fillMaxWidth().padding(top=12.dp),verticalAlignment=Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(com.akira.app.core.design.components.localizedText("Also apply to dock", "Aplicar también al dock"),style=MaterialTheme.typography.bodyLarge)
-                        Text(com.akira.app.core.design.components.localizedText("See your dock in the preview above.","Mira el dock en la vista previa de arriba."),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    val dockLabel=com.akira.app.core.design.components.localizedText("Apply to dock","Aplicar al dock")
-                    com.akira.app.core.design.components.AkiraSwitch(checked=prefs.dockBackgroundDiffusion,enabled=prefs.liquidGlassEnabled,
-                        modifier=Modifier.semantics {contentDescription=dockLabel},
-                        onCheckedChange={ enabled -> scope.launch { repo.setDockBackgroundDiffusion(enabled) } })
-                }
-
             }
             }
             }
@@ -146,7 +135,8 @@ internal fun LiquidGlassSettingsScreen(prefs: UserPreferences,repo: UserPreferen
     val haptics=com.akira.app.core.design.util.rememberAkiraHaptics()
     androidx.compose.animation.AnimatedVisibility(prefs.liquidGlassEnabled) {
     val reset: () -> Unit = { haptics.confirm(); scope.launch {
-        repo.setLiquidGlassOpacity(.25f); repo.setLiquidGlassDiffusion(8f); repo.setDockBackgroundDiffusion(false)
+        repo.setLiquidGlassOpacity(com.akira.app.core.design.glass.AkiraGlassDefaults.Opacity)
+        repo.setLiquidGlassDiffusion(com.akira.app.core.design.glass.AkiraGlassDefaults.Diffusion)
     }; Unit }
     val label = com.akira.app.core.design.components.localizedText("Restore glass defaults", "Restablecer el cristal")
     if (tonalReset) FilledTonalButton(reset, Modifier.fillMaxWidth().padding(top = 14.dp).heightIn(min = 52.dp),
@@ -158,10 +148,10 @@ internal fun LiquidGlassSettingsScreen(prefs: UserPreferences,repo: UserPreferen
 
 /** Real shared glass over local artwork: the slider can be judged in place. */
 @Composable
-internal fun GlassOpacityPreviewCard(song: Song?,showDock: Boolean=false) {
+internal fun GlassOpacityPreviewCard(song: Song?) {
     val backdrop=rememberLayerBackdrop()
     val shape=RoundedCornerShape(18.dp)
-    val bottom by androidx.compose.animation.core.animateDpAsState(if(showDock)66.dp else 14.dp,label="glassDockPreview")
+    val bottom = 66.dp
     Box(Modifier.fillMaxWidth().height(210.dp).clip(shape)) {
         Box(Modifier.fillMaxSize().layerBackdrop(backdrop)
             .background(MaterialTheme.colorScheme.primaryContainer)) {
@@ -175,14 +165,9 @@ internal fun GlassOpacityPreviewCard(song: Song?,showDock: Boolean=false) {
                 style=MaterialTheme.typography.titleSmall)
             Icon(AkiraIcons.Play,null,Modifier.size(22.dp),tint=com.akira.app.core.design.glass.glassContentColor())
         }
-        androidx.compose.animation.AnimatedVisibility(showDock,Modifier.align(Alignment.BottomCenter),
-            enter=androidx.compose.animation.fadeIn()+androidx.compose.animation.expandVertically(),exit=androidx.compose.animation.fadeOut()+androidx.compose.animation.shrinkVertically()) {
-            androidx.compose.runtime.CompositionLocalProvider(com.akira.app.core.design.glass.LocalIsDockGlass provides true) {
-                Row(Modifier.padding(10.dp).fillMaxWidth().liquidGlass(RoundedCornerShape(50),backdrop).padding(horizontal=18.dp,vertical=12.dp),horizontalArrangement=Arrangement.SpaceBetween) {
-                    listOf(com.akira.app.R.drawable.ic_navigation_home_filled,com.akira.app.R.drawable.ic_navigation_library_filled,
-                        com.akira.app.R.drawable.ic_navigation_search_outline).forEach {res->Icon(androidx.compose.ui.res.painterResource(res),null,Modifier.size(23.dp),tint=com.akira.app.core.design.glass.glassContentColor())}
-                }
-            }
+        Row(Modifier.align(Alignment.BottomCenter).padding(10.dp).fillMaxWidth().liquidGlass(RoundedCornerShape(50),backdrop).padding(horizontal=18.dp,vertical=12.dp),horizontalArrangement=Arrangement.SpaceBetween) {
+            listOf(com.akira.app.R.drawable.ic_navigation_home_filled,com.akira.app.R.drawable.ic_navigation_library_filled,
+                com.akira.app.R.drawable.ic_navigation_search_outline).forEach {res->Icon(androidx.compose.ui.res.painterResource(res),null,Modifier.size(23.dp),tint=com.akira.app.core.design.glass.glassContentColor())}
         }
     }
 }

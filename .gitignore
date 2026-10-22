@@ -45,6 +45,8 @@ __pycache__/
 /scripts/
 /app/src/test/
 /app/src/androidTest/
+/app/src/debug/AndroidManifest.xml
+/app/src/debug/kotlin/
 /providers/**/src/test/
 /providers/**/src/androidTest/
 *.bundle

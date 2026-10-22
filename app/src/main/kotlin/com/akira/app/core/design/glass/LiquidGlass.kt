@@ -31,6 +31,7 @@ import com.akira.app.core.design.backdrop.Backdrop
 import com.akira.app.core.design.backdrop.backdrops.LayerBackdrop
 import com.akira.app.core.design.backdrop.drawBackdrop
 import com.akira.app.core.design.backdrop.effects.blur
+import com.akira.app.core.design.backdrop.highlight.HighlightStyle as BackdropHighlightStyle
 import com.akira.app.core.design.backdrop.effects.refractionLens
 import com.akira.app.core.design.backdrop.effects.glassReadability
 import com.akira.app.core.design.backdrop.highlight.Highlight
@@ -43,11 +44,9 @@ import androidx.compose.ui.unit.DpOffset
 /** Optional material flag retained for the upstream lightweight surface helper. */
 val LocalLiquidGlassEnabled = staticCompositionLocalOf { false }
 /** Draw-phase reader: the live global preview does not recompose the app. */
-val LocalLiquidGlassDiffusion = staticCompositionLocalOf<() -> Float> { { 8f } }
-val LocalDockDiffusionEnabled = staticCompositionLocalOf { false }
-internal val LocalIsDockGlass = staticCompositionLocalOf { false }
+val LocalLiquidGlassDiffusion = staticCompositionLocalOf<() -> Float> { { AkiraGlassDefaults.Diffusion } }
 internal object GlassDiffusionPreview { var value by mutableStateOf<Float?>(null) }
-val LocalLiquidGlassOpacity = staticCompositionLocalOf<() -> Float> { { .25f } }
+val LocalLiquidGlassOpacity = staticCompositionLocalOf<() -> Float> { { AkiraGlassDefaults.Opacity } }
 /** Separate menu windows must invalidate their filtered source while the
  * activity animates. A RenderNode reference alone can retain a stale texture. */
 internal val LocalGlassRedrawSignal = staticCompositionLocalOf<() -> Long> { { 0L } }
@@ -84,7 +83,8 @@ fun isGlassSupported(sdkInt: Int = Build.VERSION.SDK_INT): Boolean = sdkInt >= B
 internal object AkiraGlassMaterialProfile {
     const val ResolutionScale = 1f
     const val LensDeformation = .35f
-    val HighlightStyle = Highlight.Default
+    val HighlightStyle = Highlight(width = .45.dp, blurRadius = .25.dp,
+        style = BackdropHighlightStyle.Default(color = Color.White.copy(alpha = .36f), falloff = 3.2f))
     val ContactShadow = Shadow(radius = 12.dp, offset = DpOffset(0.dp, 2.dp),
         color = Color.Black.copy(alpha = .3f))
     fun rim(presence: Float): Float = ((presence - .45f) / .55f).coerceIn(0f, 1f)
@@ -152,7 +152,7 @@ internal fun Modifier.renderLiquidGlass(shape: CornerBasedShape, backdrop: Backd
     val glass = LocalLiquidGlassEnabled.current
     val opacity = LocalLiquidGlassOpacity.current
     val diffusion = LocalLiquidGlassDiffusion.current
-    val diffuse = !clearLens && (!LocalIsDockGlass.current || LocalDockDiffusionEnabled.current)
+    val diffuse = !clearLens
     val redraw = LocalGlassRedrawSignal.current
     val density = LocalDensity.current
     val scale = if(glass)AkiraGlassMaterialProfile.ResolutionScale else FALLBACK_RESOLUTION_SCALE
@@ -167,10 +167,12 @@ internal fun Modifier.renderLiquidGlass(shape: CornerBasedShape, backdrop: Backd
         backdrop = backdrop,
         shape = { shape },
         effects = {
-            // Scattering is independent of tint. Blur the sampled scene before
-            // lensing; the rim, foreground labels and reflections stay sharp.
-            if (glass) { if(diffuse) blur(diffusion().coerceIn(0f,24f) * density.density * scale * material()) }
-            else blur(48f * scale)
+            val diffusionRadius = if (glass && diffuse) diffusion().coerceIn(0f,24f) * .25f * density.density * scale * material() else 0f
+            // Filter the source once, then refract that same continuous image.
+            // A separately masked sharp rim makes the capsule look laminated.
+            if (glass && diffuse) padding = maxOf(diffusionRadius * 2f, 26f * density.density * scale)
+            if (!glass) blur(48f * scale)
+            if (diffusionRadius > 0f) blur(diffusionRadius)
             if (glass && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 refractionLens(density.density * scale,
                     deformation = material() * AkiraGlassMaterialProfile.LensDeformation,

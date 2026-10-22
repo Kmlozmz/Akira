@@ -6,7 +6,6 @@ plugins {
 }
 
 import java.util.Properties
-import java.security.MessageDigest
 import com.android.build.api.artifact.SingleArtifact
 
 val appVersion = Properties().apply {
@@ -185,29 +184,16 @@ androidComponents.onVariants { variant ->
 
 tasks.register("prepareGitHubRelease") {
     group = "distribution"
-    description = "Builds the public release APK and its update metadata"
+    description = "Builds the APK for the public GitHub release"
     dependsOn("exportReleaseApk")
     doLast {
         require(hasReleaseKeystore) { "A production signing key is required to prepare a public release" }
         val destination = layout.buildDirectory.dir("distributions/github/$appVersionName").get().asFile.apply { mkdirs() }
         destination.resolve("Akira-$appVersionName-debug.apk").delete()
+        destination.resolve("Akira-update.json").delete()
+        destination.resolve("SHA256SUMS.txt").delete()
         val source = layout.buildDirectory.file("distributions/release/Akira-$appVersionName.apk").get().asFile
         require(source.isFile) { "Missing APK: ${source.name}" }
         source.copyTo(destination.resolve(source.name), overwrite = true)
-        val digest = MessageDigest.getInstance("SHA-256")
-        source.inputStream().use { input ->
-            val buffer = ByteArray(64 * 1024)
-            while (true) { val count = input.read(buffer); if (count < 0) break; digest.update(buffer, 0, count) }
-        }
-        val packages = listOf(mapOf("applicationId" to "com.akira.app",
-            "fileName" to source.name, "size" to source.length(),
-            "sha256" to digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }))
-        val metadata = mapOf("schemaVersion" to 1, "versionName" to appVersionName,
-            "versionCode" to appVersionCode, "minSdk" to android.defaultConfig.minSdk, "packages" to packages)
-        destination.resolve("Akira-update.json").writeText(
-            groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(metadata)) + "\n")
-        destination.resolve("SHA256SUMS.txt").writeText(packages.joinToString("\n", postfix = "\n") {
-            "${it["sha256"]}  ${it["fileName"]}"
-        })
     }
 }

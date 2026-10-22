@@ -10,6 +10,7 @@ import com.akira.app.core.design.navigation.containerTransformSource
 
 import com.akira.app.feature.home.HomeDestination
 import com.akira.app.feature.home.HomeNavigation
+import com.akira.app.feature.search.*
 import com.akira.app.feature.home.AkiraDockState
 import com.akira.app.feature.home.rememberAkiraDockState
 import com.akira.app.core.design.glass.LocalAppBackdrop
@@ -20,6 +21,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import com.akira.app.feature.home.LocalHomeFeed
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
@@ -235,6 +237,7 @@ fun LibraryScreen(
     var showSortBottomSheet by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var destination by rememberSaveable { mutableStateOf(HomeDestination.HOME) }
+    val searchSession = rememberSearchSession()
     var previousDestination by rememberSaveable { mutableStateOf(HomeDestination.HOME) }
     var homeScrollRequest by remember { mutableStateOf(0) }
     val homeStateHolder=androidx.compose.runtime.saveable.rememberSaveableStateHolder()
@@ -730,6 +733,7 @@ fun LibraryScreen(
                 }
             }
             showSettings -> closeSettings()
+            destination == HomeDestination.SEARCH && searchSession.editing -> searchSession.close()
             selectedAlbumFilter != null -> { selectedAlbumFilter = null; selectedAlbumKey = null }
             selectedArtistFilter != null -> selectedArtistFilter = null
             selectedFolderFilter != null -> { selectedFolderFilter = null; selectedFolderKey = null }
@@ -741,11 +745,12 @@ fun LibraryScreen(
     val glassBackdrop = rememberAkiraGlassBackdrop()
     val dockBackdrop = rememberLayerBackdrop(graphicsLayer = glassBackdrop.layer)
     val appNoticeColors=MaterialTheme.colorScheme
-    val storedGlassDiffusion = androidx.compose.runtime.rememberUpdatedState(userPrefs?.liquidGlassDiffusion ?: 8f)
+    val storedGlassDiffusion = androidx.compose.runtime.rememberUpdatedState(userPrefs?.liquidGlassDiffusion ?: com.akira.app.core.design.glass.AkiraGlassDefaults.Diffusion)
     val glassDiffusion = remember { { com.akira.app.core.design.glass.GlassDiffusionPreview.value ?: storedGlassDiffusion.value } }
-    val storedGlassOpacity = androidx.compose.runtime.rememberUpdatedState(userPrefs?.liquidGlassOpacity ?: .25f)
+    val storedGlassOpacity = androidx.compose.runtime.rememberUpdatedState(userPrefs?.liquidGlassOpacity ?: com.akira.app.core.design.glass.AkiraGlassDefaults.Opacity)
     val glassOpacity = remember { { com.akira.app.core.design.glass.GlassOpacityPreview.value ?: storedGlassOpacity.value } }
     androidx.compose.runtime.CompositionLocalProvider(
+        LocalSearchSession provides searchSession,
         com.akira.app.core.design.components.LocalAkiraNoticeColors provides appNoticeColors,
         com.akira.app.core.design.components.LocalAkiraMenuAnchors provides remember { com.akira.app.core.design.components.AkiraMenuAnchors() },
         LocalDetailSessions provides detailSessions,
@@ -758,7 +763,6 @@ fun LibraryScreen(
         com.akira.app.core.design.glass.LocalLiquidGlassEnabled provides (userPrefs?.liquidGlassEnabled ?: false),
         com.akira.app.core.design.glass.LocalLiquidGlassOpacity provides glassOpacity,
         com.akira.app.core.design.glass.LocalLiquidGlassDiffusion provides glassDiffusion,
-        com.akira.app.core.design.glass.LocalDockDiffusionEnabled provides (userPrefs?.dockBackgroundDiffusion ?: false),
         com.akira.app.core.design.components.LocalAkiraAccent provides androidx.compose.ui.graphics.lerp(effectivePrimary, androidx.compose.material3.MaterialTheme.colorScheme.onSurface, .5f)
     ) {
     // Immersive details own their palette. Home must keep the app palette even
@@ -766,7 +770,8 @@ fun LibraryScreen(
     MaterialTheme(colorScheme=MaterialTheme.colorScheme) {
     com.akira.app.core.design.components.AkiraPresentationHost {
     com.akira.app.feature.settings.UpdatesHost(allowAutomaticPrompt =
-        destination == HomeDestination.HOME && !showSettings && !isPlayerExpanded &&
+        destination != HomeDestination.SETTINGS && !showSettings && !isPlayerExpanded &&
+            !(destination == HomeDestination.SEARCH && searchSession.editing) &&
             selectedAlbumFilter == null && selectedArtistFilter == null && detailSessions.isEmpty())
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -774,6 +779,13 @@ fun LibraryScreen(
     ) {
         val focusManager = LocalFocusManager.current
         val keyboardController = LocalSoftwareKeyboardController.current
+        LaunchedEffect(destination) {
+            if (destination != HomeDestination.SEARCH) {
+                searchSession.close()
+                focusManager.clearFocus(force = true)
+                keyboardController?.hide()
+            }
+        }
         val strings = LocalStrings.current
 
         androidx.compose.foundation.layout.BoxWithConstraints(
@@ -789,6 +801,9 @@ fun LibraryScreen(
             val fullScreenHeightDp = maxHeight
             val dockDensity = LocalDensity.current
             val keyboardVisible = WindowInsets.ime.getBottom(dockDensity) > 0
+            val searchKeyboardFraction = (WindowInsets.ime.getBottom(dockDensity) /
+                with(dockDensity) { 160.dp.toPx() }).coerceIn(0f, 1f)
+            val restingDockInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding().coerceAtLeast(15.dp) + 2.dp
             val loading by musicService.isLoading.collectAsStateWithLifecycle()
             var dockSettleJob by remember { mutableStateOf<Job?>(null) }
             val liveReduced by androidx.compose.runtime.rememberUpdatedState(homeMotionReduced)
@@ -817,7 +832,7 @@ fun LibraryScreen(
                     }
                 }
             }
-            androidx.compose.runtime.SideEffect { dockState.scroll.enabled = miniVisible && !keyboardVisible }
+            androidx.compose.runtime.SideEffect { dockState.scroll.enabled = miniVisible && !keyboardVisible && destination != HomeDestination.SEARCH }
             Box(Modifier.fillMaxSize().nestedScroll(dockState.scroll).layerBackdrop(dockBackdrop)
                 .graphicsLayer {translationX=-size.width/3f*studioNavigation.rootReveal}
                 .onGloballyPositioned { glassBackdrop.coordinates = it }) {
@@ -825,9 +840,17 @@ fun LibraryScreen(
             com.akira.app.core.design.navigation.PageNavigationHost(
                 target=destination,
                 backTarget=if(destination==HomeDestination.SETTINGS)previousDestination else HomeDestination.HOME,
-                backEnabled=!isPlayerExpanded && destination!=HomeDestination.HOME && selectedAlbumFilter==null && selectedArtistFilter==null && selectedFolderFilter==null && searchQuery.isBlank(),
+                backEnabled=!isPlayerExpanded && destination!=HomeDestination.HOME && selectedAlbumFilter==null && selectedArtistFilter==null && selectedFolderFilter==null && searchQuery.isBlank() && !searchSession.editing,
                 onBack={if(destination==HomeDestination.SETTINGS)closeSettings() else destination=HomeDestination.HOME},
                 forward={from,to->val order=listOf(HomeDestination.HOME,HomeDestination.LIBRARY,HomeDestination.SETTINGS,HomeDestination.SEARCH);order.indexOf(to)>=order.indexOf(from)},
+                navigationTransform = { from, to, reduced ->
+                    if (from == HomeDestination.SEARCH || to == HomeDestination.SEARCH) {
+                        androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(if (reduced) 0 else 140)) togetherWith
+                            androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(if (reduced) 0 else 100))
+                    } else com.akira.app.core.design.navigation.pageNavigationTransform(
+                        listOf(HomeDestination.HOME, HomeDestination.LIBRARY, HomeDestination.SETTINGS).indexOf(to) >=
+                            listOf(HomeDestination.HOME, HomeDestination.LIBRARY, HomeDestination.SETTINGS).indexOf(from), reduced)
+                },
                 modifier=Modifier.fillMaxSize()) { screen ->
                 Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             if (onlineEnabled && screen != HomeDestination.SETTINGS) {
@@ -857,6 +880,13 @@ fun LibraryScreen(
                     onMore={songForOptions=it},onSettings={openSettings()},onRetry=libraryViewModel::retryLoad,
                     scrollToTopRequest=homeScrollRequest,playerSheetProgress={playerExpansionProgress.value})
                 }
+            } else if (screen == HomeDestination.SEARCH && selectedAlbumFilter == null && selectedArtistFilter == null) {
+                LocalSearchPage(wholeLibrary, currentSong, isPlaying,
+                    with(dockDensity) { dockState.heightPx.toDp() },
+                    onPlay = { song, queue -> localCurrentSong = song; musicService.playSong(song, queue) },
+                    onTogglePlay = { togglePlayPause() }, onMore = { songForOptions = it },
+                    onAlbum = { song -> selectedAlbumFilter = song.album; selectedAlbumKey = albumKeyOf(song) },
+                    onArtist = { name -> selectedArtistFilter = name }, onSettings = { openSettings() })
             } else if (screen != HomeDestination.SETTINGS) {
             val detailLead = if(selectedAlbumFilter != null) wholeLibrary.firstOrNull { albumKeyOf(it)==selectedAlbumKey }
                 else selectedArtistFilter?.let { name -> wholeLibrary.firstOrNull { it.artist.equals(name,true) } }
@@ -1167,11 +1197,12 @@ fun LibraryScreen(
             // Ajustes a pantalla completa. No se usa un bottom sheet porque el
             // ecualizador con 5 sliders no cabe en media hoja sin que quede
             // ilegible.
-            if (!keyboardVisible) MaterialTheme(colorScheme=if(detailSessions.isNotEmpty()) com.akira.app.core.design.theme.DarkColorScheme else MaterialTheme.colorScheme) {
+            if (!keyboardVisible || destination == HomeDestination.SEARCH) MaterialTheme(colorScheme=if(detailSessions.isNotEmpty()) com.akira.app.core.design.theme.DarkColorScheme else MaterialTheme.colorScheme) {
             HomeNavigation(destination,onSelect={next ->
                 if(next==HomeDestination.HOME && destination==next)homeScrollRequest++
                 dockState.scroll.expand()
                 if(next==HomeDestination.SETTINGS)openSettings() else {
+                    if(next != HomeDestination.SEARCH) { searchSession.close(); focusManager.clearFocus(); keyboardController?.hide() }
                     showSettings=false;destination=next
                     if(next==HomeDestination.SEARCH){libraryViewModel.setCategory("Tracks");selectedAlbumFilter=null;selectedArtistFilter=null;selectedFolderFilter=null}
                 }
@@ -1186,12 +1217,14 @@ fun LibraryScreen(
                         if (homeMotionReduced) playerExpansionProgress.snapTo(1f)
                         else playerExpansionProgress.animateTo(1f, playerSheetAnimationSpec())
                     }
-                }, pull = dockPull, playerProgress = { playerExpansionProgress.value },
+                }, pull = dockPull, playerProgress = { playerExpansionProgress.value }, searchEnabled = detailSessions.isEmpty(),
                 modifier=Modifier.align(Alignment.BottomCenter).widthIn(max = 440.dp).fillMaxWidth()
                     .onSizeChanged { dockState.heightPx = it.height }
-                    .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding().coerceAtLeast(15.dp) + 2.dp)
+                    .then(if(destination == HomeDestination.SEARCH) Modifier.imePadding() else Modifier)
+                    .padding(bottom = if(destination == HomeDestination.SEARCH)
+                        restingDockInset * (1f-searchKeyboardFraction) + 8.dp * searchKeyboardFraction else restingDockInset)
                     .padding(horizontal=16.dp)
-                    .then(if (!miniVisible) Modifier.clearAndSetSemantics {} else Modifier))
+                    .then(if (!miniVisible && destination != HomeDestination.SEARCH) Modifier.clearAndSetSemantics {} else Modifier))
             }
             UnifiedPlayerContainer(
                 dockState = dockState,
