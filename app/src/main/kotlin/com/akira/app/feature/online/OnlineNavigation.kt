@@ -23,6 +23,8 @@ internal data class OnlineRoute(val item: YTItem, val transitionKey: String? = n
     playbackError: Boolean = false, requestedItem: YTItem? = null, onRequestConsumed: () -> Unit = {},
     onMore: (Song) -> Unit = {}, onSettings: () -> Unit = {}) {
     val account by repository.account.collectAsStateWithLifecycle()
+    val sessionReady by repository.sessionReady.collectAsStateWithLifecycle()
+    if (!sessionReady) return
     var routes by remember(account, destination) { mutableStateOf(emptyList<OnlineRoute>()) }
     LaunchedEffect(requestedItem) {
         requestedItem?.let { routes = listOf(OnlineRoute(it)); onRequestConsumed() }

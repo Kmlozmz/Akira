@@ -9,6 +9,7 @@ import com.akira.app.core.updates.AppUpdates
 import com.akira.app.core.updates.UpdateCheck
 import com.akira.app.core.updates.UpdateException
 import com.akira.app.core.updates.UpdateFailure
+import com.akira.app.core.updates.isNewerReleaseVersion
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +23,7 @@ import kotlinx.coroutines.ensureActive
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import org.json.JSONObject
 
 internal data class UpdatesState(
     val checking: Boolean = false,
@@ -47,9 +49,11 @@ internal data class UpdatesState(
 internal class UpdatesViewModel(application: Application) : AndroidViewModel(application) {
     val updates = AppUpdates(application)
     private val preferences = application.getSharedPreferences("app_updates", Application.MODE_PRIVATE)
-    private val mutable = MutableStateFlow(UpdatesState(completedVersion = completedVersion()))
+    private val mutable = MutableStateFlow(UpdatesState(completedVersion = completedVersion(),
+        result = cachedUpdate()?.let(UpdateCheck::Available)))
     private var downloadJob: Job? = null
     private var automaticPromptDeferred = false
+    private var dismissedForCurrentOpen = false
     val state = mutable.asStateFlow()
 
     fun check(showAvailable: Boolean = true) {
@@ -58,8 +62,9 @@ internal class UpdatesViewModel(application: Application) : AndroidViewModel(app
         viewModelScope.launch {
             try {
                 val result = updates.check()
+                cacheUpdate((result as? UpdateCheck.Available)?.update)
                 mutable.update { it.copy(checking = false, checked = true, result = result,
-                    dialogVisible = it.dialogVisible || (showAvailable && result is UpdateCheck.Available),
+                    dialogVisible = result is UpdateCheck.Available && (it.dialogVisible || showAvailable),
                     downloaded = if (it.result == result) it.downloaded else null) }
                 preferences.edit().putLong("last_check_time", System.currentTimeMillis()).apply()
             } catch (cancelled: CancellationException) { throw cancelled }
@@ -78,8 +83,24 @@ internal class UpdatesViewModel(application: Application) : AndroidViewModel(app
 
     fun presentIfEligible() {
         val update = (mutable.value.result as? UpdateCheck.Available)?.update ?: return
-        if (automaticPromptDeferred || preferences.getLong("ignored_version_code", 0) == update.versionCode) return
+        val postponed = preferences.getString("remind_version_name", null) == update.versionName &&
+            System.currentTimeMillis() < preferences.getLong("remind_after", 0)
+        if (automaticPromptDeferred || dismissedForCurrentOpen || postponed) return
         openDetails()
+    }
+
+    fun beginForeground() { dismissedForCurrentOpen = false }
+
+    fun later() {
+        automaticPromptDeferred = true
+        dismiss()
+    }
+
+    fun remindTomorrow() {
+        val update = (mutable.value.result as? UpdateCheck.Available)?.update ?: return
+        preferences.edit().remove("remind_version_code").putString("remind_version_name", update.versionName)
+            .putLong("remind_after", System.currentTimeMillis() + TimeUnit.HOURS.toMillis(24)).apply()
+        dismiss()
     }
 
     fun openDetails() {
@@ -92,11 +113,8 @@ internal class UpdatesViewModel(application: Application) : AndroidViewModel(app
         if (!mutable.value.preparingInstaller) mutable.update { it.copy(installWhenReady = true, installerReturned = false) }
     }
 
-    fun dismiss(skipVersion: Boolean = false) {
-        automaticPromptDeferred = true
-        if (skipVersion) (mutable.value.result as? UpdateCheck.Available)?.update?.let {
-            preferences.edit().putLong("ignored_version_code", it.versionCode).apply()
-        }
+    fun dismiss() {
+        dismissedForCurrentOpen = true
         if (mutable.value.downloading) cancelDownload()
         mutable.update { it.copy(dialogVisible = false, installWhenReady = false) }
     }
@@ -135,12 +153,12 @@ internal class UpdatesViewModel(application: Application) : AndroidViewModel(app
 
     suspend fun prepareInstaller(update: AppUpdate): android.content.Intent = withContext(Dispatchers.IO) {
         val file = mutable.value.downloaded ?: throw UpdateException(UpdateFailure.INVALID_APK)
-        val intent = updates.installerIntent(file, update)
-        if (!preferences.edit().putLong("pending_install_code", update.versionCode).commit()) {
+        val prepared = updates.prepareInstaller(file, update)
+        if (!preferences.edit().putLong("pending_install_code", prepared.versionCode).commit()) {
             throw UpdateException(UpdateFailure.STORAGE)
         }
         mutable.update { it.copy(installerReturned = false, failure = null) }
-        intent
+        prepared.intent
     }
 
     fun installerReturned() { mutable.update { it.copy(installerReturned = true) } }
@@ -165,6 +183,32 @@ internal class UpdatesViewModel(application: Application) : AndroidViewModel(app
         if (pending !in 1..BuildConfig.VERSION_CODE.toLong()) return null
         preferences.edit().remove("pending_install_code").apply()
         return BuildConfig.VERSION_NAME
+    }
+
+    private fun cachedUpdate(): AppUpdate? = runCatching {
+        val value = JSONObject(preferences.getString("available_update", null) ?: return null)
+        AppUpdate(value.getString("versionName"),
+            value.getString("releaseNotes"), value.getString("releaseUrl"),
+            value.getString("downloadUrl"), value.getString("fileName"), value.getLong("size"),
+            value.getString("sha256"), value.getBoolean("prerelease"))
+            .takeIf { !BuildConfig.DEBUG && isNewerReleaseVersion(it.versionName, BuildConfig.VERSION_NAME) &&
+                it.size in 1L..(250L * 1024 * 1024) &&
+                it.fileName == "Akira-${it.versionName}.apk" &&
+                Regex("Akira-[A-Za-z0-9.+-]+\\.apk").matches(it.fileName) &&
+                Regex("[a-f0-9]{64}").matches(it.sha256) &&
+                it.downloadUrl.startsWith("https://github.com/Kmlozmz/Akira/releases/download/") }
+    }.getOrNull()
+
+    private fun cacheUpdate(update: AppUpdate?) {
+        val editor = preferences.edit()
+        if (update == null) editor.remove("available_update")
+        else editor.putString("available_update", JSONObject().apply {
+            put("versionName", update.versionName)
+            put("releaseNotes", update.releaseNotes); put("releaseUrl", update.releaseUrl)
+            put("downloadUrl", update.downloadUrl); put("fileName", update.fileName)
+            put("size", update.size); put("sha256", update.sha256); put("prerelease", update.prerelease)
+        }.toString())
+        editor.apply()
     }
 
     override fun onCleared() { updates.cancelRequests(); super.onCleared() }

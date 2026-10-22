@@ -40,6 +40,10 @@ import kotlinx.coroutines.flow.first
     playbackError: Boolean, route: OnlineRoute?, depth: Int, navigationSettled: Boolean,
     onOpen: (YTItem, String?) -> Unit, onBack: () -> Unit,
     onMore: (Song) -> Unit = {}, onSettings: () -> Unit = {}) {
+    if (destination == HomeDestination.SEARCH && route == null) {
+        OnlineSearchPage(repository, current, playing, bottomPadding, onPlay, onTogglePlay, onOpen, onMore, onSettings)
+        return
+    }
     val account by repository.account.collectAsStateWithLifecycle()
     val likedIds by repository.likedIds.collectAsStateWithLifecycle()
     val recentSearches by repository.recentSearches.collectAsStateWithLifecycle()
@@ -99,8 +103,8 @@ import kotlinx.coroutines.flow.first
         paginationJob?.cancel(); loadingMore = false; moreFailed = false; homePageCount = 1; consumedTokens.clear()
         page = initialPage(); failure = null
         loading = repository.cachedPage(requestKey, account) == null
-        // Returning from a collection keeps its originating recommendations in place.
-        if (active == null && destination == HomeDestination.HOME && revision == 0 && repository.hasFreshPage(requestKey, account)) {
+        if (revision == 0 && repository.hasFreshPage(requestKey, account) &&
+            !(destination == HomeDestination.LIBRARY && !account.connected)) {
             loading = false
             return@LaunchedEffect
         }
@@ -114,8 +118,8 @@ import kotlinx.coroutines.flow.first
             val loaded = kotlinx.coroutines.withTimeout(22_000) { when {
                 active != null -> repository.open(active)
                 destination == HomeDestination.SEARCH -> if (query.isBlank()) repository.discovery() else repository.search(query.trim(), searchKind)
-                destination == HomeDestination.LIBRARY -> repository.library(effectiveLibraryKind)
-                else -> repository.home(seed = liveCurrent)
+                destination == HomeDestination.LIBRARY -> repository.library(effectiveLibraryKind, force = revision > 0)
+                else -> repository.home(seed = liveCurrent, force = revision > 0)
             } }
             repository.cachePage(requestKey, loaded, account)
             page = loaded
@@ -123,6 +127,11 @@ import kotlinx.coroutines.flow.first
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (error: Exception) { failure = error.onlineFailure() }
         finally { loading = false }
+    }
+    LaunchedEffect(account, active, destination) {
+        if (active == null && destination == HomeDestination.HOME) repository.homePages.collect { snapshot ->
+            if (snapshot?.first == account) { page = snapshot.second; loading = false; failure = null }
+        }
     }
     val shelves = page?.shelves.orEmpty()
     fun choose(item: YTItem, sourceKey: String? = null) {

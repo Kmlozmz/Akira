@@ -120,19 +120,12 @@ Abre **Ajustes → Aplicación → Actualizaciones**.
 
 | Paso | Qué sucede |
 | :--- | :--- |
-| **Consultar** | Akira comprueba si hay una versión compatible y muestra sus novedades. Puedes posponer el aviso u omitir esa versión. |
+| **Consultar** | Akira comprueba si hay una versión compatible y muestra sus novedades. Puedes aplazar el aviso durante la sesión o pedir que vuelva al día siguiente. |
 | **Descargar** | Tú inicias la descarga. Puedes ver los MB descargados y el progreso, o cancelarla. |
 | **Verificar** | Se comprueban el tamaño, la integridad del archivo, el identificador, la versión y la firma de la aplicación. |
 | **Instalar** | Si falta el permiso de Android, Akira abre sus ajustes. Al concederlo y volver, continúa con el instalador. |
 
 Android siempre te pide confirmar la instalación. Una actualización compatible conserva la biblioteca y los ajustes; no necesitas desinstalar Akira.
-
-<details>
-<summary><strong>¿Para qué sirven los otros archivos de una publicación?</strong></summary>
-
-El APK es el archivo que necesitas instalar. **`Akira-update.json`** permite que Akira encuentre y compruebe nuevas versiones; **`SHA256SUMS.txt`** contiene el hash del APK para quien quiera verificarlo manualmente. No es necesario descargarlos para usar la aplicación.
-
-</details>
 
 ## Permisos y datos
 
@@ -192,4 +185,4 @@ Antes de adjuntar archivos, revisa que no contengan contraseñas, cookies ni dat
 
 Akira se distribuye bajo [GNU GPL versión 3](LICENSE). Las licencias de las bibliotecas, tipografías y demás recursos de terceros están recogidas en [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) y en los avisos de la aplicación.
 
-Akira es un proyecto independiente, sin afiliación con Google, YouTube ni Apple.
+Akira es un proyecto independiente.

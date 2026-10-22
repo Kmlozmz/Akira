@@ -196,6 +196,7 @@ open class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
         )
 
+        com.akira.app.core.online.OnlineRepository.get(this).prefetchHome()
         setContent {
             // Las preferencias se leen ANTES del tema: themeMode se guarda en
             // DataStore pero hasta ahora no lo consultaba nadie, así que el

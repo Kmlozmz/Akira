@@ -8,11 +8,14 @@ import coil.size.Dimension
 
 /** All Akira image surfaces use the same catalogue sizing, including restored queues and the player. */
 internal class OnlineArtworkInterceptor : Interceptor {
+    private val preferredVariants = java.util.concurrent.ConcurrentHashMap<String, String>()
     override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
         val original = chain.request.data.toString()
         val size = maxOf((chain.size.width as? Dimension.Pixels)?.px ?: 1200,
             (chain.size.height as? Dimension.Pixels)?.px ?: 1200).coerceIn(512, 2048)
-        val candidates = onlineArtworkCandidates(original, size)
+        val variants = onlineArtworkCandidates(original, size)
+        val preferred = preferredVariants[original]
+        val candidates = if (preferred == null) variants else variants.sortedBy { if (it == preferred) 0 else 1 }
         if(candidates == listOf(original)) return chain.proceed(chain.request)
         var last: ImageResult? = null
         var best: SuccessResult? = null
@@ -21,7 +24,15 @@ internal class OnlineArtworkInterceptor : Interceptor {
             last = result
             if(result is SuccessResult && (best == null || result.drawable.intrinsicWidth > best.drawable.intrinsicWidth)) best = result
             // Missing YouTube variants may return a successful 120px placeholder instead of a 404.
-            if(result is SuccessResult && result.drawable.intrinsicWidth >= 300) return result
+            if(result is SuccessResult && result.drawable.intrinsicWidth >= 300) {
+                // Remember the working video variant; sized Google artwork is
+                // still resolved for each surface so the player keeps its detail.
+                if (url.contains(".ytimg.com/") || url.contains("img.youtube.com/")) {
+                    if (preferredVariants.size > 1024) preferredVariants.clear()
+                    preferredVariants[original] = url
+                }
+                return result
+            }
         }
         return best ?: last ?: chain.proceed(chain.request)
     }

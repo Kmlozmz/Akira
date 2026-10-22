@@ -66,15 +66,17 @@ internal fun LiveDockFoldSelection(inline: Boolean, width: Int, compactHeight: D
 @Composable
 internal fun LiveDockNavigationGlass(inline: Boolean, width: Int, compactHeight: Dp,
     expandedHeight: Dp, backdrop: LayerBackdrop, surface: @Composable () -> Modifier,
-    modifier: Modifier) {
+    modifier: Modifier, replacementProgress: Float = 0f) {
     val density=androidx.compose.ui.platform.LocalDensity.current
     val target=with(density) {
         val left=7.dp.toPx()
         if(inline) Rect(left,-compactHeight.toPx(),left+compactHeight.toPx(),0f)
         else Rect(5.dp.toPx(),-expandedHeight.toPx(),width-5.dp.toPx(),0f)
     }
-    val bounds by animateValueAsState(target,Rect.VectorConverter,
+    val foldBounds by animateValueAsState(target,Rect.VectorConverter,
         if(LocalContentMotionReduced.current)snap() else DockBoundsSpec,label="dockNavigationBounds")
+    val searchBounds = with(density) { Rect(0f, -compactHeight.toPx(), compactHeight.toPx(), 0f) }
+    val bounds = androidx.compose.ui.geometry.lerp(foldBounds, searchBounds, replacementProgress)
     CompositionLocalProvider(LocalGlassExport provides backdrop) {
         Layout(modifier=modifier,content={Box(surface())}) { children,constraints ->
             val child=children.single().measure(Constraints.fixed(bounds.width.roundToInt().coerceAtLeast(1),

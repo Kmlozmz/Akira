@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.akira.app.core.design.theme.AkiraFontFamily
 
@@ -23,15 +24,19 @@ import com.akira.app.core.design.theme.AkiraFontFamily
 @Composable
 fun AkiraSegmentedControl(options: List<Pair<String, String>>, selected: String,
     onSelect: (String) -> Unit, background: Color = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer,
-    fontFamily: androidx.compose.ui.text.font.FontFamily = AkiraFontFamily) {
+    fontFamily: androidx.compose.ui.text.font.FontFamily = AkiraFontFamily,
+    cornerRadius: Dp = 16.dp, indicatorRadius: Dp = 12.dp,
+    indicatorColor: Color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+    selectedTextColor: Color = androidx.compose.material3.MaterialTheme.colorScheme.onPrimary) {
     if (options.isEmpty()) return
-    BoxWithConstraints(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+    val reduced = LocalContentMotionReduced.current
+    BoxWithConstraints(Modifier.fillMaxWidth().clip(RoundedCornerShape(cornerRadius))
         .background(background).padding(4.dp).selectableGroup()) {
         val cell = maxWidth / options.size
         val position by animateDpAsState(cell * options.indexOfFirst { it.first == selected }.coerceAtLeast(0),
-            tween(230), label = "segment_position")
+            tween(if (reduced) 0 else 230), label = "segment_position")
         if (options.any { it.first == selected }) Box(Modifier.offset(x = position).width(cell).height(42.dp).padding(horizontal = 2.dp)
-            .clip(RoundedCornerShape(12.dp)).background(androidx.compose.material3.MaterialTheme.colorScheme.primary))
+            .clip(RoundedCornerShape(indicatorRadius)).background(indicatorColor))
         Row(Modifier.fillMaxWidth()) {
             options.forEach { (key, label) ->
                 val active = key == selected
@@ -41,7 +46,7 @@ fun AkiraSegmentedControl(options: List<Pair<String, String>>, selected: String,
                     contentAlignment = Alignment.Center) {
                     Text(label, fontFamily = fontFamily, fontSize = 13.sp,
                         fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                        color = if (active) androidx.compose.material3.MaterialTheme.colorScheme.onPrimary else androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        color = if (active) selectedTextColor else androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 }
             }
         }

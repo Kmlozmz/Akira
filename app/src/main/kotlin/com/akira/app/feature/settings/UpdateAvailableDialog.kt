@@ -30,6 +30,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.akira.app.BuildConfig
 import com.akira.app.core.design.brand.AkiraBrand
 import com.akira.app.core.design.components.AkiraModalSheet
@@ -88,14 +91,28 @@ internal fun UpdatesHost(allowAutomaticPrompt: Boolean, model: UpdatesViewModel 
             } finally { model.installerPrepared() }
         }
     }
+    var startupReady by remember { mutableStateOf(false) }
+    var foreground by remember { mutableIntStateOf(0) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, model) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START) {
+                model.beginForeground()
+                foreground++
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     LaunchedEffect(Unit) {
         delay(3500)
+        startupReady = true
         model.checkAutomatically()
     }
     val busy = LocalAkiraPresentationState.current?.entries?.isNotEmpty() == true ||
         LocalAkiraPageSheetState.current?.entries?.isNotEmpty() == true
-    LaunchedEffect(allowAutomaticPrompt, busy, state.result, state.dialogVisible) {
-        if (allowAutomaticPrompt && !busy && !state.dialogVisible) model.presentIfEligible()
+    LaunchedEffect(startupReady, foreground, allowAutomaticPrompt, busy, state.result, state.dialogVisible) {
+        if (startupReady && allowAutomaticPrompt && !busy && !state.dialogVisible) model.presentIfEligible()
     }
     LaunchedEffect(state.installWhenReady, state.downloaded, state.downloading, state.dialogVisible) {
         if (state.installWhenReady && state.downloaded != null && !state.downloading && state.dialogVisible) {
@@ -122,12 +139,22 @@ internal enum class InstallationNotice { Permission, Error }
 
 @Composable
 internal fun UpdateAvailableDialog(state: UpdatesState, update: AppUpdate, model: UpdatesViewModel) {
+    UpdateAvailablePanel(state, update, onDownload = { model.download(update) },
+        onInstall = model::requestInstallation, onCancel = model::cancelDownload,
+        onLater = model::later, onRemindTomorrow = model::remindTomorrow,
+        onDismiss = model::dismiss)
+}
+
+@Composable
+internal fun UpdateAvailablePanel(state: UpdatesState, update: AppUpdate, onDownload: () -> Unit,
+    onInstall: () -> Unit, onCancel: () -> Unit, onLater: () -> Unit,
+    onRemindTomorrow: () -> Unit, onDismiss: () -> Unit) {
     val ink = MaterialTheme.colorScheme.onSurface
     val secondary = ink.copy(alpha = .76f)
     val accent = if (ink.luminance() < .5f) lerp(AkiraBrand.accent, Color.Black, .16f) else AkiraBrand.accent
     val active = state.downloading || state.verifying || state.preparingInstaller
     val title = localizedText("Update available", "Actualización disponible")
-    AkiraModalSheet(onDismissRequest = { model.dismiss() },
+    AkiraModalSheet(onDismissRequest = onDismiss,
         title = title, style = AkiraPanelStyle.Update) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
         val scrollAll = maxHeight < 540.dp || LocalDensity.current.fontScale > 1.3f
@@ -205,14 +232,14 @@ internal fun UpdateAvailableDialog(state: UpdatesState, update: AppUpdate, model
                     MaterialTheme.colorScheme.error else secondary)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (state.downloading) {
-                    Button(onClick = model::cancelDownload, enabled = !state.cancelling,
+                    Button(onClick = onCancel, enabled = !state.cancelling,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = ink.copy(alpha = .1f), contentColor = ink)) {
                         Text(localizedText("Cancel", "Cancelar"), fontWeight = FontWeight.SemiBold)
                     }
                 } else {
-                    Button(onClick = { if (state.downloaded == null) model.download(update) else model.requestInstallation() },
-                        enabled = !state.preparingInstaller,
+                    Button(onClick = { if (state.downloaded == null) onDownload() else onInstall() },
+                        enabled = !state.preparingInstaller && !state.checking,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = AkiraBrand.accent, contentColor = Color.Black)) {
                         Icon(Icons.Rounded.Download, null, Modifier.size(20.dp))
@@ -221,12 +248,13 @@ internal fun UpdateAvailableDialog(state: UpdatesState, update: AppUpdate, model
                             else localizedText("Install update", "Instalar actualización"), fontWeight = FontWeight.SemiBold)
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { model.dismiss(skipVersion = true) }, enabled = !state.preparingInstaller,
-                            modifier = Modifier.weight(1f).heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = ink.copy(alpha = .08f), contentColor = secondary)) {
-                            Text(localizedText("Skip version", "Omitir versión"), fontSize = 13.sp, textAlign = TextAlign.Center)
+                        Button(onClick = onRemindTomorrow, enabled = !state.preparingInstaller,
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = ink.copy(alpha = .08f), contentColor = ink)) {
+                            Text(localizedText("Remind tomorrow", "Recordar mañana"), fontSize = 14.sp, textAlign = TextAlign.Center)
                         }
-                        Button(onClick = { model.dismiss() }, enabled = !state.preparingInstaller,
+                        Button(onClick = onLater, enabled = !state.preparingInstaller,
                             modifier = Modifier.weight(1f).heightIn(min = 48.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = ink.copy(alpha = .08f), contentColor = ink)) {
                             Text(localizedText("Later", "Más tarde"), fontSize = 14.sp)
