@@ -120,7 +120,7 @@ https://github.com/realidkroo/musicfy . The `providers/innertube/src/main`
 provider is included, with private-data debug logging removed and a tab bounds
 check corrected. Akira adds its own encrypted device session store, Google WebView
 sign-in host, separate source queues and Media3 integration.
-NewPipeExtractor v0.25.2 (GPL-3.0), https://github.com/TeamNewPipe/NewPipeExtractor ,
+NewPipeExtractor v0.26.5 (GPL-3.0), https://github.com/TeamNewPipe/NewPipeExtractor ,
 is used by this provider to resolve available YouTube streams.
 Ktor 3.4.0 and OkHttp 4.12.0 (Apache-2.0), Brotli dec 0.1.2 (MIT), and
 Android desugar_jdk_libs 2.1.5 (GPL-2.0 with Classpath Exception) support it.

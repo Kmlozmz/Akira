@@ -86,7 +86,7 @@ internal fun LiquidGlassSettingsScreen(prefs: UserPreferences,repo: UserPreferen
             }
             androidx.compose.animation.AnimatedVisibility(prefs.liquidGlassEnabled) {
             Column(Modifier.padding(start=20.dp,end=20.dp,bottom=16.dp)) {
-                GlassOpacityPreviewCard(song)
+                GlassOpacityPreviewCard(song, prefs.dockLiquidGlassEnabled)
                 Spacer(Modifier.height(16.dp))
                 val opacityLabel=com.akira.app.core.design.components.localizedText("Glass opacity","Opacidad del cristal")
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
@@ -127,6 +127,20 @@ internal fun LiquidGlassSettingsScreen(prefs: UserPreferences,repo: UserPreferen
                     "Softens the background of the dock, controls and panels without adding tint. The selection lens stays clear.",
                     "Suaviza el fondo del dock, los controles y los paneles sin añadir tinte. La lente de selección permanece nítida."),
                     style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(20.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.CenterVertically) {
+                    val dockLabel = com.akira.app.core.design.components.localizedText("Apply to dock", "Aplicar al dock")
+                    Column(Modifier.weight(1f).padding(end=16.dp)) {
+                        Text(dockLabel, style=MaterialTheme.typography.bodyLarge)
+                        Text(com.akira.app.core.design.components.localizedText(
+                            "Turn off to keep a simple blur on the dock. Other controls keep Liquid Glass.",
+                            "Desactívalo para usar un difuminado sencillo en el dock. Los demás controles conservan Liquid Glass."),
+                            style=MaterialTheme.typography.bodySmall, color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    com.akira.app.core.design.components.AkiraSwitch(checked=prefs.dockLiquidGlassEnabled,
+                        modifier=Modifier.semantics { contentDescription=dockLabel },
+                        onCheckedChange={ enabled -> scope.launch { repo.setDockLiquidGlassEnabled(enabled) } })
+                }
             }
             }
             }
@@ -148,7 +162,7 @@ internal fun LiquidGlassSettingsScreen(prefs: UserPreferences,repo: UserPreferen
 
 /** Real shared glass over local artwork: the slider can be judged in place. */
 @Composable
-internal fun GlassOpacityPreviewCard(song: Song?) {
+internal fun GlassOpacityPreviewCard(song: Song?, dockGlass: Boolean = true) {
     val backdrop=rememberLayerBackdrop()
     val shape=RoundedCornerShape(18.dp)
     val bottom = 66.dp
@@ -165,9 +179,12 @@ internal fun GlassOpacityPreviewCard(song: Song?) {
                 style=MaterialTheme.typography.titleSmall)
             Icon(AkiraIcons.Play,null,Modifier.size(22.dp),tint=com.akira.app.core.design.glass.glassContentColor())
         }
+        CompositionLocalProvider(com.akira.app.core.design.glass.LocalLiquidGlassEnabled provides
+            (com.akira.app.core.design.glass.LocalLiquidGlassEnabled.current && dockGlass)) {
         Row(Modifier.align(Alignment.BottomCenter).padding(10.dp).fillMaxWidth().liquidGlass(RoundedCornerShape(50),backdrop).padding(horizontal=18.dp,vertical=12.dp),horizontalArrangement=Arrangement.SpaceBetween) {
             listOf(com.akira.app.R.drawable.ic_navigation_home_filled,com.akira.app.R.drawable.ic_navigation_library_filled,
                 com.akira.app.R.drawable.ic_navigation_search_outline).forEach {res->Icon(androidx.compose.ui.res.painterResource(res),null,Modifier.size(23.dp),tint=com.akira.app.core.design.glass.glassContentColor())}
+        }
         }
     }
 }

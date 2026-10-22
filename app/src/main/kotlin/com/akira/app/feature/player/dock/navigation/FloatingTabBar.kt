@@ -119,7 +119,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.akira.app.core.design.components.LocalContentMotionReduced
 import com.akira.app.feature.player.dock.GlassSpring
-import com.akira.app.core.design.glass.LocalLiquidGlassEnabled
 import com.akira.app.core.design.glass.LocalGlassExport
 import com.akira.app.core.design.backdrop.backdrops.layerBackdrop
 import com.akira.app.core.design.backdrop.backdrops.rememberLayerBackdrop
@@ -272,6 +271,7 @@ fun FloatingTabBar(
     val foldMaterial=remember(fold) { { fold.deformation() } }
     val folding = !fold.settled(scrollConnection.isInline)
     CompositionLocalProvider(LocalDockMorphActive provides folding,
+        com.akira.app.core.design.glass.LocalIsDockGlass provides true,
         LocalDockNavigationGlass provides navigationGlass,
         LocalDockFoldMotion provides fold,
         com.akira.app.core.design.glass.LocalGlassStrain provides foldStrain,
@@ -873,7 +873,7 @@ private fun SharedTransitionScope.ExpandedTabs(
     pill.reduceMotion = reduceAnimation
     // The lens samples the recorded page, and "reduce dynamic blur" stops that
     // recording. There the flat pill carries the whole motion on its own.
-    val glassPill = LocalLiquidGlassEnabled.current && isGlassSupported() && !reduceAnimation
+    val glassPill = com.akira.app.core.design.glass.isSurfaceGlassEnabled() && isGlassSupported() && !reduceAnimation
     val barGlass = LocalDockNavigationGlass.current ?: rememberLayerBackdrop()
     val tabRow = rememberLayerBackdrop()
 

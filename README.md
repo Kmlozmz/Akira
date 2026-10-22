@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Kmlozmz/Akira/releases"><img src="https://img.shields.io/badge/versi%C3%B3n-0.1.0--beta.1-FA243C?style=flat-square" alt="Versión 0.1.0-beta.1" /></a>
+  <a href="https://github.com/Kmlozmz/Akira/releases"><img src="https://img.shields.io/badge/versi%C3%B3n-0.1.1-FA243C?style=flat-square" alt="Versión 0.1.1" /></a>
   <img src="https://img.shields.io/badge/Android-8.0%2B-242428?style=flat-square" alt="Android 8.0 o posterior" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/licencia-GPL--3.0-242428?style=flat-square" alt="GPL versión 3" /></a>
   <img src="https://img.shields.io/badge/idiomas-ES%20%2F%20EN-242428?style=flat-square" alt="Español e inglés" />
@@ -28,7 +28,7 @@ Akira es un reproductor de música de código abierto para Android, escrito en K
 
 Puedes usarlo con los archivos que ya tienes en el teléfono, sin cuenta ni conexión. Cuando quieras descubrir música, activa el modo en línea para explorar recomendaciones, buscar canciones o escuchar una radio. La cuenta de YouTube Music es opcional y añade acceso a tu contenido personal.
 
-**La primera versión pública es una beta.** El modo en línea sigue en desarrollo; el catálogo, la conexión de cuentas y algunas recomendaciones dependen de servicios externos.
+El modo en línea sigue en desarrollo; el catálogo, la conexión de cuentas y algunas recomendaciones dependen de servicios externos.
 
 ## Qué ofrece
 
@@ -112,8 +112,6 @@ El reproductor admite portadas enmarcadas o a pantalla completa, colores obtenid
 
 **Requisitos:** Android 8.0 o posterior. Las publicaciones públicas incluyen únicamente el APK de uso habitual.
 
-Si todavía no aparece una versión en Releases, la primera beta sigue en preparación.
-
 ### Desde la aplicación
 
 Abre **Ajustes → Aplicación → Actualizaciones**.
@@ -164,7 +162,7 @@ Ese material no está disponible para todas las canciones. Depende de los archiv
 </details>
 
 <details>
-<summary><strong>¿Qué puede fallar en esta beta?</strong></summary>
+<summary><strong>¿Qué puede fallar en esta versión?</strong></summary>
 
 El modo en línea continúa en desarrollo. Puede haber cambios en la disponibilidad del catálogo, las recomendaciones o el acceso a cuentas. Los efectos de sonido, el material animado y algunas funciones del sistema también pueden comportarse de forma distinta según el teléfono.
 

@@ -22,6 +22,6 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.4.0")
     implementation("io.ktor:ktor-client-encoding:3.4.0")
     implementation("org.brotli:dec:0.1.2")
-    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.25.2")
+    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.5")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
 }

@@ -761,6 +761,7 @@ fun LibraryScreen(
         LocalAkiraGlassBackdrop provides glassBackdrop,
         LocalAppBackdrop provides dockBackdrop,
         com.akira.app.core.design.glass.LocalLiquidGlassEnabled provides (userPrefs?.liquidGlassEnabled ?: false),
+        com.akira.app.core.design.glass.LocalDockLiquidGlassEnabled provides (userPrefs?.dockLiquidGlassEnabled ?: true),
         com.akira.app.core.design.glass.LocalLiquidGlassOpacity provides glassOpacity,
         com.akira.app.core.design.glass.LocalLiquidGlassDiffusion provides glassDiffusion,
         com.akira.app.core.design.components.LocalAkiraAccent provides androidx.compose.ui.graphics.lerp(effectivePrimary, androidx.compose.material3.MaterialTheme.colorScheme.onSurface, .5f)

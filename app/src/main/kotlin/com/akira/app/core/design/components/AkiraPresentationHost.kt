@@ -32,6 +32,9 @@ import androidx.compose.ui.window.*
 import com.akira.app.core.design.icon.AkiraIcons
 import com.akira.app.core.design.glass.LocalAppBackdrop
 import com.akira.app.core.design.glass.LocalLiquidGlassEnabled
+import com.akira.app.core.design.glass.glassAccentColor
+import com.akira.app.core.design.glass.glassContentColor
+import com.akira.app.core.design.glass.isGlassSupported
 import com.akira.app.core.design.backdrop.Backdrop
 import com.akira.app.core.design.backdrop.backdrops.rememberLayerBackdrop
 import com.akira.app.core.design.backdrop.backdrops.layerBackdrop
@@ -421,6 +424,13 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
             }
             MaterialTheme(colorScheme = backdropEntry.colors ?: MaterialTheme.colorScheme,
                 typography = backdropEntry.typography ?: MaterialTheme.typography) {
+                val ink = glassContentColor()
+                val accent = glassAccentColor()
+                val colors = if (backdropEntry.glass && isGlassSupported()) MaterialTheme.colorScheme.copy(
+                    onSurface = ink, onSurfaceVariant = ink.copy(alpha = .7f), primary = accent,
+                    onPrimary = if (ink == Color.Black) Color.White else Color.Black,
+                ) else MaterialTheme.colorScheme
+                MaterialTheme(colorScheme = colors) {
                 CompositionLocalProvider(LocalAppBackdrop provides (backdropEntry.backdrop ?: LocalAppBackdrop.current),
                     LocalContentColor provides MaterialTheme.colorScheme.onSurface,
                     LocalLiquidGlassEnabled provides backdropEntry.glass,
@@ -487,6 +497,7 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
                         }
                     } }
                 }
+            }
             }
             if (closing != null) Box(Modifier.fillMaxSize().clickable(
                 interactionSource = remember { MutableInteractionSource() }, indication = null) { })

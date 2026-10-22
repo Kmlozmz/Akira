@@ -27,6 +27,7 @@ import kotlinx.coroutines.sync.withPermit
     onOpen: (YTItem, String?) -> Unit, onMore: (Song) -> Unit, onSettings: () -> Unit) {
     val session = LocalSearchSession.current ?: return
     val account by repository.account.collectAsStateWithLifecycle()
+    val libraryRevision by repository.libraryRevision.collectAsStateWithLifecycle()
     val recent by repository.recentSearches.collectAsStateWithLifecycle()
     var categories by remember(account) { mutableStateOf(emptyList<OnlineSearchCategory>()) }
     var discovery by remember(account) { mutableStateOf(repository.cachedPage("search-discovery", account)
@@ -48,8 +49,11 @@ import kotlinx.coroutines.sync.withPermit
     val covers = remember(account) { mutableStateMapOf<OnlineSearchCategory, String>() }
     val coverRequests = remember(account) { Semaphore(3) }
     var library by remember(account) { mutableStateOf(repository.cachedPage("search-library-index", account)) }
-    var libraryComplete by remember(account) { mutableStateOf(library != null) }
-    val loading = if (session.library) libraryLoading else catalogLoading
+    var libraryComplete by remember(account) { mutableStateOf(repository.hasFreshPage("search-library-index", account)) }
+    var filteredLibrary by remember(account) { mutableStateOf<OnlinePage?>(null) }
+    var filteringLibrary by remember(account) { mutableStateOf(false) }
+    val librarySearch = remember(account) { OnlineLibrarySearchCache() }
+    val loading = if (session.library) libraryLoading || filteringLibrary else catalogLoading
     val failure = if (session.library) libraryFailure else catalogFailure
     val requestKey = "search:${session.query}:${session.kind}"
     val activeKey = if (session.library) "library:${session.query}" else category?.let { "search-category:${it.endpoint}" } ?: requestKey
@@ -78,13 +82,12 @@ import kotlinx.coroutines.sync.withPermit
         } catch (cancelled: CancellationException) { throw cancelled }
         finally { browseLoading = false }
     }
-    LaunchedEffect(account, session.library, session.editing, revision) {
-        if (!session.library || !session.editing || libraryComplete && revision == 0) return@LaunchedEffect
+    LaunchedEffect(account, session.library, session.editing, revision, libraryRevision) {
+        if (!session.library || !session.editing || libraryComplete && revision == 0 &&
+            repository.hasFreshPage("search-library-index", account)) return@LaunchedEffect
         libraryLoading = true; libraryFailure = null
         try {
-            library = withTimeout(45_000) { repository.searchableLibrary { library = it } }.also {
-                repository.cachePage("search-library-index", it, account)
-            }
+            library = withTimeout(46_000) { repository.searchableLibrary(force = revision > 0) { library = it } }
             libraryComplete = true
         } catch (timeout: TimeoutCancellationException) { libraryFailure = timeout.onlineFailure() }
         catch (cancelled: CancellationException) { throw cancelled }
@@ -111,9 +114,24 @@ import kotlinx.coroutines.sync.withPermit
     LaunchedEffect(session.submit) { if (session.submit > 0) repository.rememberSearch(session.query) }
     LaunchedEffect(session.editing) { if (session.editing) category = null }
     BackHandler(category != null && !session.editing) { category = null }
-    val page = if (session.library) library?.copy(shelves = library!!.shelves.map { shelf -> shelf.copy(items = shelf.items.filter { item ->
-        session.query.split(Regex("\\s+")).all { word -> (item.title + " " + item.onlineSubtitle()).contains(word, true) }
-    }) }) else results
+    LaunchedEffect(account, library, session.query, session.library) {
+        val source = library
+        if (!session.library || source == null) {
+            filteringLibrary = false
+            if (source == null) filteredLibrary = null
+            return@LaunchedEffect
+        }
+        filteringLibrary = true
+        try {
+            val index = librarySearch.index?.takeIf { librarySearch.source === source }
+                ?: withContext(Dispatchers.Default) { OnlineLibrarySearchIndex.build(source) }.also {
+                    librarySearch.source = source; librarySearch.index = it
+                }
+            val query = session.query
+            filteredLibrary = withContext(Dispatchers.Default) { index.filter(query) }
+        } finally { if (currentCoroutineContext().isActive) filteringLibrary = false }
+    }
+    val page = if (session.library) filteredLibrary else results
     fun choose(item: YTItem, source: String?) {
         repository.rememberSearch(session.query)
         if (item is SongItem) {

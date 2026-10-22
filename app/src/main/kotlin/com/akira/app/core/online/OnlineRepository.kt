@@ -70,6 +70,13 @@ class OnlineRepository private constructor(context: Context) {
     private val pageStore = OnlinePageCache(app)
     private val pageWriteLock = Mutex()
     private var pageWriteJob: Job? = null
+    private var pageRestoreJob: Job? = null
+    private val libraryIndexLock = Mutex()
+    private val _libraryRevision = MutableStateFlow(0L)
+    val libraryRevision = _libraryRevision.asStateFlow()
+    private var libraryIndexRequest: LibraryIndexRequest? = null
+    private data class LibraryIndexRequest(val user: OnlineAccount, val generation: Long, val revision: Long,
+        val progress: MutableStateFlow<OnlinePage?>, val result: Deferred<OnlinePage>)
     private val sessionGeneration = java.util.concurrent.atomic.AtomicLong()
     private val homeRequestLock = Mutex()
     private var homeRequest: Pair<OnlineAccount, Deferred<OnlinePage>>? = null
@@ -103,7 +110,7 @@ class OnlineRepository private constructor(context: Context) {
                 YouTube.cookie = null; YouTube.dataSyncId = null; YouTube.visitorData = null
                 YouTube.useLoginForBrowse = false
             } finally {
-                restorePages(_account.value)
+                restorePages(_account.value, homeOnly = true)
                 _sessionReady.value = true; initialized.complete(Unit)
             }
         }
@@ -117,7 +124,10 @@ class OnlineRepository private constructor(context: Context) {
     }
     fun setEnabled(value: Boolean) {
         prefs.edit().putBoolean("enabled", value).apply(); _enabled.value = value
-        if (value) prefetchHome() else homeRequest?.second?.cancel()
+        if (value) prefetchHome() else {
+            homeRequest?.second?.cancel()
+            libraryIndexRequest?.result?.cancel()
+        }
     }
     fun prefetchHome() {
         if (!_enabled.value) return
@@ -148,19 +158,30 @@ class OnlineRepository private constructor(context: Context) {
         if(_account.value == user) {
             browsePages.remove(key)
             browsePages[key] = Triple(user, page, if (fresh) android.os.SystemClock.elapsedRealtime() else 0)
-            if(browsePages.size > 32) browsePages.keys.firstOrNull { it != "home" && !it.startsWith("library:") }
+            if(browsePages.size > 32) browsePages.keys.firstOrNull { it != "home" && it != "search-library-index" && !it.startsWith("library:") }
                 ?.let { browsePages.remove(it) }
             if (fresh && persistentPage(key)) schedulePageWrite(user)
         }
     }
     private fun persistentPage(key: String) = key == "home" || key.startsWith("library:") ||
-        key.startsWith("detail:") || key == "search-discovery"
+        key.startsWith("detail:") || key == "search-discovery" || key == "search-library-index"
 
-    private suspend fun restorePages(user: OnlineAccount) {
+    private suspend fun restorePages(user: OnlineAccount, homeOnly: Boolean = false) {
         val started = android.os.SystemClock.elapsedRealtime()
-        val pages = pageWriteLock.withLock { pageStore.read(historyScope) }
-        synchronized(browsePages) { pages.forEach { (key, page) -> browsePages[key] = Triple(user, catalog(page), 0) } }
-        pages["home"]?.let { _homePages.value = user to it }
+        val generation = sessionGeneration.get()
+        val profile = historyScope
+        val pages = pageWriteLock.withLock { pageStore.read(profile, homeOnly) }
+        if (_account.value != user || generation != sessionGeneration.get() || profile != historyScope) return
+        synchronized(browsePages) { pages.forEach { (key, page) ->
+            if (key !in browsePages) {
+                browsePages[key] = Triple(user, catalog(page), 0)
+                if (key == "home") _homePages.value = user to page
+            }
+        } }
+        if (homeOnly) {
+            pageRestoreJob?.cancel()
+            pageRestoreJob = scope.launch { restorePages(user) }
+        }
         if (com.akira.app.BuildConfig.DEBUG) android.util.Log.d("AkiraOnlineTiming",
             "cache_restore_ms=${android.os.SystemClock.elapsedRealtime()-started} pages=${pages.size}")
     }
@@ -208,13 +229,14 @@ class OnlineRepository private constructor(context: Context) {
                 saved.put("name", info.name).put("image", info.thumbnailUrl.orEmpty()).put("history_scope", userScope)
                 sessionStore.write(saved)
                 sessionGeneration.incrementAndGet(); homeRequest?.second?.cancel(); _homePages.value = null
+                libraryIndexRequest?.result?.cancel(); pageRestoreJob?.cancel()
                 streams.clear()
                 _likedIds.value = emptySet(); likeOverrides.clear(); knownSongs.clear()
                 synchronized(rouletteWinners) { rouletteWinners.clear() }
                 synchronized(browsePages) { browsePages.clear() }
                 loadHistory(userScope)
                 _account.value = OnlineAccount(true, info.name, info.thumbnailUrl)
-                restorePages(_account.value)
+                restorePages(_account.value, homeOnly = true)
                 prefetchHome()
             } catch (e: Exception) {
                 sessionStore.read()?.let(::applySession) ?: run { YouTube.cookie = null; YouTube.dataSyncId = null; YouTube.useLoginForBrowse = false }
@@ -226,6 +248,7 @@ class OnlineRepository private constructor(context: Context) {
         initialized.await()
         val previousProfile = historyScope
         sessionGeneration.incrementAndGet(); homeRequest?.second?.cancel(); pageWriteJob?.cancel()
+        libraryIndexRequest?.result?.cancel(); pageRestoreJob?.cancel()
         _homePages.value = null
         pageWriteLock.withLock { pageStore.clear(previousProfile) }
         synchronized(browsePages) { browsePages.clear() }
@@ -244,7 +267,7 @@ class OnlineRepository private constructor(context: Context) {
             }
             _likedIds.value = guestFavorites().map { it.id }.toSet()
             loadHistory("guest")
-            restorePages(_account.value)
+            restorePages(_account.value, homeOnly = true)
         }
         prefetchHome()
     }
@@ -350,13 +373,26 @@ class OnlineRepository private constructor(context: Context) {
                     rows.put(encodeGuestSong(item))
                 }
                 prefs.edit().putString("guest_favorites", rows.toString()).apply()
+                invalidateLibraryIndex()
                 _likedIds.value = saved.keys.toSet()
                 return@withLock
             }
             YouTube.likeVideo(id, liked).getOrThrow()
             ready()
+            invalidateLibraryIndex()
             likeOverrides[id] = liked
             _likedIds.value = if (liked) _likedIds.value + id else _likedIds.value - id
+        }
+    }
+    private suspend fun invalidateLibraryIndex() {
+        libraryIndexLock.withLock {
+            libraryIndexRequest?.result?.cancel()
+            libraryIndexRequest = null
+            synchronized(browsePages) {
+                browsePages.remove("search-library-index")
+                browsePages.remove("library:songs")
+            }
+            _libraryRevision.value++
         }
     }
     suspend fun collectionFor(song: Song, artist: Boolean): YTItem? = withContext(Dispatchers.IO) {
@@ -602,9 +638,42 @@ class OnlineRepository private constructor(context: Context) {
         catalog(OnlinePage(category.title, result.items.map { OnlineShelf(it.title.orEmpty(), it.items) }))
     }
 
-    suspend fun searchableLibrary(onPage: (OnlinePage) -> Unit = {}): OnlinePage = withContext(Dispatchers.IO) {
+    suspend fun searchableLibrary(force: Boolean = false, onPage: (OnlinePage) -> Unit = {}): OnlinePage = withContext(Dispatchers.IO) {
         initialized.await()
-        if (!_account.value.connected) return@withContext library("songs").also(onPage)
+        val user = _account.value
+        val generation = sessionGeneration.get()
+        val revision = _libraryRevision.value
+        cachedPage("search-library-index", user)?.let { page ->
+            onPage(page)
+            if (!force && hasFreshPage("search-library-index", user)) return@withContext page
+        }
+        val request = libraryIndexLock.withLock {
+            libraryIndexRequest?.takeIf { it.user == user && it.generation == generation && it.revision == revision && it.result.isActive }
+                ?: run {
+                    val progress = MutableStateFlow<OnlinePage?>(null)
+                    val result = scope.async {
+                        withTimeout(45_000) { loadSearchableLibrary(force) { page ->
+                            if (_account.value == user && sessionGeneration.get() == generation && _libraryRevision.value == revision) progress.value = page
+                        } }.also { page ->
+                            currentCoroutineContext().ensureActive()
+                            if (_account.value == user && sessionGeneration.get() == generation && _libraryRevision.value == revision)
+                                cachePage("search-library-index", page, user)
+                        }
+                    }
+                    LibraryIndexRequest(user, generation, revision, progress, result).also { libraryIndexRequest = it }
+                }
+        }
+        coroutineScope {
+            val observer = launch { request.progress.collectLatest { page ->
+                if (page != null && _account.value == user && sessionGeneration.get() == generation && _libraryRevision.value == revision) onPage(page)
+            } }
+            try { request.result.await() } finally { observer.cancel() }
+        }
+    }
+
+    private suspend fun loadSearchableLibrary(force: Boolean, onPage: (OnlinePage) -> Unit): OnlinePage = withContext(Dispatchers.IO) {
+        initialized.await()
+        if (!_account.value.connected) return@withContext library("songs", force).also(onPage)
         supervisorScope {
             val kinds = listOf("songs", "albums", "artists", "playlists")
             val shelves = mutableMapOf<String, OnlineShelf>()
@@ -616,7 +685,7 @@ class OnlineRepository private constructor(context: Context) {
             }
             val pages = kinds.map { kind -> async {
                 try {
-                val first = library(kind)
+                val first = library(kind, force)
                 val items = first.shelves.flatMap { it.items }.toMutableList()
                 val title = first.shelves.firstOrNull()?.title.orEmpty()
                 publish(kind, OnlineShelf(title, items.toList()))
@@ -796,12 +865,14 @@ class OnlineRepository private constructor(context: Context) {
             streams.remove(videoId)
             val clients = listOf(YouTubeClient.VISIONOS, YouTubeClient.WEB_REMIX, YouTubeClient.IOS, YouTubeClient.ANDROID_VR_1_65_10)
             var denied = false
+            var playable = false
             for (client in clients) {
                 ensureActive()
                 ready()
                 val timestamp = if (client.useSignatureTimestamp) NewPipeExtractor.getSignatureTimestamp(videoId).getOrNull() else null
                 val response = YouTube.player(videoId, client = client, signatureTimestamp = timestamp).getOrNull() ?: continue
                 if (response.playabilityStatus.status != "OK") { denied = true; continue }
+                playable = true
                 val formats = response.streamingData?.adaptiveFormats.orEmpty()
                     .filter { it.mimeType.startsWith("audio/") }.sortedByDescending { it.bitrate }
                 val headers = mapOf("User-Agent" to client.userAgent, "Accept" to "*/*",
@@ -816,8 +887,8 @@ class OnlineRepository private constructor(context: Context) {
                     return@withLock stream
                 }
             }
-            // Same fallback extractor used by Page; no access-restricted sources are retried here.
-            if (!denied) {
+            // A client-specific rejection must not discard another client's playable response.
+            if (playable || !denied) {
                 val audioItags = setOf(140, 141, 139, 249, 250, 251, 171, 172)
                 val url = NewPipeExtractor.newPipePlayer(videoId).lastOrNull { it.first in audioItags }?.second
                 val stream = url?.let { OnlineStream(it, mapOf("User-Agent" to YouTubeClient.USER_AGENT_WEB)) }
@@ -830,20 +901,24 @@ class OnlineRepository private constructor(context: Context) {
             throw IOException("YouTube Music no entregó una fuente reproducible para esta canción")
         }
     }
-    /** Check signed URL and a distant byte, avoiding sources that stop after their first chunk. */
+    /** Validate the open request used by Media3, then a bounded seek away from the header. */
     private fun usable(stream: OnlineStream, length: Long?): Boolean = runCatching {
         val uri = Uri.parse(stream.url)
         if (uri.scheme != "https" || !uri.host.orEmpty().endsWith(".googlevideo.com")) return@runCatching false
-        fun range(byte: Long): Boolean {
+        fun request(first: Long?, last: Long? = null): Boolean {
             val request = okhttp3.Request.Builder().url(stream.url)
             stream.headers.forEach { (name, value) -> request.header(name, value) }
-            request.header("Range", "bytes=$byte-$byte")
+            if (first != null) request.header("Range", "bytes=$first-${last ?: ""}")
             return streamClient.newCall(request.build()).execute().use { response ->
-                response.code == 206 && response.header("Content-Range").orEmpty().startsWith("bytes $byte-$byte/") &&
+                (if (first == null) response.isSuccessful else response.code == 206 &&
+                    response.header("Content-Range").orEmpty().startsWith("bytes $first-$last/")) &&
                     (response.body?.byteStream()?.read() ?: -1) >= 0
             }
         }
-        range(0) && (length == null || length <= 1 || range(minOf(length - 1, 1_048_576)))
+        request(null) && (length == null || length <= 1 || run {
+            val first = minOf(length - 1, 1_048_576)
+            request(first, minOf(length - 1, first + 262_143))
+        })
     }.getOrDefault(false)
     companion object {
         @Volatile private var instance: OnlineRepository? = null

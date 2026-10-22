@@ -40,6 +40,7 @@ data class UserPreferences(
     val navBarStyle: String = "FLOATING_PILL", // "FLOATING_PILL" o "DOCKED_BAR"
     val libraryHeaderStyle: String = "COMPACT_PILL", // "COMPACT_PILL" o "TAB_ROW"
     val liquidGlassEnabled: Boolean = false,
+    val dockLiquidGlassEnabled: Boolean = true,
     val liquidGlassOpacity: Float = AkiraGlassDefaults.Opacity,
     val liquidGlassDiffusion: Float = AkiraGlassDefaults.Diffusion, // Background scattering, dp; independent of tint.
     val fullscreenPlayerArtwork: Boolean = false,
@@ -115,6 +116,7 @@ class UserPreferencesRepository(private val context: Context) {
         val NAV_BAR_STYLE = stringPreferencesKey("pref_nav_bar_style")
         val LIBRARY_HEADER_STYLE = stringPreferencesKey("pref_library_header_style")
         val LIQUID_GLASS = booleanPreferencesKey("pref_liquid_glass_enabled")
+        val DOCK_LIQUID_GLASS = booleanPreferencesKey("pref_dock_liquid_glass_enabled")
         val LIQUID_GLASS_OPACITY = floatPreferencesKey("pref_liquid_glass_opacity")
         val LIQUID_GLASS_DIFFUSION = floatPreferencesKey("pref_liquid_glass_diffusion")
         val FULLSCREEN_PLAYER_ARTWORK = booleanPreferencesKey("pref_fullscreen_player_artwork")
@@ -182,6 +184,7 @@ class UserPreferencesRepository(private val context: Context) {
             navBarStyle = prefs[Keys.NAV_BAR_STYLE] ?: "FLOATING_PILL",
             libraryHeaderStyle = prefs[Keys.LIBRARY_HEADER_STYLE] ?: "COMPACT_PILL",
             liquidGlassEnabled = prefs[Keys.LIQUID_GLASS] ?: false,
+            dockLiquidGlassEnabled = prefs[Keys.DOCK_LIQUID_GLASS] ?: true,
             liquidGlassDiffusion = (prefs[Keys.LIQUID_GLASS_DIFFUSION] ?: AkiraGlassDefaults.Diffusion).takeIf { it.isFinite() }?.coerceIn(0f,24f) ?: AkiraGlassDefaults.Diffusion,
             liquidGlassOpacity = (prefs[Keys.LIQUID_GLASS_OPACITY] ?: AkiraGlassDefaults.Opacity).takeIf { it.isFinite() }?.coerceIn(0f,1f) ?: AkiraGlassDefaults.Opacity,
             fullscreenPlayerArtwork = prefs[Keys.FULLSCREEN_PLAYER_ARTWORK] ?: false,
@@ -381,6 +384,7 @@ class UserPreferencesRepository(private val context: Context) {
     }
 
     suspend fun setLiquidGlassEnabled(enabled: Boolean) { context.dataStore.edit { it[Keys.LIQUID_GLASS] = enabled } }
+    suspend fun setDockLiquidGlassEnabled(enabled: Boolean) { context.dataStore.edit { it[Keys.DOCK_LIQUID_GLASS] = enabled } }
     suspend fun setLiquidGlassOpacity(value: Float) {
         context.dataStore.edit { it[Keys.LIQUID_GLASS_OPACITY] = value.takeIf { it.isFinite() }?.coerceIn(0f,1f) ?: AkiraGlassDefaults.Opacity }
     }

@@ -13,39 +13,76 @@ import java.util.concurrent.TimeUnit
 /** Account-scoped display data, stored in Android's disposable, unbacked-up cache. */
 internal class OnlinePageCache(context: Context) {
     private val directory = File(context.cacheDir, "online-pages")
+    private var writtenProfile: String? = null
+    private val writtenPages = mutableMapOf<String, OnlinePage>()
+    private fun hash(value: String) = java.security.MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray()).joinToString("") { "%02x".format(it) }
+    private fun pageDirectory(profile: String) = File(directory, hash(profile) + ".pages")
     private fun file(profile: String): AtomicFile {
         val name = java.security.MessageDigest.getInstance("SHA-256")
             .digest(profile.toByteArray()).joinToString("") { "%02x".format(it) }
         return AtomicFile(File(directory, "$name.json"))
     }
 
-    fun read(profile: String): Map<String, OnlinePage> = runCatching {
+    fun read(profile: String, homeOnly: Boolean = false): Map<String, OnlinePage> = runCatching {
+        val folder = pageDirectory(profile)
+        val records = if (homeOnly) listOf(File(folder, hash("home") + ".json"))
+            else folder.listFiles()?.filter { it.extension == "json" }?.take(20).orEmpty()
+        val pages = records.mapNotNull { record -> runCatching {
+            if (!record.isFile || record.length() > MAX_BYTES) return@runCatching null
+            val row = JSONObject(String(AtomicFile(record).readFully(), Charsets.UTF_8))
+            if (row.optInt("schema") != 2 || !valid(row)) return@runCatching null
+            row.getString("key") to decode(row.getJSONObject("page"))
+        }.getOrNull() }.toMap()
+        if (pages.isNotEmpty()) return pages
         val file = file(profile)
         if (!file.baseFile.isFile || file.baseFile.length() > MAX_BYTES) return emptyMap()
         val root = JSONObject(String(file.readFully(), Charsets.UTF_8))
-        if (root.optInt("schema") != 1 || root.optString("locale") != Locale.getDefault().toLanguageTag() ||
-            System.currentTimeMillis() - root.optLong("saved") !in 0..TimeUnit.DAYS.toMillis(7)) return emptyMap()
-        val pages = root.getJSONObject("pages")
-        pages.keys().asSequence().take(20).associateWith { key -> decode(pages.getJSONObject(key)) }
+        if (root.optInt("schema") != 1 || !valid(root)) return emptyMap()
+        val legacy = root.getJSONObject("pages")
+        legacy.keys().asSequence().filter { !homeOnly || it == "home" }.take(20)
+            .associateWith { key -> decode(legacy.getJSONObject(key)) }
     }.getOrDefault(emptyMap())
+
+    private fun valid(value: JSONObject) = value.optString("locale") == Locale.getDefault().toLanguageTag() &&
+        System.currentTimeMillis() - value.optLong("saved") in 0..TimeUnit.DAYS.toMillis(7)
 
     fun write(profile: String, pages: Map<String, OnlinePage>) {
         if (pages.isEmpty()) return
-        val encoded = JSONObject()
-        pages.entries.toList().takeLast(20).forEach { (key, page) -> encoded.put(key, encode(page)) }
-        val bytes = JSONObject().put("schema", 1).put("locale", Locale.getDefault().toLanguageTag())
-            .put("saved", System.currentTimeMillis()).put("pages", encoded).toString().toByteArray()
-        if (bytes.size > MAX_BYTES || !directory.isDirectory && !directory.mkdirs()) return
-        val target = file(profile)
-        val output = target.startWrite()
-        try { output.write(bytes); target.finishWrite(output) }
-        catch (error: Exception) { target.failWrite(output); throw error }
+        val folder = pageDirectory(profile)
+        if (!folder.isDirectory && !folder.mkdirs()) return
+        if (writtenProfile != profile) { writtenPages.clear(); writtenProfile = profile }
+        var remaining = MAX_BYTES
+        val kept = mutableSetOf<String>()
+        pages.entries.toList().takeLast(20).sortedBy { if (it.key == "home") 0 else 1 }.forEach { (key, page) ->
+            val target = AtomicFile(File(folder, hash(key) + ".json"))
+            if (writtenPages[key] === page && target.baseFile.isFile && target.baseFile.length() <= remaining) {
+                remaining -= target.baseFile.length(); kept += target.baseFile.name
+                return@forEach
+            }
+            val bytes = JSONObject().put("schema", 2).put("key", key)
+                .put("locale", Locale.getDefault().toLanguageTag()).put("saved", System.currentTimeMillis())
+                .put("page", encode(page, if (key == "search-library-index") Int.MAX_VALUE else 800))
+                .toString().toByteArray()
+            if (bytes.size > remaining) return@forEach
+            val output = target.startWrite()
+            try { output.write(bytes); target.finishWrite(output) }
+            catch (error: Exception) { target.failWrite(output); throw error }
+            remaining -= bytes.size; kept += target.baseFile.name; writtenPages[key] = page
+        }
+        folder.listFiles()?.filter { it.extension == "json" && it.name !in kept }?.forEach { AtomicFile(it).delete() }
+        writtenPages.keys.retainAll(pages.keys)
+        file(profile).delete()
     }
 
-    fun clear(profile: String) { file(profile).delete() }
+    fun clear(profile: String) {
+        file(profile).delete()
+        pageDirectory(profile).let { folder -> folder.listFiles()?.forEach { it.delete() }; folder.delete() }
+        if (writtenProfile == profile) writtenPages.clear()
+    }
 
-    private fun encode(page: OnlinePage): JSONObject {
-        var remaining = 800
+    private fun encode(page: OnlinePage, itemLimit: Int): JSONObject {
+        var remaining = itemLimit
         val shelves = JSONArray()
         page.shelves.take(24).forEach { shelf ->
             val items = shelf.items.take(remaining)
