@@ -3,8 +3,8 @@
  * [com.akira.app.core.design.backdrop] — see that package for the
  * upstream attribution. This file is the integration glue, adapted from
  * EchoMusicApp/Echo-Music's GlassEffectConfig/Modifier.liquidGlass
- * (GPL-3.0). Akira exposes one global material and opacity control for all
- * floating controls and presentations, including the travelling tab lens.
+ * (GPL-3.0). Floating controls and presentations share their optics; the dock
+ * has a separate enable flag and retains the global opacity and diffusion.
  */
 package com.akira.app.core.design.glass
 
@@ -15,6 +15,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -25,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.akira.app.core.design.backdrop.Backdrop
@@ -43,6 +45,12 @@ import androidx.compose.ui.unit.DpOffset
 
 /** Optional material flag retained for the upstream lightweight surface helper. */
 val LocalLiquidGlassEnabled = staticCompositionLocalOf { false }
+val LocalDockLiquidGlassEnabled = staticCompositionLocalOf { true }
+internal val LocalIsDockGlass = staticCompositionLocalOf { false }
+
+@Composable
+internal fun isSurfaceGlassEnabled(): Boolean = LocalLiquidGlassEnabled.current &&
+    (!LocalIsDockGlass.current || LocalDockLiquidGlassEnabled.current)
 /** Draw-phase reader: the live global preview does not recompose the app. */
 val LocalLiquidGlassDiffusion = staticCompositionLocalOf<() -> Float> { { AkiraGlassDefaults.Diffusion } }
 internal object GlassDiffusionPreview { var value by mutableStateOf<Float?>(null) }
@@ -76,10 +84,7 @@ internal val LocalGlassStrain = staticCompositionLocalOf<() -> androidx.compose.
  */
 fun isGlassSupported(sdkInt: Int = Build.VERSION.SDK_INT): Boolean = sdkInt >= Build.VERSION_CODES.S
 
-/** Shared by every glass surface, including the travelling selection lens.
- * Geometry and sampled layers belong to the component; optical tuning does not.
- * Matches the clear, full-resolution selection lens accepted by the user.
- */
+/** Shared optics; each surface owns its geometry and sampled layers. */
 internal object AkiraGlassMaterialProfile {
     const val ResolutionScale = 1f
     const val LensDeformation = .35f
@@ -105,17 +110,35 @@ internal val GLASS_EDGE_WIDTH = 0.5.dp
 internal val GLASS_EDGE_COLOR: Color
     @Composable get() = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
 
-/**
- * Icon and label colour for content sitting on a glass surface.
- *
- * Glass shows whatever is behind it rather than the theme's surface colour, so
- * the usual onSurface greys have nothing dependable to sit against. Pure black
- * or white off the theme's luminance is the only tint that holds against
- * arbitrary artwork, and it is what Echo's own glass nav bar uses.
- */
+/** Foreground ink paired with the source contrast protection in glassReadability. */
 @Composable
 fun glassContentColor(): Color =
     if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) Color.Black else Color.White
+
+/** Match accent ink to the source bounds enforced by glassReadability. */
+@Composable
+fun glassAccentColor(requested: Color = MaterialTheme.colorScheme.primary): Color {
+    val lightSurface = MaterialTheme.colorScheme.surface.luminance() > .5f
+    return remember(requested, lightSurface) {
+        val background = if (lightSurface) Color(.74f, .74f, .74f) else Color(.27f, .27f, .27f)
+        val target = if (lightSurface) Color.Black else Color.White
+        fun contrast(color: Color): Float {
+            val ink = color.luminance()
+            val source = background.luminance()
+            return (maxOf(ink, source) + .05f) / (minOf(ink, source) + .05f)
+        }
+        // Leave a margin for the sampled surface's channel quantization.
+        if (contrast(requested) >= 4.6f) requested else {
+            var low = 0f
+            var high = 1f
+            repeat(16) {
+                val middle = (low + high) * .5f
+                if (contrast(lerp(requested, target, middle)) >= 4.6f) high = middle else low = middle
+            }
+            lerp(requested, target, high)
+        }
+    }
+}
 
 /**
  * Selected-tab indicator colour for a glass surface: the inverse of
@@ -149,7 +172,7 @@ internal fun Modifier.renderLiquidGlass(shape: CornerBasedShape, backdrop: Backd
     exportedBackdrop: LayerBackdrop? = null, presence: () -> Float = FullGlass,
     material: () -> Float = FullGlass, clearLens: Boolean = false, shadowStrength: Float = 1f): Modifier {
     if (!isGlassSupported()) return background(MaterialTheme.colorScheme.surfaceContainer, shape)
-    val glass = LocalLiquidGlassEnabled.current
+    val glass = isSurfaceGlassEnabled()
     val opacity = LocalLiquidGlassOpacity.current
     val diffusion = LocalLiquidGlassDiffusion.current
     val diffuse = !clearLens

@@ -60,6 +60,7 @@ internal fun SetupLayout(title: String, subtitle: String, onBack: (() -> Unit)? 
     CompositionLocalProvider(LocalContentColor provides colors.onBackground,
         LocalAppBackdrop provides backdrop, LocalPageHeaderBackdrop provides backdrop,
         LocalLiquidGlassEnabled provides prefs.liquidGlassEnabled,
+        LocalDockLiquidGlassEnabled provides prefs.dockLiquidGlassEnabled,
         LocalLiquidGlassOpacity provides remember { { GlassOpacityPreview.value ?: opacity } },
         LocalLiquidGlassDiffusion provides remember { { GlassDiffusionPreview.value ?: diffusion } }) {
         Box(modifier.fillMaxSize().background(colors.background).safeDrawingPadding()

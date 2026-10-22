@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
@@ -39,10 +40,15 @@ import com.akira.app.core.design.components.localizedText
     val context = LocalContext.current
     val repository = remember(context) { OnlineRepository.get(context) }
     val account by repository.account.collectAsStateWithLifecycle()
+    val online by repository.enabled.collectAsStateWithLifecycle()
     val haptics = rememberAkiraHaptics()
-    val label = localizedText("Account and settings", "Cuenta y ajustes")
+    val label = if (online) localizedText("Account and settings", "Cuenta y ajustes") else localizedText("Settings", "Ajustes")
     Box(modifier.size(44.dp).clip(CircleShape).clickable { haptics.light(); onClick() }
         .semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
-        AkiraAccountAvatar(account, Modifier.size(36.dp))
+        if (online) AkiraAccountAvatar(account, Modifier.size(36.dp))
+        else Box(Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Settings, null, Modifier.size(25.dp), tint=MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }

@@ -100,7 +100,7 @@ fun HomeNavigation(
     val density = androidx.compose.ui.platform.LocalDensity.current
     val reduced = com.akira.app.core.design.components.LocalContentMotionReduced.current
     val contentColor = glassContentColor()
-    val selectedContentColor = if(contentColor == Color.Black) Color(0xFFFF2D55) else Color(0xFFFF375F)
+    val selectedContentColor = glassAccentColor(if(contentColor == Color.Black) Color(0xFFFF2D55) else Color(0xFFFF375F))
     val haptics = rememberHaptics()
     val currentSelect by rememberUpdatedState(onSelect)
     val currentSelected by rememberUpdatedState(selected)
