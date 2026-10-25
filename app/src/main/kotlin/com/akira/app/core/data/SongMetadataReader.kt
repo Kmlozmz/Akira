@@ -19,13 +19,11 @@ import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
 data class SongDetailsModel(
-    // Pista
     val album: String,
     val albumArtist: String,
     val year: String,
     val trackAndDisc: String,
     val genre: String,
-    // Audio
     val realCodec: String,
     val container: String,
     val bitrate: String,
@@ -35,13 +33,11 @@ data class SongDetailsModel(
     val audioBadge: String,
     val isLossless: Boolean,
     val isHiRes: Boolean,
-    // Archivo
     val folder: String,
     val fileName: String,
     val fileSize: String,
     val dateAdded: String,
     val dateModified: String,
-    // Letras
     val lyricsSource: String,
     val lyricsSync: String,
     val composer: String = "",
@@ -91,7 +87,6 @@ object SongMetadataReader {
         var mmrSampleRate = 0
         var mmrBitsPerSample: Int? = null
 
-        // 1. Extraer metadatos con MediaMetadataRetriever
         val mmr = MediaMetadataRetriever()
         try {
             if (file != null && file.exists()) {
@@ -115,7 +110,6 @@ object SongMetadataReader {
             runCatching { mmr.release() }
         }
 
-        // 2. Extraer códec REAL y parámetros de pista de audio con MediaExtractor
         var extractedMime: String? = null
         var extractorSampleRate = 0
         var extractorChannels = 2
@@ -154,7 +148,6 @@ object SongMetadataReader {
             runCatching { extractor.release() }
         }
 
-        // 3. Resolver Contenedor
         val ext = file?.extension?.uppercase() ?: when {
             song.mimeType.contains("flac", ignoreCase = true) -> "FLAC"
             song.mimeType.contains("wav", ignoreCase = true) -> "WAV"
@@ -165,7 +158,7 @@ object SongMetadataReader {
         }
         val container = ext.ifBlank { song.format.uppercase() }
 
-        // 4. Resolver Códec REAL (especialmente ALAC vs AAC en contenedores m4a/mp4)
+        // M4A can contain AAC or ALAC; prefer the extracted audio codec.
         val realCodec = when {
             extractedMime?.contains("alac", ignoreCase = true) == true -> "ALAC"
             extractedMime?.contains("mp4a-latm", ignoreCase = true) == true || container == "AAC" -> "AAC"
@@ -177,7 +170,6 @@ object SongMetadataReader {
             else -> extractedMime?.removePrefix("audio/")?.uppercase() ?: container
         }
 
-        // 5. Profundidad de bits (bit depth)
         var bitDepth = when (extractorPcmEncoding) {
             AudioFormat.ENCODING_PCM_8BIT -> 8
             AudioFormat.ENCODING_PCM_16BIT -> 16
@@ -186,7 +178,7 @@ object SongMetadataReader {
             else -> mmrBitsPerSample ?: 0
         }
 
-        // Si es FLAC en disco y aún no tenemos profundidad de bits, leer encabezado STREAMINFO (34 bytes)
+        // FLAC STREAMINFO stores bit depth when Android omits it.
         if (bitDepth <= 0 && container == "FLAC" && file != null && file.exists()) {
             try {
                 file.inputStream().use { stream ->
@@ -205,7 +197,6 @@ object SongMetadataReader {
             } catch (_: Exception) {}
         }
 
-        // 6. Frecuencia de muestreo (Sample Rate)
         val finalSampleRateHz = when {
             extractorSampleRate > 0 -> extractorSampleRate
             mmrSampleRate > 0 -> mmrSampleRate
@@ -216,7 +207,6 @@ object SongMetadataReader {
             if (khz % 1.0 == 0.0) "${khz.toInt()} kHz" else String.format(Locale.US, "%.1f kHz", khz)
         } else "—"
 
-        // 7. Bitrate
         val finalBitrateBps = when {
             extractorBitrate > 0 -> extractorBitrate
             mmrBitrate > 0 -> mmrBitrate
@@ -231,17 +221,15 @@ object SongMetadataReader {
             else -> "—"
         }
 
-        // 8. Canales
         val channelsStr = when (extractorChannels) {
             1 -> strings.audioMono
             2 -> strings.audioStereo
             else -> "$extractorChannels ${strings.audioChannels.lowercase()}"
         }
 
-        // 9. Cálculo de Sin pérdida y Alta resolución
-        val isLossless = (realCodec == "ALAC" || realCodec == "FLAC" || container == "FLAC" ||
-                container == "WAV" || realCodec.contains("PCM", ignoreCase = true))
-        val isHiRes = isLossless && (finalSampleRateHz > 48000 || bitDepth > 16)
+        val classification = classifyAudioMetadata(realCodec, container, finalSampleRateHz, bitDepth)
+        val isLossless = classification.isLossless
+        val isHiRes = classification.isHiRes
 
         val audioBadge = when {
             isHiRes -> "${strings.lossless} · ${strings.hiRes}"
@@ -251,19 +239,7 @@ object SongMetadataReader {
 
         val bitDepthStr = if (bitDepth > 0) "$bitDepth-bit" else if (isLossless) "16-bit" else "—"
 
-        // 10. Información de archivo (carpeta limpia, nombre, tamaño, fechas)
-        val cleanFolder = if (song.path.isNotBlank()) {
-            val p = song.path.replace('\\', '/')
-            val relative = if (p.contains("/storage/emulated/0/")) {
-                p.substringAfter("/storage/emulated/0/")
-            } else {
-                p.removePrefix("/")
-            }
-            val dir = relative.substringBeforeLast('/', "")
-            if (dir.isNotBlank()) "$dir/" else "/"
-        } else {
-            "—"
-        }
+        val cleanFolder = audioMetadataFolder(song.path) ?: "—"
 
         val fileNameStr = file?.name ?: song.title
         val fileSizeStr = if (file != null && file.exists() && file.length() > 0) {
@@ -282,7 +258,6 @@ object SongMetadataReader {
             dateFormat.format(Date(file.lastModified()))
         } else "—"
 
-        // 11. Información de letras
         val sidecarLrc = if (file != null && file.exists()) {
             LyricsRepository.findLyricsFile(file.absolutePath, song.title, song.artist)
         } else null
@@ -300,7 +275,6 @@ object SongMetadataReader {
             }
         }
 
-        // 12. Pista y disco
         val trackAndDiscStr = buildString {
             if (song.trackNumber > 0) {
                 append(song.trackNumber)

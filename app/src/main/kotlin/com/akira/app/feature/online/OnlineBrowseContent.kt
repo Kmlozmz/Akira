@@ -157,6 +157,32 @@ internal fun LazyListScope.onlineBrowseSections(shelves: List<OnlineShelf>, sear
     }
 }
 
+internal fun LazyListScope.onlineLibrarySections(entries: List<YTItem>, query: String,
+    current: Song?, playing: Boolean, sourcePrefix: String, choose: (YTItem, String?) -> Unit, more: (Song) -> Unit) {
+    val collections = entries.filterNot { it is SongItem }
+    if (entries.isEmpty() && query.isNotBlank()) item("library-no-results") {
+        Text(localizedText("No results", "Sin resultados"), Modifier.fillMaxWidth().padding(32.dp),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    items(collections.chunked(2), key = { "library-grid-${it.first().id}" }) { row ->
+        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            row.forEach { item ->
+                val source = item.onlineCollectionKey("$sourcePrefix-library") ?: "$sourcePrefix-library-${item.id}"
+                com.akira.app.feature.library.LibraryAlbumTile(item.title, item.onlineSubtitle(), item.thumbnail,
+                    source, Modifier.weight(1f), circular = item is ArtistItem) { choose(item, source) }
+            }
+            if (row.size == 1) Spacer(Modifier.weight(1f))
+        }
+    }
+    items(entries.filterIsInstance<SongItem>(), key = { "library-song-${it.id}" }) { song ->
+        Column(Modifier.padding(horizontal = 20.dp)) {
+            HomeTrackRow(song.thumbnail, song.title, song.onlineSubtitle(), current?.id == "youtube:${song.id}", playing,
+                { choose(song, null) }, { more(song.asOnlineSong()) }, { more(song.asOnlineSong()) })
+            HorizontalDivider(Modifier.padding(start = 66.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = .07f), thickness = .5.dp)
+        }
+    }
+}
+
 @Composable private fun OnlineBrowseGridRow(items: List<YTItem>, sourcePrefix: String, choose: (YTItem, String?) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         items.forEach { item ->

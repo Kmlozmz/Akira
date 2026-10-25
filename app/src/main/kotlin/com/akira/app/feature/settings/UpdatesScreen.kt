@@ -35,7 +35,7 @@ internal fun UpdatesScreen(onBack: () -> Unit, model: UpdatesViewModel = viewMod
     val state by model.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var linkFailed by remember { mutableStateOf(false) }
-    val update = (state.result as? UpdateCheck.Available)?.update
+    val update = state.availableUpdate
     DisposableEffect(model) {
         model.setPageVisible(true)
         onDispose { model.setPageVisible(false) }
@@ -88,13 +88,18 @@ internal fun UpdatesScreen(onBack: () -> Unit, model: UpdatesViewModel = viewMod
                 }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center, lineHeight = 21.sp)
                 Spacer(Modifier.height(22.dp))
-                Button(onClick = { if (update != null) model.openDetails() else model.check() },
-                    enabled = !state.checking && !state.downloading && !BuildConfig.DEBUG,
+                Button(onClick = { model.check() },
+                    enabled = state.canCheckForUpdates && !BuildConfig.DEBUG,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AkiraBrand.accent,
                         contentColor = androidx.compose.ui.graphics.Color.Black)) {
-                    Text(if (update != null) localizedText("View update", "Ver actualización")
+                    Text(if (state.failure != null) localizedText("Retry", "Reintentar")
                         else localizedText("Check for updates", "Buscar actualizaciones"), fontWeight = FontWeight.SemiBold)
+                }
+                if (update != null) TextButton(onClick = model::openDetails,
+                    enabled = !state.checking && !state.preparingInstaller && !BuildConfig.DEBUG,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text(localizedText("View update", "Ver actualización"))
                 }
             }
             Spacer(Modifier.height(16.dp))

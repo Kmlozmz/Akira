@@ -56,6 +56,7 @@ enum class OnboardingNav {
     MAIN_LIBRARY
 }
 
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 open class MainActivity : ComponentActivity() {
     companion object { const val ACTION_OPEN_PLAYER = "com.akira.app.action.OPEN_PLAYER" }
 
@@ -187,10 +188,7 @@ open class MainActivity : ComponentActivity() {
         }
         pendingViewIntent = intent
         openPlayerFromWidget = widgetRequest
-        // Enable true edge-to-edge system insets (status bar & gesture nav bar)
-        // The app is always dark: force light icons on system bars.
-        // Con enableEdgeToEdge() a secas, un teléfono en modo claro pintaba los
-        // iconos de la barra de estado en oscuro sobre fondo oscuro.
+        // The first frame uses light bar icons; composition applies the selected theme.
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
@@ -211,6 +209,7 @@ open class MainActivity : ComponentActivity() {
 
             val prefsState = loadedPrefs ?: initialUi
             AkiraTheme(themeMode = prefsState?.themeMode ?: "SYSTEM", appearancePreset = prefsState?.appearancePreset ?: "MIDNIGHT", accentColor = prefsState?.accentColor ?: "PRESET", spaceMode = prefsState?.spaceMode ?: false, spaceStyle = prefsState?.spaceStyle ?: "SPACE") {
+                com.akira.app.core.design.rendering.PreferInteractiveFrameRate()
                 val activeLanguage = prefsState?.language ?: "SYSTEM"
                 val currentStrings = remember(activeLanguage) {
                     when (activeLanguage) {
@@ -320,7 +319,6 @@ LaunchedEffect(loadedPrefs) {
                 ) {
                     val activeScreen = currentScreen
                     if (activeScreen != null && (!showSplashIntro || introContentAllowed)) {
-                        // Authentic iOS Empalme Push/Pop Parallax Transition (Zero-Lag, using(null) to eliminate layout overhead)
                         AnimatedContent(
                             modifier = Modifier.recordAkiraGlassBackdrop(rootGlassBackdrop).graphicsLayer {
                                 val motion = widgetLaunchMotion

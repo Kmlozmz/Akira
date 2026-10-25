@@ -47,7 +47,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
 
-/** Preference writes retain the current page and its navigation state. */
 @Composable internal fun PersonalizeSetupScreen(repo: UserPreferencesRepository,onBack: ()->Unit,onComplete: ()->Unit) =
     SetupBrandTheme { PersonalizeSetupContent(repo, onBack, onComplete) }
 
@@ -87,9 +86,11 @@ import kotlin.math.roundToInt
     fun back() {if(showReview)showReview=false else if(!changingPage) {if(step>0)step-- else onBack()}}
     BackHandler(!finishing) {back()}
     BackHandler(finishing) {}
-    LaunchedEffect(state.status,state.failure,finishing) {
-        if(finishing && state.status==SetupStatus.READY && !state.saving && state.failure==null)model.controller.finish()
-        if(finishing && state.failure!=null)finishing=false
+    LaunchedEffect(state.status, state.failure, state.saving, state.completed, finishing) {
+        if (finishing) {
+            if (state.failure != null) finishing = false
+            else model.controller.resumeCompletion()
+        }
     }
     val completion by rememberUpdatedState(onComplete)
     LaunchedEffect(state.completed) {if(state.completed)completion()}
@@ -116,8 +117,7 @@ import kotlin.math.roundToInt
             SetupAction(if(finishing)localizedText("Preparing your collection…","Preparando tu colección…") else if(page==5)localizedText("Start listening","Empezar a escuchar") else localizedText("Continue","Continuar"),
                 enabled=!finishing && !saveFailed) {
                 if(changingPage) return@SetupAction
-                // A short DataStore write must not blink the entire footer disabled.
-                // Wait for pending writes when advancing, retaining a stable surface.
+                // Wait for preference writes before advancing without blinking the footer disabled.
                 scope.launch {
                     snapshotFlow {pending}.first {it==0}
                     if(!finishing && !saveFailed && step==page) {if(page<5)step++ else {finishing=true;model.controller.start()}}
@@ -282,7 +282,6 @@ import kotlin.math.roundToInt
     }
 }
 
-/** Library preview belongs to the theme stage, separately from player geometry. */
 @Composable private fun SetupThemePreview(songs: List<Song>,mode: String) {
     val light=mode=="LIGHT" || mode=="SYSTEM" && !isSystemInDarkTheme()
     val motion=if(setupReducedMotion())snap<Color>() else tween(240)
@@ -319,7 +318,6 @@ import kotlin.math.roundToInt
         }
     }
 }
-/** A scaled portrait player: its geometry and glyphs match the actual expanded screen. */
 @Composable internal fun SetupPlayerPreview(song: Song?,fullscreen: Boolean) {
     val context=LocalContext.current
     val scope=rememberCoroutineScope()

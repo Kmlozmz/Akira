@@ -3,6 +3,7 @@ package com.akira.app.core.design.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,14 +25,17 @@ val LocalAkiraAccent = staticCompositionLocalOf { Color(0xFFB8C8D4) }
 /** Selectors, editors and confirmations share the menu's window and optical surface. */
 enum class AkiraPanelStyle { Standard, Compact, Update, AudioOutput, Page, Details }
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun AkiraModalSheet(onDismissRequest: () -> Unit, contentColor: Color = MaterialTheme.colorScheme.onSurface,
     title: String? = null,
     style: AkiraPanelStyle = AkiraPanelStyle.Standard,
     footer: (@Composable () -> Unit)? = null,
     containerColor: Color? = null,
+    immersive: Boolean = false,
     content: @Composable ColumnScope.() -> Unit) {
     if (style == AkiraPanelStyle.Page || style == AkiraPanelStyle.Details) {
-        AkiraPageSheet(onDismissRequest, contentColor, title, footer, containerColor, style == AkiraPanelStyle.Details, content)
+        AkiraPageSheet(onDismissRequest, contentColor, title, footer, containerColor,
+            style == AkiraPanelStyle.Details, immersive, content)
         return
     }
     AkiraPresentation(when(style) {

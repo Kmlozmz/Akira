@@ -5,6 +5,8 @@ import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
+import androidx.media3.common.C
+import androidx.media3.common.Format
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -52,6 +54,9 @@ class MusicServiceConnection(
 
     private val _currentSong = MutableStateFlow<Song?>(null)
     val currentSong: StateFlow<Song?> = _currentSong.asStateFlow()
+
+    private val _audioFormat = MutableStateFlow<Format?>(null)
+    val audioFormat: StateFlow<Format?> = _audioFormat.asStateFlow()
 
     private val _currentPositionMs = MutableStateFlow(0L)
     val currentPositionMs: StateFlow<Long> = _currentPositionMs.asStateFlow()
@@ -133,13 +138,12 @@ class MusicServiceConnection(
     private fun setupPlayerListener(player: Player) {
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                // If player is transitioning / buffering while playWhenReady is still true,
-                // do not flicker the play/pause button to paused state in UI!
-                if (!isPlaying && player.playWhenReady && player.playbackState != Player.STATE_ENDED) {
-                    return
-                }
-                _isPlaying.value = isPlaying
+                updatePlaybackIntent(player)
                 if (isPlaying) startProgressTracker() else stopProgressTracker()
+            }
+
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                updatePlaybackIntent(player)
             }
 
             override fun onTimelineChanged(timeline: Timeline, reason: Int) {
@@ -151,6 +155,7 @@ class MusicServiceConnection(
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                _audioFormat.value = null
                 _playbackError.value = false
                 _currentSong.value = mediaItem?.toSong()
                 _durationMs.value = player.duration.coerceAtLeast(0L)
@@ -178,6 +183,7 @@ class MusicServiceConnection(
             override fun onPlaybackStateChanged(playbackState: Int) {
                 _isLoading.value = playbackState == Player.STATE_BUFFERING
                 _durationMs.value = player.duration.coerceAtLeast(0L)
+                updatePlaybackIntent(player)
             }
 
             override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
@@ -188,19 +194,38 @@ class MusicServiceConnection(
             override fun onRepeatModeChanged(repeatMode: Int) {
                 _repeatMode.value = repeatMode
             }
+
+            override fun onEvents(player: Player, events: Player.Events) {
+                if (events.contains(Player.EVENT_TRACKS_CHANGED) ||
+                    events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) syncAudioFormat(player)
+            }
         })
     }
 
     private fun syncState(player: Player) {
         _isLoading.value = player.playbackState == Player.STATE_BUFFERING
-        _isPlaying.value = player.isPlaying
+        updatePlaybackIntent(player)
         _currentSong.value = player.currentMediaItem?.toSong()
+        syncAudioFormat(player)
         _durationMs.value = player.duration.coerceAtLeast(0L)
         _currentPositionMs.value = player.currentPosition.coerceAtLeast(0L)
         _shuffleMode.value = player.shuffleModeEnabled
         _repeatMode.value = player.repeatMode
         syncQueue(player)
         if (player.isPlaying) startProgressTracker()
+    }
+
+    private fun updatePlaybackIntent(player: Player) {
+        _isPlaying.value = playbackRequested(player)
+    }
+
+    private fun syncAudioFormat(player: Player) {
+        _audioFormat.value = if (player.isCommandAvailable(Player.COMMAND_GET_TRACKS)) {
+            player.currentTracks.groups.asSequence().filter { it.type == C.TRACK_TYPE_AUDIO }
+                .flatMap { group -> (0 until group.length).asSequence()
+                    .filter { group.isTrackSelected(it) }.map { group.getTrackFormat(it) } }
+                .firstOrNull()
+        } else null
     }
 
     private fun syncQueue(player: Player) {
@@ -253,19 +278,12 @@ class MusicServiceConnection(
 
     fun togglePlayPause() {
         val controller = mediaController ?: return
-        if (controller.playerError != null) { _playbackError.value = false; controller.prepare() }
-        if (controller.isPlaying) {
-            controller.pause()
-        } else {
-            controller.play()
-        }
+        togglePlaybackIntent(controller) { _playbackError.value = false }
     }
 
     fun pause() {
         val controller = mediaController ?: return
-        if (controller.isPlaying) {
-            controller.pause()
-        }
+        controller.pause()
     }
 
     fun seekTo(positionMs: Long) {
@@ -503,6 +521,7 @@ class MusicServiceConnection(
     }
 
     fun release() {
+        _audioFormat.value = null
         speedBeforeHold?.let {mediaController?.playbackParameters=it}
         temporarySpeedOwners.clear();speedBeforeHold=null
         _isLoading.value = false

@@ -6,6 +6,7 @@ import androidx.media3.common.*
  * system queue). Commands and the current AudioTrack keep their original owner.
  * Hundreds of shuffled removals must not send hundreds of full Binder queues.
  */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 internal class QueueTransactionPlayer(player: Player) : ForwardingPlayer(player) {
     private var depth=0
     // ForwardingPlayer creates equal (not identical) listener wrappers when

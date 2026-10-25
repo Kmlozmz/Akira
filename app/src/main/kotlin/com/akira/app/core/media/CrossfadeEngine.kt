@@ -9,28 +9,8 @@ import kotlinx.coroutines.*
 
 private const val TAG = "AkiraPlayback"
 
-/**
- * Handles seamless, overlapping audio crossfading between tracks using
- * a Canonical Dual-Deck (Ping-Pong) DJ Architecture.
- *
- * In this architecture:
- * 1. Track A plays continuously on `activePlayer` (Deck A) from start to finish.
- * 2. 3 seconds before crossfade, Track B is pre-buffered on `inactivePlayer` (Deck B) at 0:00.
- * 3. At remainingMs <= crossfadeDurationMs:
- *    - Deck B begins playing Track B from 0:00.
- *    - Deck A fades down (1.0 -> 0.0) via equal-power cosine curve.
- *    - Deck B fades up (0.0 -> 1.0) via equal-power sine curve.
- *    - Both streams mix concurrently in Android's hardware audio mixer.
- * 4. At crossfade completion:
- *    - Deck A reaches volume 0.0, stops and clears.
- *    - Deck B is ALREADY playing at volume 1.0!
- *    - Roles swap: Deck B becomes `activePlayer`.
- *    - MediaLibrarySession switches its active player to Deck B via `onSwapActivePlayer`.
- *
- * Handover retains the incoming AudioTrack. Readiness, rendered position and
- * end guards are explicit: neither deck may auto-start a second copy of the
- * incoming song. Device buffering and output underruns remain observable.
- */
+/** Mixes two decks, retaining the incoming AudioTrack when ownership changes.
+ * Readiness and end guards prevent either deck from starting the incoming track twice. */
 class CrossfadeEngine(
     var activePlayer: DeckPlayer,
     var inactivePlayer: DeckPlayer,
@@ -188,10 +168,7 @@ class CrossfadeEngine(
             } else if(player===activePlayer && state!=State.IDLE)cancelCrossfade()
         }
 
-        // Se replica la INTENCIÓN de reproducir (playWhenReady), no isPlaying.
-        // isPlaying es transitorio (buffering, final de pista, pérdida de foco): al
-        // espejarlo, cualquier parpadeo del deck saliente pausaba/reanudaba el entrante
-        // y los dos se pisaban hasta quedar pausados.
+        // Replicar playWhenReady evita pausar la entrante durante el buffering de la saliente.
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             Log.d(TAG, "deck=${deckName(player)} playWhenReady=$playWhenReady reason=$reason " +
                 "active=${player === activePlayer} state=$state handingOver=$isHandingOver")
@@ -243,7 +220,6 @@ class CrossfadeEngine(
             return
         }
 
-        // Only process crossfade while activePlayer is actively playing
         if (!activePlayer.isPlaying && state != State.CROSSFADING) return
 
         val duration = activePlayer.duration
@@ -254,21 +230,16 @@ class CrossfadeEngine(
 
         when (state) {
             State.IDLE -> {
-                // Temporizador "al terminar la canción": no iniciar crossfade,
-                // dejar que el deck llegue al final de forma natural.
+                // El temporizador necesita el final natural de la pista, sin mezcla anticipada.
                 if (pauseAtEndOfItem) return
 
-                // Temporizador "al terminar la cola": si no hay siguiente pista,
-                // notificar fin de cola.
                 if (pauseAtEndOfQueue) {
                     val nextIndex = getNextItemIndex(activePlayer)
                     if (nextIndex == C.INDEX_UNSET || nextIndex >= activePlayer.mediaItemCount) {
-                        // No hay siguiente: dejar que termine naturalmente
                         return
                     }
                 }
 
-                // Pre-buffer 3 seconds before the actual crossfade starts
                 val prebufferWindow = crossfadeDurationMs + 3000L
                 if (remainingMs in 1..prebufferWindow) {
                     val nextIndex = getNextItemIndex(activePlayer)
@@ -288,13 +259,11 @@ class CrossfadeEngine(
             }
 
             State.PREBUFFERED -> {
-                // If user seeked away from the end, cancel
                 if (remainingMs > crossfadeDurationMs + 3500L) {
                     cancelCrossfade()
                     return
                 }
 
-                // Crossfade start threshold!
                 if (remainingMs <= crossfadeDurationMs) {
                     if(remainingMs<=80L || inactivePlayer.playbackState!=Player.STATE_READY)return
                     Log.d(TAG, "STARTING DUAL-DECK PING-PONG CROSSFADE! duration=$crossfadeDurationMs ms")
@@ -304,7 +273,7 @@ class CrossfadeEngine(
                     incomingStartPositionMs=inactivePlayer.currentPosition.coerceAtLeast(0L)
                     crossfadePausedAt = null
                     pausedCrossfadeDuration = 0L
-                    // Congelar especificaciones de curvas activas para esta mezcla
+                    // Los cambios de preferencias no deben alterar una mezcla ya iniciada.
                     activeOutgoingSpec = outgoingCurveSpec
                     activeIncomingSpec = incomingCurveSpec
                     if (targetTrackIndex == C.INDEX_UNSET) {
@@ -316,8 +285,7 @@ class CrossfadeEngine(
                     state = State.CROSSFADING
                     inactivePlayer.play()
                     AkiraLog.i(TAG, "Crossfade active phase started: duration=${activeDurationMs}ms, outShape=${activeOutgoingSpec.shape.name}, inShape=${activeIncomingSpec.shape.name}")
-                    // Avisamos de la canción entrante para que la UI la muestre desde
-                    // ya, sin tocar el crossfade ni el estado real del player.
+                    // La UI puede mostrar la entrante antes del intercambio de decks.
                     inactivePlayer.currentMediaItem?.let { onIncomingTrackReady(it) }
                 }
             }
@@ -345,7 +313,6 @@ class CrossfadeEngine(
 
                     applyDeckVolumes(outGain, inGain)
 
-                    // Requisito 1.7: Log de depuración cada ~500ms
                     val now = clock()
                     if (now - lastDebugLogTime >= 500L) {
                         lastDebugLogTime = now
@@ -369,20 +336,15 @@ class CrossfadeEngine(
             val outgoing = activePlayer
             val incoming = inactivePlayer
 
-            // 1. La entrante ya suena: sólo se asegura su volumen final con punto único.
             applyDeckVolumes(0f, 1f)
 
-            // 2. Intercambio de roles y, ANTES de tocar el deck saliente, se expone
-            //    la entrante a la sesión. Antes se hacía stop()+clearMediaItems() sobre
-            //    el deck que la sesión aún observaba: los controladores veían
-            //    IDLE / lista vacía y de ahí el parpadeo de pausa/play en la UI.
+            // La sesión debe observar la entrante antes de vaciar la saliente para no anunciar IDLE.
             activePlayer = incoming
             inactivePlayer = outgoing
             restoreEndGuards()
             applyDeckVolumes(1f, 0f)
             onSwapActivePlayer(incoming)
 
-            // 3. Ahora sí: silenciar y vaciar el deck saliente (ya nadie lo observa).
             outgoing.stop()
             outgoing.clearMediaItems()
 
@@ -403,8 +365,7 @@ class CrossfadeEngine(
         val currentIdx = player.currentMediaItemIndex
         if (currentIdx == C.INDEX_UNSET) return C.INDEX_UNSET
 
-        // La consulta de linea de tiempo vive en el adaptador
-        // (DeckPlayer.nextWindowIndex): aqui no se toca Timeline.
+        // El adaptador consulta Timeline para respetar el orden aleatorio.
         val nextWindow = player.nextWindowIndex(currentIdx)
         if (nextWindow != C.INDEX_UNSET) return nextWindow
 

@@ -7,11 +7,9 @@ import com.akira.app.feature.player.*
 
 import com.akira.app.core.design.components.showAkiraSnackbar
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -55,8 +53,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -94,12 +90,12 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 @Composable
-fun QueueHero(
+internal fun QueueHero(
     currentSong: Song,
     queue: List<Song>,
     currentPlayingIndex: Int,
     isShuffleActive: Boolean,
-    repeatMode: Int,
+    repeatState: QueueRepeatState,
     isAutoplayActive: Boolean,
     onCoverClick: () -> Unit,
     onToggleFavorite: (Song) -> Unit,
@@ -174,9 +170,6 @@ fun QueueHero(
                 .fillMaxSize()
         ) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-            // -------------------------------------------------------------
-            // 1. Cabecera: Reproduciendo Ahora (Now Playing)
-            // -------------------------------------------------------------
             Text(
                 text = strings.nowPlaying.uppercase(),
                 fontSize = 11.5.sp,
@@ -194,7 +187,6 @@ fun QueueHero(
                     .padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Portada 60dp
                 Box(
                     modifier = Modifier
                         .size(52.dp)
@@ -226,7 +218,6 @@ fun QueueHero(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // Título y artista
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -257,7 +248,6 @@ fun QueueHero(
 
                 Spacer(modifier = Modifier.width(6.dp))
 
-                // Favorito
                 AkiraIconButton(
                     icon = if (currentSong.isFavorite) AkiraIcons.StarFilled else AkiraIcons.Star,
                     contentDescription = strings.favorite,
@@ -267,7 +257,6 @@ fun QueueHero(
                     onClick = { onToggleFavorite(currentSong) }
                 )
 
-                // Opciones ⋯
                 AkiraIconButton(
                     icon = AkiraIcons.MoreHoriz,
                     contentDescription = strings.options,
@@ -282,9 +271,6 @@ fun QueueHero(
             }
             Spacer(modifier = Modifier.height(10.dp))
 
-            // -------------------------------------------------------------
-            // 2. Fila de Toggles (Shuffle, Repeat, Autoplay)
-            // -------------------------------------------------------------
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -300,9 +286,10 @@ fun QueueHero(
                 )
 
                 QueueTogglePill(
-                    icon = if (repeatMode == 2) AkiraIcons.RepeatOne else AkiraIcons.Repeat,
+                    icon = if (repeatState == QueueRepeatState.One) AkiraIcons.RepeatOne else AkiraIcons.Repeat,
                     contentDescription = com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.RepeatControl),
-                    isActive = repeatMode > 0,
+                    isActive = repeatState != QueueRepeatState.Off,
+                    stateDescription = com.akira.app.core.design.components.localizedText(repeatState.english, repeatState.spanish),
                     onClick = onToggleRepeat,
                     modifier = Modifier.weight(1f)
                 )
@@ -318,9 +305,6 @@ fun QueueHero(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // -------------------------------------------------------------
-            // 3. Encabezado "A continuación" con contador y "Limpiar"
-            // -------------------------------------------------------------
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -395,10 +379,7 @@ fun QueueHero(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // -------------------------------------------------------------
-            // 4. Lista Plana y Transparente
-            // -------------------------------------------------------------
-            } // cabecera con margen de 20 dp
+            }
             if (queue.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -478,10 +459,7 @@ fun QueueHero(
 
 }
 
-/** Fade the rows themselves into the live player background. A painted scrim
- * would leave an opaque block over the artwork and fail on different palettes.
- * The first/last row stays fully readable when its scroll boundary is reached.
- */
+/** Mask the list into the live backdrop; skip each edge at its scroll boundary. */
 private fun Modifier.queueEdgeFade(state: LazyListState): Modifier =
     graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         .drawWithCache {
@@ -500,60 +478,6 @@ private fun Modifier.queueEdgeFade(state: LazyListState): Modifier =
             }
         }
 
-@Composable
-private fun QueueTogglePill(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    contentDescription: String,
-    isActive: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val haptics = rememberAkiraHaptics()
-    val reduced=com.akira.app.core.design.components.LocalContentMotionReduced.current
-    val touch=remember { MutableInteractionSource() }
-    val pressed by touch.collectIsPressedAsState()
-    val response=com.akira.app.core.design.components.rememberAkiraPressResponse(pressed)
-    val bgColor by animateColorAsState(
-        targetValue = if (isActive) Color.White else Color.White.copy(alpha = 0.12f),
-        animationSpec = if(reduced)androidx.compose.animation.core.snap() else spring(.85f,1000f),
-        label = "pillBg"
-    )
-    val contentColor by animateColorAsState(
-        targetValue = if (isActive) Color(0xFF14141E) else Color.White,
-        animationSpec = if(reduced)androidx.compose.animation.core.snap() else spring(.85f,1000f),
-        label = "pillContent"
-    )
-
-    Box(
-        modifier = modifier
-            .height(38.dp)
-            .then(response.modifier)
-            .clip(RoundedCornerShape(19.dp))
-            .background(bgColor)
-            .clickable(interactionSource=touch,indication=null) {
-                haptics.tick()
-                onClick()
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        com.akira.app.core.design.components.AkiraAnimatedGlyph(
-            icon = icon,
-            label = contentDescription,
-            tint = contentColor,
-            modifier = Modifier.size(20.dp)
-        )
-    }
-}
-
-/**
- * Fila de canción en cola:
- * 5.1 Filas planas y transparentes sin contenedor oscuro sobre el degradado de pantalla:
- *     portada 48dp (radio 10), título y artista, asa de reordenar con alfa ~0,35. Altura 64dp.
- * 5.2 Arrastre con elevación (escala 1.02, sombra suave, fondo tonal alfa 0.08) SOLO mientras se arrastra.
- * 5.3 Deslizar para quitar: panel rojo #FF3B30 de 112 dp a sangre con
- *     "Quitar"; el contenido sigue al dedo sin fondo. Arrastre medio se
- *     queda abierto (una sola fila); completo o fling quita con Deshacer.
- */
 @Composable
 internal fun QueueSongItemRow(
     song: Song,

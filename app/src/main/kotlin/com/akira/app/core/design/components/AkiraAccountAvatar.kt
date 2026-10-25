@@ -36,16 +36,16 @@ import com.akira.app.core.design.components.localizedText
     }
 }
 
-@Composable fun AkiraAccountButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+@Composable fun AkiraAccountButton(onClick: () -> Unit, modifier: Modifier = Modifier, alwaysShowProfile: Boolean = false) {
     val context = LocalContext.current
     val repository = remember(context) { OnlineRepository.get(context) }
     val account by repository.account.collectAsStateWithLifecycle()
     val online by repository.enabled.collectAsStateWithLifecycle()
     val haptics = rememberAkiraHaptics()
-    val label = if (online) localizedText("Account and settings", "Cuenta y ajustes") else localizedText("Settings", "Ajustes")
+    val label = if (online || alwaysShowProfile) localizedText("Account and settings", "Cuenta y ajustes") else localizedText("Settings", "Ajustes")
     Box(modifier.size(44.dp).clip(CircleShape).clickable { haptics.light(); onClick() }
         .semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
-        if (online) AkiraAccountAvatar(account, Modifier.size(36.dp))
+        if (online || alwaysShowProfile) AkiraAccountAvatar(account, Modifier.size(if (alwaysShowProfile) 44.dp else 36.dp))
         else Box(Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh),
             contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.Settings, null, Modifier.size(25.dp), tint=MaterialTheme.colorScheme.onSurfaceVariant)

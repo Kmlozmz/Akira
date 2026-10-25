@@ -1,9 +1,10 @@
-// NewPipe.kt
-
 package com.akira.innertube
 
 import com.akira.innertube.models.YouTubeClient
 import com.akira.innertube.models.response.PlayerResponse
+import com.akira.innertube.utils.currentProxyAuthenticator
+import com.akira.innertube.utils.runCatchingCancellable
+import kotlinx.coroutines.CancellationException
 import io.ktor.http.URLBuilder
 import io.ktor.http.parseQueryString
 import com.akira.innertube.models.IpVersion
@@ -31,7 +32,7 @@ class NewPipeDownloaderImpl(
     proxy: Proxy?,
     proxyAuth: String? = null,
 ) : Downloader() {
-    private val client =
+    private val client by lazy {
         OkHttpClient.Builder()
             .dns(object : Dns {
                 override fun lookup(hostname: String): List<InetAddress> {
@@ -47,17 +48,21 @@ class NewPipeDownloaderImpl(
                 override fun select(uri: URI?): List<Proxy> = listOfNotNull(YouTube.proxy ?: Proxy.NO_PROXY)
                 override fun connectFailed(uri: URI?, sa: SocketAddress?, ioe: IOException?) {}
             })
-            .proxyAuthenticator { _, response ->
-                YouTube.proxyAuth?.let { auth ->
-                    response.request.newBuilder()
-                        .header("Proxy-Authorization", auth)
-                        .build()
-                } ?: response.request
+            .proxyAuthenticator(currentProxyAuthenticator { YouTube.proxyAuth })
+            .addInterceptor { chain ->
+                if (YouTube.offline) throw OfflineModeException()
+                chain.proceed(chain.request())
+            }
+            .addNetworkInterceptor { chain ->
+                if (YouTube.offline) throw OfflineModeException()
+                chain.proceed(chain.request())
             }
             .build()
+    }
 
     @Throws(IOException::class, ReCaptchaException::class)
     override fun execute(request: Request): Response {
+        if (YouTube.offline) throw OfflineModeException()
         val httpMethod = request.httpMethod()
         val url = request.url()
         val headers = request.headers()
@@ -102,7 +107,7 @@ class NewPipeUtils(
     }
 
     fun getSignatureTimestamp(videoId: String): Result<Int> =
-        runCatching {
+        runCatchingCancellable {
             YoutubeJavaScriptPlayerManager.getSignatureTimestamp(videoId)
         }
 
@@ -135,8 +140,11 @@ class NewPipeUtils(
                 videoId,
                 url,
             )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: OfflineModeException) {
+            throw e
         } catch (e: Exception) {
-
             null
         }
 }
@@ -172,6 +180,7 @@ object NewPipeExtractor {
     }
 
     fun newPipePlayer(videoId: String): List<Pair<Int, String>> {
+        if (YouTube.offline) throw OfflineModeException()
         init()
         return try {
             val streamInfo = StreamInfo.getInfo(
@@ -182,8 +191,11 @@ object NewPipeExtractor {
             streamsList.mapNotNull {
                 (it.itagItem?.id ?: return@mapNotNull null) to it.content
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: OfflineModeException) {
+            throw e
         } catch (e: Exception) {
-
             emptyList()
         }
     }

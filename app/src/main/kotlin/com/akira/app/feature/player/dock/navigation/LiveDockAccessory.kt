@@ -19,6 +19,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.unit.dp
 import com.akira.app.core.design.glass.LocalGlassExport
 import com.akira.app.core.design.backdrop.backdrops.LayerBackdrop
@@ -26,28 +29,36 @@ import com.akira.app.core.design.backdrop.backdrops.LayerBackdrop
 internal val LocalDockNavigationGlass=staticCompositionLocalOf<LayerBackdrop?> {null}
 internal val LocalDockMorphActive=staticCompositionLocalOf { false }
 
+/** Physical coordinates throughout; the placement must not mirror them again. */
+internal fun dockFoldSelectionTarget(inline: Boolean, width: Int, compactHeight: Dp,
+    expandedHeight: Dp, count: Int, selected: Int, padding: PaddingValues,
+    spacing: Dp, density: Density, direction: LayoutDirection): Rect = with(density) {
+    require(count > 0 && selected in 0 until count)
+    val h = expandedHeight.toPx()
+    val leftPad = padding.calculateLeftPadding(direction).toPx()
+    val rightPad = padding.calculateRightPadding(direction).toPx()
+    val cell = (width - 10.dp.toPx() - leftPad - rightPad - spacing.toPx() * (count - 1)) / count
+    val rtl = direction == LayoutDirection.Rtl
+    val index = if (rtl) count - 1 - selected else selected
+    val left = 5.dp.toPx() + leftPad + index * (cell + spacing.toPx())
+    val compactWidth = compactHeight.toPx()
+    val compactStart = if (selected == count - 1) width - 7.dp.toPx() - compactWidth else 7.dp.toPx()
+    val compactLeft = if (rtl) width - compactStart - compactWidth else compactStart
+    if (inline) Rect(compactLeft, -compactWidth, compactLeft + compactWidth, 0f)
+    else Rect(left, -h + padding.calculateTopPadding().toPx(), left + cell, -padding.calculateBottomPadding().toPx())
+}
+
 /** Selection is laid out at its travelling bounds, never stretched from the
  * expanded row's recorded layer. A 50% corner stays circular at every width. */
 @Composable
 internal fun LiveDockFoldSelection(inline: Boolean, width: Int, compactHeight: Dp,
     expandedHeight: Dp, count: Int, selected: Int, padding: androidx.compose.foundation.layout.PaddingValues,
     spacing: Dp, color: androidx.compose.ui.graphics.Color, moving: Boolean, modifier: Modifier) {
-    if(count == 0 || selected < 0)return
+    if(count <= 0 || selected !in 0 until count)return
     val density=androidx.compose.ui.platform.LocalDensity.current
     val direction=androidx.compose.ui.platform.LocalLayoutDirection.current
-    val target=with(density) {
-        val h=expandedHeight.toPx()
-        val leftPad=padding.calculateLeftPadding(direction).toPx()
-        val rightPad=padding.calculateRightPadding(direction).toPx()
-        val topPad=padding.calculateTopPadding().toPx()
-        val bottomPad=padding.calculateBottomPadding().toPx()
-        val cell=(width-10.dp.toPx()-leftPad-rightPad-spacing.toPx()*(count-1))/count
-        val index=if(direction==androidx.compose.ui.unit.LayoutDirection.Rtl)count-1-selected else selected
-        val left=5.dp.toPx()+leftPad+index*(cell+spacing.toPx())
-        val compactLeft=if(selected==count-1)width-7.dp.toPx()-compactHeight.toPx() else 7.dp.toPx()
-        if(inline) Rect(compactLeft,-compactHeight.toPx(),compactLeft+compactHeight.toPx(),0f)
-        else Rect(left,-h+topPad,left+cell,-bottomPad)
-    }
+    val target = dockFoldSelectionTarget(inline, width, compactHeight, expandedHeight,
+        count, selected, padding, spacing, density, direction)
     val bounds by animateValueAsState(target,Rect.VectorConverter,
         if(LocalContentMotionReduced.current)snap() else DockBoundsSpec,label="dockFoldSelection")
     Layout(modifier=modifier,content={Box(Modifier
@@ -56,7 +67,7 @@ internal fun LiveDockFoldSelection(inline: Boolean, width: Int, compactHeight: D
         val child=children.single().measure(Constraints.fixed(bounds.width.roundToInt().coerceAtLeast(1),
             bounds.height.roundToInt().coerceAtLeast(1)))
         layout(constraints.maxWidth,constraints.maxHeight) {
-            child.placeRelative(bounds.left.roundToInt(),constraints.maxHeight+bounds.top.roundToInt())
+            child.place(bounds.left.roundToInt(),constraints.maxHeight+bounds.top.roundToInt())
         }
     }
 }

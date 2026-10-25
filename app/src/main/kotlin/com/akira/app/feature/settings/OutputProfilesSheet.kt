@@ -12,6 +12,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.akira.app.core.audio.*
 import com.akira.app.core.datastore.*
@@ -23,6 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import java.util.UUID
 import org.json.JSONObject
+import kotlin.math.roundToInt
 
 /** Profiles own their editor/menu state; closing an editor always returns to this list. */
 @Composable
@@ -122,14 +126,29 @@ internal fun EqProfileEditor(original: EqOutputProfile, onDismiss: () -> Unit, o
         title = { Text(profile.name) }, text = {
             Column(Modifier.verticalScroll(rememberScrollState(), flingBehavior = com.akira.app.core.design.motion.rememberAkiraBouncingFling())) {
                 profile.bands.indices.forEach { band ->
-                    Text(strings.eqBandLabel(band))
-                    Slider(profile.bands[band], { gain -> profile = profile.copy(bands = profile.bands.toMutableList().also { it[band] = gain }) }, valueRange = -12f..12f)
+                    val label = strings.eqBandLabel(band)
+                    val gainDescription = strings.ui(com.akira.app.core.i18n.AkiraUiText.GainFormat, profile.bands[band])
+                    EqProfileSlider(label, profile.bands[band], gainDescription, -12f..12f) { gain ->
+                        profile = profile.copy(bands = profile.bands.toMutableList().also { it[band] = gain })
+                    }
                 }
-                Text(strings.library.bass)
-                Slider(profile.bass, { profile = profile.copy(bass = it) })
-                Text(strings.library.space)
-                Slider(profile.space, { profile = profile.copy(space = it) })
+                EqProfileSlider(strings.library.bass, profile.bass, "${(profile.bass * 100).roundToInt()}%") {
+                    profile = profile.copy(bass = it)
+                }
+                EqProfileSlider(strings.library.space, profile.space, "${(profile.space * 100).roundToInt()}%") {
+                    profile = profile.copy(space = it)
+                }
             }
         }, confirmButton = { TextButton(onClick = { onSave(profile) }) { Text(strings.library.save) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(strings.cancel) } })
+}
+
+@Composable
+private fun EqProfileSlider(label: String, value: Float, valueDescription: String,
+    range: ClosedFloatingPointRange<Float> = 0f..1f, onValueChange: (Float) -> Unit) {
+    Text(label)
+    Slider(value, onValueChange, valueRange = range, modifier = Modifier.semantics {
+        contentDescription = label
+        stateDescription = valueDescription
+    })
 }

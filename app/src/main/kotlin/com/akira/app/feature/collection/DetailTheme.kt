@@ -12,7 +12,7 @@ import android.graphics.drawable.BitmapDrawable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-val LocalDetailSessions = staticCompositionLocalOf<androidx.compose.runtime.snapshots.SnapshotStateMap<Any, Unit>?> { null }
+val LocalDetailSessions = staticCompositionLocalOf<androidx.compose.runtime.snapshots.SnapshotStateMap<Any, Boolean>?> { null }
 
 val LocalDetailInk = staticCompositionLocalOf { Color.White }
 val LocalDetailAccentColor = staticCompositionLocalOf { mutableStateOf<Color?>(null) }

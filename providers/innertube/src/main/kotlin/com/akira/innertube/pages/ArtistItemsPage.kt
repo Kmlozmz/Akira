@@ -1,5 +1,3 @@
-// ArtistItemsPage.kt
-
 package com.akira.innertube.pages
 
 import com.akira.innertube.models.Album
@@ -101,7 +99,10 @@ data class ArtistItemsPage(
                     duration = null,
                     musicVideoType = renderer.musicVideoType,
                     thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
-                    endpoint = renderer.navigationEndpoint.watchEndpoint
+                    endpoint = renderer.navigationEndpoint.watchEndpoint,
+                    explicit = renderer.subtitleBadges?.any {
+                        it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
+                    } == true
                 )
                 renderer.isPlaylist -> PlaylistItem(
                     id = renderer.navigationEndpoint.browseEndpoint?.browseId?.removePrefix("VL") ?: return null,

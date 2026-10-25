@@ -77,11 +77,11 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
     val added = remember(songs) { songs.sortedByDescending { if (it.dateAddedSec > 0) it.dateAddedSec else it.dateModifiedSec }.take(30) }
     val favorites = remember(songs) { songs.filter { it.isFavorite } }
     val forgotten = remember(favorites, stats) { favorites.filter { (statsMap[SongKey.of(it).encoded]?.lastPlayedAt ?: 0) < System.currentTimeMillis() - 90L*86400000 }.take(20) }
-    val albums = remember(songs) { songs.groupBy { it.albumId.toString()+"|"+it.album }.values.filter { it.first().album.isNotBlank() }.take(20) }
+    val albums = remember(songs) { songs.groupBy(::localAlbumKey).values.filter { it.first().album.isNotBlank() }.take(20) }
     val artists = remember(songs) { songs.groupBy { it.artist }.values.filter { it.first().artist.isNotBlank() }.take(20) }
     val userLists = remember(playlists, playlistEntries, songs) { playlists.map { list ->
-        list.title to playlistEntries.filter { it.playlistId == list.id }.mapNotNull { byKey[it.songKey] ?: byId[it.songKey] }
-    }.filter { it.second.isNotEmpty() } }
+        HomePlaylist(list.id, list.title, playlistEntries.filter { it.playlistId == list.id }.mapNotNull { byKey[it.songKey] ?: byId[it.songKey] })
+    }.filter { it.songs.isNotEmpty() } }
     val continueLabel = localizedText("Continue", "Continuar")
     val repeatLabel = localizedText("On repeat", "En repetición")
     val favoriteLabel = localizedText("Don't forget these songs", "No olvides estas canciones")
@@ -100,20 +100,30 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
             if (songs.size >= 4) add(HeroCarouselItem("gacha", "", isGacha = true))
             most.firstOrNull { it.id != first?.id }?.let { add(HeroCarouselItem("repeat", it.title, it.artist, it.albumArtUri, it, HeroLabel(repeatLabel))) }
             forgotten.firstOrNull { it.id != first?.id }?.let { add(HeroCarouselItem("forgotten", it.title, it.artist, it.albumArtUri, it, HeroLabel(favoriteLabel))) }
-            userLists.take(2).forEachIndexed { i,(title,list) -> add(HeroCarouselItem("playlist$i", title, thumbnailUrl=list.first().albumArtUri, reason=HeroLabel(albumLabel), opensPage=true, collection=list)) }
-            albums.take(2).forEach { list -> val s=list.first();add(HeroCarouselItem("album${s.albumId}${s.album}", s.album, s.artist, s.albumArtUri, reason=HeroLabel(albumLabel), opensPage=true, collection=list)) }
+            userLists.take(2).forEach { playlist ->
+                add(HeroCarouselItem("playlist-${playlist.id}", playlist.title, thumbnailUrl=playlist.songs.first().albumArtUri,
+                    reason=HeroLabel(albumLabel), opensPage=true, collection=playlist.songs,
+                    collectionRoute=HomeCollectionRoute.playlist(playlist.id, playlist.title, playlist.songs)))
+            }
+            albums.take(2).forEach { list ->
+                val song = list.first()
+                val identity = localAlbumKey(song)
+                add(HeroCarouselItem("album-$identity", song.album, song.artist, song.albumArtUri,
+                    reason=HeroLabel(albumLabel), opensPage=true, collection=list,
+                    collectionRoute=HomeCollectionRoute.album(song, list, "home-album-$identity")))
+            }
             recent.filter { candidate -> none { it.song?.id == candidate.id } }.take(2).forEach { s -> add(HeroCarouselItem("recent${s.id}",s.title,s.artist,s.albumArtUri,s,HeroLabel(continueLabel))) }
         }
     }
-    var collectionTitle by rememberSaveable { mutableStateOf<String?>(null) }
-    var collectionIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
-    var collectionTransitionKey by rememberSaveable { mutableStateOf<String?>(null) }
-    fun openCollection(title: String, list: List<Song>, key: String? = null) { collectionTransitionKey=key;collectionIds=list.map { it.id };collectionTitle=title }
-    BackHandler(collectionTitle != null && !obscured) { collectionTitle=null }
+    var collectionRoute by rememberSaveable { mutableStateOf<HomeCollectionRoute?>(null) }
+    fun openCollection(identity: String, title: String, list: List<Song>) {
+        collectionRoute = HomeCollectionRoute.tracks(identity, title, list)
+    }
+    BackHandler(collectionRoute != null && !obscured) { collectionRoute=null }
     val listState = rememberLazyListState()
     val reveal = rememberRevealSeenState()
     val scope = rememberCoroutineScope()
-    LaunchedEffect(scrollToTopRequest) { if(scrollToTopRequest>0) { collectionTitle=null;listState.animateScrollToItem(0) } }
+    LaunchedEffect(scrollToTopRequest) { if(scrollToTopRequest>0) { collectionRoute=null;listState.animateScrollToItem(0) } }
     val heroHeight = with(LocalDensity.current) { (LocalConfiguration.current.screenHeightDp * HeroHeightFraction).dp.toPx() }
     val heroProgress = remember(listState,heroHeight) { { if(listState.firstVisibleItemIndex>0)1f else (listState.firstVisibleItemScrollOffset/heroHeight).coerceIn(0f,1f) } }
     val homeGlassState = remember { GlassState() }
@@ -123,19 +133,17 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
     Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         SharedTransitionLayout(Modifier.fillMaxSize()) {
         CompositionLocalProvider(LocalSharedTransitionScope provides this) {
-        AnimatedContent(targetState=collectionTitle, transitionSpec={
-            if(collectionTransitionKey==null) pageNavigationTransform(targetState != null,reducedMotion).using(null)
+        AnimatedContent(targetState=collectionRoute, transitionSpec={
+            if((targetState ?: initialState)?.transitionKey==null) pageNavigationTransform(targetState != null,reducedMotion).using(null)
             else collectionContainerTransform(targetState != null,reducedMotion).using(null)
-        }, label="pageLocalCollection",modifier=Modifier.fillMaxSize()) { pageTitle ->
+        }, label="pageLocalCollection",modifier=Modifier.fillMaxSize()) { route ->
         CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
-        if(pageTitle!=null) {
-            val list=collectionIds.mapNotNull { byId[it] }
-            val first = list.firstOrNull()
-            val isAlbum = first != null && pageTitle == first.album && list.all { localAlbumKey(it) == localAlbumKey(first) }
-            val isArtist = first != null && pageTitle == first.artist && list.all { it.artist == first.artist }
-            if (first != null && (isAlbum || isArtist)) {
-                LocalCollectionDetail(if(isArtist) artistDetail(pageTitle).copy(transitionKey=collectionTransitionKey) else albumDetail(first,collectionTransitionKey),
-                    songs,current,playing,bottom,onPlay,onTogglePlay,onMore,{collectionTitle=null})
+        if(route!=null) {
+            val list = route.tracks(songs)
+            val detail = route.detailPage()
+            if (detail != null) {
+                LocalCollectionDetail(detail,
+                    songs,current,playing,bottom,onPlay,onTogglePlay,onMore,{collectionRoute=null})
             } else {
             val detailState = rememberLazyListState()
             val headerBackdrop = rememberLayerBackdrop()
@@ -147,7 +155,7 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
                 items(list,key={it.id}) { s -> LocalSongSwipeRow(s) { HomeTrackRow(s.albumArtUri,s.title,s.artist,s.id==current?.id,playing,{onPlay(s,list)},{onMore(s)},{onMore(s)},Modifier.padding(horizontal=HomeContentInset)) } }
             }
             CompositionLocalProvider(LocalPageHeaderBackdrop provides headerBackdrop) {
-                PagePageHeader(pageTitle, { collectionTitle=null }, collapse,
+                PagePageHeader(route.title, { collectionRoute=null }, collapse,
                     topInset=WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
             }
             }
@@ -160,8 +168,11 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
             val elastic=rememberAkiraBouncingEffect(pinTopContent=true,allowTopPull=false)
             LazyColumn(state=listState,overscrollEffect=elastic,modifier=Modifier.glassRoot(homeGlassState, isActive = { heroProgress() > 0f }),contentPadding=PaddingValues(bottom=bottom), flingBehavior = com.akira.app.core.design.motion.rememberAkiraBouncingFling()) {
                 item("hero") { CompositionLocalProvider(LocalAkiraMediaPull provides {elastic?.topPull?:0f}) { HeroCarousel(heroItems,songs,current?.id,playing,
-                    onItemClick={ item -> if(item.opensPage)openCollection(item.mainText,item.collection) else item.song?.let { if(it.id==current?.id)onTogglePlay() else onPlay(it,songs) } },
+                    onItemClick={ item -> if(item.opensPage)collectionRoute=item.collectionRoute else item.song?.let { if(it.id==current?.id)onTogglePlay() else onPlay(it,songs) } },
                     onRandomPlay=onRandomPlay,heroScrollProgressProvider=heroProgress,held={obscured||heroProgress()>.08f||elastic?.isInProgress==true},isLoading=!initialized && !loadFailed) } }
+                if (initialized && loadFailed) {
+                    item("refresh-error") { com.akira.app.feature.library.LibraryRefreshError(onRetry, Modifier.padding(HomeContentInset)) }
+                }
                 if(!initialized && loadFailed) {
                     item("load-error") { Column(Modifier.padding(HomeContentInset)) {
                         Text(localizedText("Couldn't read your library", "No se pudo leer tu biblioteca"), style=HomeTitleStyle)
@@ -178,7 +189,7 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
                 } else {
                     fun LazyListScope.cards(key: String,title: String,list: List<Song>) {
                         if(list.isEmpty())return
-                        item("title$key") { HomeSectionTitle(title,onClick={openCollection(title,list)},modifier=Modifier.revealOnAppear("title$key",reveal,cascade=true)) }
+                        item("title$key") { HomeSectionTitle(title,onClick={openCollection(key,title,list)},modifier=Modifier.revealOnAppear("title$key",reveal,cascade=true)) }
                         item("cards$key") { LazyRow(contentPadding=PaddingValues(horizontal=HomeContentInset),horizontalArrangement=Arrangement.spacedBy(HomeCardSpacing), flingBehavior = com.akira.app.core.design.motion.rememberAkiraBouncingFling()) {
                             itemsIndexed(list,key={_,s->s.id}) { index,s -> HomeCoverCard(s.title,s.artist,s.albumArtUri,
                                 Modifier.revealOnAppear("$key/${s.id}",reveal,delayMillis=index.coerceAtMost(4)*60).combinedClickable(interactionSource=null,indication=HomeCardHighlight,onClick={onPlay(s,list)},onLongClick={onMore(s)}),isActive=s.id==current?.id,isPlaying=playing) }
@@ -187,7 +198,7 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
                     }
                     cards("recent",recentLabel,recent.take(15))
                     if(most.isNotEmpty()) {
-                        item("ranktitle"){HomeSectionTitle(localizedText("Most Played","Más escuchadas"),onClick={openCollection(repeatLabel,most)})}
+                        item("ranktitle"){HomeSectionTitle(localizedText("Most Played","Más escuchadas"),onClick={openCollection("most-played",repeatLabel,most)})}
                         item("ranks") {
                             val state=rememberLazyGridState();val rows=most.size.coerceAtMost(3)
                             LazyHorizontalGrid(rows=GridCells.Fixed(rows),state=state,flingBehavior=rememberSnapFlingBehavior(state),modifier=Modifier.height((54*rows+12*(rows-1)).dp),
@@ -201,24 +212,29 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
                     cards("favorites",likedLabel,favorites.take(15))
                     cards("forgotten",favoriteLabel,forgotten)
                     if(userLists.isNotEmpty()) {
-                        item("playlisttitle"){HomeSectionTitle(playlistsLabel,onClick={openCollection(playlistsLabel,userLists.flatMap{it.second}.distinctBy{it.id})})}
+                        item("playlisttitle"){HomeSectionTitle(playlistsLabel,onClick={openCollection("playlists",playlistsLabel,userLists.flatMap{it.songs}.distinctBy{it.id})})}
                         item("playlists"){LazyRow(contentPadding=PaddingValues(horizontal=HomeContentInset),horizontalArrangement=Arrangement.spacedBy(HomeCardSpacing), flingBehavior = com.akira.app.core.design.motion.rememberAkiraBouncingFling()){
-                            itemsIndexed(userLists,key={index,_->index}){_,(title,list)->HomeCoverCard(title,localizedText("${list.size} songs","${list.size} canciones"),list.first().albumArtUri,Modifier.containerTransformSource("playlist-$title", coverUrl=list.first().albumArtUri).clickable{openCollection(title,list,"playlist-$title")})}
+                            items(userLists,key={it.id}) { playlist ->
+                                val route = HomeCollectionRoute.playlist(playlist.id, playlist.title, playlist.songs)
+                                HomeCoverCard(playlist.title, localizedText("${playlist.songs.size} songs","${playlist.songs.size} canciones"),
+                                    playlist.songs.first().albumArtUri, Modifier.containerTransformSource(route.transitionKey,
+                                        coverUrl=playlist.songs.first().albumArtUri).clickable { collectionRoute=route })
+                            }
                         }}
                         item("playlistspace"){Spacer(Modifier.height(34.dp))}
                     }
-                    item("artisttitle"){HomeSectionTitle(artistsLabel,onClick={openCollection(artistsLabel,artists.flatMap{it})})}
+                    item("artisttitle"){HomeSectionTitle(artistsLabel,onClick={openCollection("artists",artistsLabel,artists.flatMap{it})})}
                     item("artists"){LazyRow(contentPadding=PaddingValues(horizontal=HomeContentInset),horizontalArrangement=Arrangement.spacedBy(HomeCardSpacing), flingBehavior = com.akira.app.core.design.motion.rememberAkiraBouncingFling()){
-                        items(artists,key={it.first().artist}){list->HomeCoverCard(list.first().artist,null,list.first().albumArtUri,Modifier.containerTransformSource("artist-${list.first().artist}",cornerRadius=68.5.dp,coverUrl=list.first().albumArtUri).clickable{openCollection(list.first().artist,list,"artist-${list.first().artist}")},circular=true)}
+                        items(artists,key={it.first().artist}){list->HomeCoverCard(list.first().artist,null,list.first().albumArtUri,Modifier.containerTransformSource("artist-${list.first().artist}",cornerRadius=68.5.dp,coverUrl=list.first().albumArtUri).clickable{collectionRoute=HomeCollectionRoute.artist(list.first().artist,list)},circular=true)}
                     }}
                     item("artistspace"){Spacer(Modifier.height(34.dp))}
-                    item("albumtitle"){HomeSectionTitle(localizedText("Albums from your library","Álbumes de tu biblioteca"),onClick={openCollection(albumLabel,albums.flatMap{it})})}
+                    item("albumtitle"){HomeSectionTitle(localizedText("Albums from your library","Álbumes de tu biblioteca"),onClick={openCollection("albums",albumLabel,albums.flatMap{it})})}
                     item("albums"){LazyRow(contentPadding=PaddingValues(horizontal=HomeContentInset),horizontalArrangement=Arrangement.spacedBy(HomeCardSpacing), flingBehavior = com.akira.app.core.design.motion.rememberAkiraBouncingFling()){
-                        items(albums,key={localAlbumKey(it.first())}){list->HomeCoverCard(list.first().album,list.first().artist,list.first().albumArtUri,Modifier.containerTransformSource("home-album-${localAlbumKey(list.first())}",coverUrl=list.first().albumArtUri).clickable{openCollection(list.first().album,list,"home-album-${localAlbumKey(list.first())}")})}
+                        items(albums,key={localAlbumKey(it.first())}){list->HomeCoverCard(list.first().album,list.first().artist,list.first().albumArtUri,Modifier.containerTransformSource("home-album-${localAlbumKey(list.first())}",coverUrl=list.first().albumArtUri).clickable{collectionRoute=HomeCollectionRoute.album(list.first(),list,"home-album-${localAlbumKey(list.first())}")})}
                     }}
                     item("end"){Spacer(Modifier.height(30.dp))}
                     if(most.isNotEmpty()) {
-                        item("album-banners-title"){HomeSectionTitle(localizedText("Albums on repeat","Álbumes en repetición"),onClick={openCollection(repeatLabel,most)})}
+                        item("album-banners-title"){HomeSectionTitle(localizedText("Albums on repeat","Álbumes en repetición"),onClick={openCollection("albums-on-repeat",repeatLabel,most)})}
                         item("album-banners") {
                             val width=(LocalConfiguration.current.screenWidthDp-72).dp
                             LazyRow(contentPadding=PaddingValues(horizontal=HomeContentInset),horizontalArrangement=Arrangement.spacedBy(HomeCardSpacing), flingBehavior = com.akira.app.core.design.motion.rememberAkiraBouncingFling()) {
@@ -227,7 +243,7 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
                                     HomeVideoCard(s.album,s.artist,s.albumArtUri,width,current?.album==s.album,playing,
                                         Modifier.containerTransformSource("home-repeat-${localAlbumKey(s)}",coverUrl=s.albumArtUri)
                                             .semantics {contentDescription="${s.album} · ${s.artist}"}
-                                            .clickable{openCollection(s.album,tracks,"home-repeat-${localAlbumKey(s)}")})
+                                             .clickable{collectionRoute=HomeCollectionRoute.album(s,tracks,"home-repeat-${localAlbumKey(s)}")})
                                 }
                             }
                         }

@@ -32,6 +32,14 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.platform.LocalAccessibilityManager
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import java.util.WeakHashMap
 
 private data class AkiraNoticeVisuals(
     override val message: String,
@@ -41,14 +49,32 @@ private data class AkiraNoticeVisuals(
     val thumbnail: String?
 ) : SnackbarVisuals
 
-/** Action notices expire too; Material's action-label default is otherwise indefinite. */
+private val noticeRequests = WeakHashMap<SnackbarHostState, Deferred<SnackbarResult>>()
+
+/** Replacing a notice dismisses its undo action without cancelling the caller's scope. */
 suspend fun SnackbarHostState.showAkiraSnackbar(
     message: String,
     actionLabel: String? = null,
     withDismissAction: Boolean = false,
     duration: SnackbarDuration = SnackbarDuration.Short,
     thumbnail: String? = null
-): SnackbarResult = showSnackbar(AkiraNoticeVisuals(message, actionLabel, withDismissAction, duration, thumbnail))
+): SnackbarResult = coroutineScope {
+    val host = this@showAkiraSnackbar
+    val request = async(start = CoroutineStart.LAZY) {
+        host.showSnackbar(AkiraNoticeVisuals(message, actionLabel, withDismissAction, duration, thumbnail))
+    }
+    synchronized(noticeRequests) { noticeRequests.put(host, request)?.cancel() }
+    try {
+        request.await()
+    } catch (cancelled: CancellationException) {
+        currentCoroutineContext().ensureActive()
+        SnackbarResult.Dismissed
+    } finally {
+        synchronized(noticeRequests) {
+            if (noticeRequests[host] === request) noticeRequests.remove(host)
+        }
+    }
+}
 
 /** Passive notices are delivered directly to the most recently opened app window. */
 internal class NoticeWindow(val priority: Int, val show: (String) -> Unit)
@@ -56,18 +82,19 @@ val LocalAkiraNoticeColors = staticCompositionLocalOf<ColorScheme?> { null }
 
 object AkiraNotices {
     internal val windows = mutableStateListOf<NoticeWindow>()
-    private val pending = ArrayDeque<String>()
+    private var pending: String? = null
     internal fun activeWindow() = windows.asReversed().maxByOrNull { it.priority }
     fun show(message: String) {
         val window = activeWindow()
         if (window != null) window.show(message) else {
-            if (pending.size == 16) pending.removeFirst()
-            pending.addLast(message)
+            pending = message
         }
     }
     internal fun attach(window: NoticeWindow) {
         windows.add(window)
-        while (pending.isNotEmpty()) window.show(pending.removeFirst())
+        val message = pending
+        pending = null
+        if (message != null) window.show(message)
     }
 }
 

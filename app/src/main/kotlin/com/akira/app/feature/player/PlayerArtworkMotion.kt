@@ -6,6 +6,7 @@ import com.akira.app.feature.lyrics.*
 import com.akira.app.feature.queue.*
 
 import androidx.compose.animation.core.*
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -114,7 +115,7 @@ internal fun PlayerArtworkSurface(motion: PlayerArtworkMotion, song: Song,
             com.akira.app.core.widget.WidgetTransitionArtwork(song.albumArtUri,
                 Modifier.fillMaxSize(),imageRequest=rememberPlayerArtworkRequest(song.albumArtUri))
         } else {
-            val activity=androidx.compose.ui.platform.LocalContext.current as? com.akira.app.MainActivity
+            val activity=LocalActivity.current as? com.akira.app.MainActivity
             LaunchedEffect(activity) { activity?.widgetArtworkReady=true;activity?.widgetLaunchMotion?.contentReady=true }
             Icon(Icons.Rounded.MusicNote,null,Modifier.size(76.dp).onGloballyPositioned {
                 activity?.widgetLaunchMotion?.takeIf { motion -> !motion.finished }?.artworkTarget=it.boundsInWindow()

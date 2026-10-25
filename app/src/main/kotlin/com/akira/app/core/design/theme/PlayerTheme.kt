@@ -1,5 +1,9 @@
 package com.akira.app.core.design.theme
 
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.runtime.getValue
+import com.akira.app.core.design.components.akiraFocusOutline
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -145,13 +149,13 @@ fun AkiraTheme(
     }
 }
 
-/**
- * Clickable limpio y directo sin indicador visual ripple.
- */
+/** No touch ripple; keyboard focus retains its own visible outline. */
 fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier = composed {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
     clickable(
-        interactionSource = remember { MutableInteractionSource() },
+        interactionSource = interaction,
         indication = null,
         onClick = onClick
-    )
+    ).akiraFocusOutline(focused)
 }

@@ -38,6 +38,13 @@ internal class ElasticGlassShape(
     private val density: Density,
     private val preserveCapsuleEnds: Boolean = false,
 ): CornerBasedShape(LiveCorner(radius),LiveCorner(radius),LiveCorner(radius),LiveCorner(radius)) {
+    private var cachedSize = Size.Unspecified
+    private var cachedRadius = Float.NaN
+    private var cachedSmoothing = Float.NaN
+    private var cachedStrain = Offset.Unspecified
+    private var cachedDirection: LayoutDirection? = null
+    private var cachedOutline: Outline? = null
+
     fun strainFor(size: Size): Offset {
         val value=strain()
         return if(preserveCapsuleEnds) Offset(value.x*size.minDimension/size.width.coerceAtLeast(1f),
@@ -45,10 +52,22 @@ internal class ElasticGlassShape(
     }
     override fun createOutline(size: Size, topStart: Float, topEnd: Float, bottomEnd: Float,
         bottomStart: Float, layoutDirection: LayoutDirection): Outline {
-        val base = ContinuousMenuShape(with(density){radius().coerceIn(0f,size.minDimension/2f).toDp()},smoothing().coerceIn(0f,1f))
-            .createOutline(size,layoutDirection,density)
+        val radiusPx = radius().coerceIn(0f,size.minDimension/2f)
+        val smooth = smoothing().coerceIn(0f,1f)
         val deformation = strainFor(size)
-        if (abs(deformation.x)+abs(deformation.y)<.001f) return base
+        // Clipping, the rim and the shadow request the same outline in a frame.
+        cachedOutline?.let {
+            if(cachedSize==size && cachedRadius==radiusPx && cachedSmoothing==smooth &&
+                cachedStrain==deformation && cachedDirection==layoutDirection)return it
+        }
+        val base = ContinuousMenuShape(with(density){radiusPx.toDp()},smooth)
+            .createOutline(size,layoutDirection,density)
+        fun retain(outline: Outline): Outline {
+            cachedSize=size;cachedRadius=radiusPx;cachedSmoothing=smooth
+            cachedStrain=deformation;cachedDirection=layoutDirection;cachedOutline=outline
+            return outline
+        }
+        if (abs(deformation.x)+abs(deformation.y)<.001f) return retain(base)
         val source = when(base) {
             is Outline.Generic -> base.path
             is Outline.Rounded -> Path().apply { addRoundRect(base.roundRect) }
@@ -62,7 +81,7 @@ internal class ElasticGlassShape(
             if(i==0)path.moveTo(p.x,p.y) else path.lineTo(p.x,p.y)
         }
         path.close()
-        return Outline.Generic(path)
+        return retain(Outline.Generic(path))
     }
     override fun copy(topStart: CornerSize,topEnd: CornerSize,bottomEnd: CornerSize,bottomStart: CornerSize): CornerBasedShape = this
 }

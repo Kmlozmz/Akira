@@ -56,9 +56,11 @@ import kotlinx.coroutines.withContext
 @Composable
 fun SettingsScreen(prefsRepo: UserPreferencesRepository, onBack: () -> Unit, modifier: Modifier = Modifier,
     onTestCrossfade: () -> Unit = {}, previewSongs: List<Song> = emptyList(), previewSong: Song? = null,
-    bottomContentPadding: Dp = 0.dp) {
+    bottomContentPadding: Dp = 0.dp, startWithSound: Boolean = false) {
     val prefs by prefsRepo.userPreferences.collectAsStateWithLifecycle(initialValue = null)
-    var section by rememberSaveable { mutableStateOf<SettingsSection?>(null) }
+    var section by rememberSaveable(startWithSound) {
+        mutableStateOf<SettingsSection?>(if (startWithSound) SettingsSection.SOUND else null)
+    }
     var editor by rememberSaveable { mutableStateOf<SettingsEditor?>(null) }
     val parentNavigation = LocalStudioNavigation.current
     val navigation = parentNavigation ?: remember { StudioNavigationState() }

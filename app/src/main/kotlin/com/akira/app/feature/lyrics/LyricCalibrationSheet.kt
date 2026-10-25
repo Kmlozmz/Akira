@@ -46,17 +46,9 @@ import com.akira.app.core.design.theme.AkiraFontFamily
 import com.akira.app.core.design.util.rememberAkiraHaptics
 import com.akira.app.core.i18n.LocalStrings
 import com.akira.app.core.lyrics.LyricLine
+import com.akira.app.core.lyrics.LyricTiming
 import java.util.Locale
 
-private const val MIN_OFFSET_MS = -10_000L
-private const val MAX_OFFSET_MS = 10_000L
-
-/**
- * Hoja modal para calibración fina del desfase de letras sincronizadas.
- *
- * Permite ajustes rápidos (±0,5s, ±1s) y finos (±50ms) entre -10s y +10s.
- * Muestra vista previa en tiempo real del verso que cambiaría de posición.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LyricCalibrationSheet(
@@ -72,11 +64,11 @@ fun LyricCalibrationSheet(
     val colors = MaterialTheme.colorScheme
 
 
-    var currentOffset by remember(initialOffsetMs) { mutableLongStateOf(initialOffsetMs) }
+    var currentOffset by remember(initialOffsetMs) { mutableLongStateOf(LyricTiming.clampOffsetMs(initialOffsetMs)) }
 
     fun adjust(deltaMs: Long) {
         haptics.tick()
-        currentOffset = (currentOffset + deltaMs).coerceIn(MIN_OFFSET_MS, MAX_OFFSET_MS)
+        currentOffset = LyricTiming.adjustOffsetMs(currentOffset, deltaMs)
         onOffsetChanged(currentOffset)
     }
 
@@ -93,7 +85,6 @@ fun LyricCalibrationSheet(
                 .navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Título
             Text(
                 text = strings.calibrateSyncTitle,
                 fontSize = 18.sp,
@@ -114,7 +105,6 @@ fun LyricCalibrationSheet(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Indicador numérico principal del desfase
             val formattedOffset = strings.ui(AkiraUiText.OffsetDisplay, currentOffset / 1000.0, currentOffset)
 
             Box(
@@ -135,12 +125,11 @@ fun LyricCalibrationSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Vista previa en tiempo real del verso activo resultante
-            val effectiveTime = currentPositionMs + currentOffset
+            val effectiveTime = LyricTiming.effectivePositionMs(currentPositionMs, currentOffset)
             val previewLine = remember(effectiveTime, lyricLines) {
                 if (lyricLines.isEmpty()) ""
                 else {
-                    val match = lyricLines.lastOrNull { it.timeMs <= effectiveTime }
+                    val match = lyricLines.getOrNull(LyricTiming.activeLineIndex(lyricLines, effectiveTime))
                     match?.text ?: lyricLines.first().text
                 }
             }
@@ -181,7 +170,6 @@ fun LyricCalibrationSheet(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Controles rápidos: -1.0s, -0.5s, +0.5s, +1.0s
             Text(
                 text = strings.quickAdjustment,
                 fontSize = 12.sp,
@@ -205,7 +193,6 @@ fun LyricCalibrationSheet(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Controles finos: -50ms, +50ms
             Text(
                 text = strings.fineAdjustment,
                 fontSize = 12.sp,
@@ -227,7 +214,6 @@ fun LyricCalibrationSheet(
 
             Spacer(modifier = Modifier.height(22.dp))
 
-            // Botones inferiores: Restablecer a 0 y Guardar
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -261,7 +247,7 @@ fun LyricCalibrationSheet(
                         .background(colors.primary)
                         .clickable {
                             haptics.confirm()
-                            onSaveOffset(currentOffset)
+                            onSaveOffset(LyricTiming.clampOffsetMs(currentOffset))
                             onDismiss()
                         }
                         .padding(vertical = 13.dp),

@@ -20,31 +20,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import org.json.JSONObject
-
-internal data class UpdatesState(
-    val checking: Boolean = false,
-    val checked: Boolean = false,
-    val result: UpdateCheck? = null,
-    val failure: UpdateFailure? = null,
-    val downloading: Boolean = false,
-    val verifying: Boolean = false,
-    val cancelling: Boolean = false,
-    val downloadCancelled: Boolean = false,
-    val installerReturned: Boolean = false,
-    val completedVersion: String? = null,
-    val progress: Float = 0f,
-    val downloadedBytes: Long = 0,
-    val downloaded: File? = null,
-    val dialogVisible: Boolean = false,
-    val pageVisible: Boolean = false,
-    val installWhenReady: Boolean = false,
-    val preparingInstaller: Boolean = false,
-    val installationNotice: InstallationNotice? = null,
-)
 
 internal class UpdatesViewModel(application: Application) : AndroidViewModel(application) {
     val updates = AppUpdates(application)
@@ -57,7 +35,7 @@ internal class UpdatesViewModel(application: Application) : AndroidViewModel(app
     val state = mutable.asStateFlow()
 
     fun check(showAvailable: Boolean = true) {
-        if (mutable.value.checking || mutable.value.downloading) return
+        if (!mutable.value.canCheckForUpdates) return
         mutable.update { it.copy(checking = true, failure = null, downloadCancelled = false, installerReturned = false) }
         viewModelScope.launch {
             try {

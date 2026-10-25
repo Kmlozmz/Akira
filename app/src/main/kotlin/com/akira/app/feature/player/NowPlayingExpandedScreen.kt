@@ -160,10 +160,6 @@ private enum class ExpandedPage {
 
 private const val DETAIL_CONTROLS_HIDE_DELAY_MS = 3_000L
 
-// -------------------------------------------------------------
-// Interactive Animated Control Button with Spring & Touch Halo
-// -------------------------------------------------------------
-
 @Composable
 private fun AnimatedControlButton(
     onClick: () -> Unit,
@@ -218,8 +214,6 @@ private fun LyricsBubbleIcon(
     active: Boolean,
     modifier: Modifier = Modifier
 ) {
-                    // Burbuja de diálogo con cita dentro, como el video de referencia.
-    // Tint animado para que el cambio de estado nunca parpadee.
     val bubbleTint by animateColorAsState(
         targetValue = if (active) Color.White else Color.White.copy(alpha = 0.50f),
         animationSpec = tween(150),
@@ -249,10 +243,6 @@ private fun LyricsBubbleIcon(
 
 @Composable
 private fun ActiveDot(visible: Boolean) {
-    // Animamos el COLOR del fondo en vez de un alpha en graphicsLayer: dentro de
-    // graphicsLayer{} el receptor (GraphicsLayerScope) ya tiene `alpha`, así que una
-    // variable local homónima se auto-asignaba y el punto quedaba siempre visible.
-    // Con el color no hay ambigüedad posible.
     val dotColor by animateColorAsState(
         targetValue = if (visible) Color.White else Color.Transparent,
         animationSpec = tween(160),
@@ -267,10 +257,6 @@ private fun ActiveDot(visible: Boolean) {
     )
 }
 
-// -------------------------------------------------------------
-// Full-Screen Now Playing Expanded Screen
-// -------------------------------------------------------------
-
 @Composable
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 internal fun NowPlayingExpandedScreen(
@@ -278,7 +264,7 @@ internal fun NowPlayingExpandedScreen(
     isPlaying: Boolean,
     musicService: MusicServiceConnection,
     isShuffleActive: Boolean,
-    repeatMode: Int,
+    repeatState: QueueRepeatState,
     playerExpansionProgress: Animatable<Float, *>,
     sheetTravelPx: Float,
     dynamicPrimaryColor: Color,
@@ -292,6 +278,7 @@ internal fun NowPlayingExpandedScreen(
     onToggleRepeat: () -> Unit,
     onSeekTo: (Float) -> Unit,
     onToggleFavorite: (Song) -> Unit,
+    onOpenAudioSettings: () -> Unit,
     onDeleteSong: ((Song) -> Unit)? = null,
     onGoToAlbum: ((Song) -> Unit)? = null,
     onGoToArtist: ((Song) -> Unit)? = null,
@@ -335,6 +322,32 @@ internal fun NowPlayingExpandedScreen(
             }
     }
     val context = LocalContext.current
+    val audioFormat by musicService.audioFormat.collectAsStateWithLifecycle()
+    val sourceQuality = remember(song.contentUri, song.mimeType, audioFormat) {
+        if (audioFormat != null) com.akira.app.core.media.audioQuality(audioFormat?.sampleMimeType, audioFormat?.codecs)
+        else if (!song.contentUri.startsWith("akira-youtube:")) com.akira.app.core.media.audioQuality(song.mimeType)
+        else null
+    }
+    val qualityInfo = remember(sourceQuality, audioFormat, song.format) {
+        sourceQuality?.let { quality ->
+            val codec = when (audioFormat?.sampleMimeType?.lowercase()) {
+                "audio/flac", "audio/x-flac" -> "FLAC"
+                "audio/alac" -> "ALAC"
+                "audio/raw" -> "PCM"
+                "audio/eac3-joc" -> "E-AC-3 JOC"
+                else -> song.format.uppercase().takeIf { it in setOf("FLAC", "ALAC", "PCM") }
+            }
+            val bits = when (audioFormat?.pcmEncoding) {
+                androidx.media3.common.C.ENCODING_PCM_8BIT -> 8
+                androidx.media3.common.C.ENCODING_PCM_16BIT -> 16
+                androidx.media3.common.C.ENCODING_PCM_24BIT -> 24
+                androidx.media3.common.C.ENCODING_PCM_32BIT, androidx.media3.common.C.ENCODING_PCM_FLOAT -> 32
+                else -> null
+            }
+            com.akira.app.core.media.AudioQualityInfo(quality, codec,
+                audioFormat?.sampleRate?.takeIf { it > 0 }, bits)
+        }
+    }
     val strings = LocalStrings.current
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -358,12 +371,7 @@ internal fun NowPlayingExpandedScreen(
     var isLyricsOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     var isQueueOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     var showOptionsSheet by remember { mutableStateOf(false) }
-    // Punto de entrada del temporizador de apagado. El temporizador vivía en el
-    // servicio y la hoja existía, pero no había ningún control que la abriera:
-    // era una función inalcanzable.
     var showSleepTimerSheet by remember { mutableStateOf(false) }
-    // Cuenta atrás viva: si hay temporizador activo se muestra como pastilla y
-    // el icono pasa a estar resaltado.
     val sleepRemaining by SleepTimerBus.remainingMs.collectAsStateWithLifecycle()
     val sleepMode by SleepTimerBus.activeMode.collectAsStateWithLifecycle()
     val sleepActive = sleepMode != 0L
@@ -418,11 +426,7 @@ internal fun NowPlayingExpandedScreen(
     var controlsInteraction by remember { mutableIntStateOf(0) }
     var lyricsAtTopBoundary by remember { mutableStateOf(true) }
     var lyricsListTopPx by remember { mutableFloatStateOf(0f) }
-    // Offset del propio sheet respecto a la raíz. Necesario porque
-    // detectVerticalDragGestures entrega onDragStart en coordenadas LOCALES del
-    // nodo con pointerInput, mientras que lyricsListTopPx viene de
-    // positionInRoot(). Compararlos sin sumar este offset mezcla dos sistemas de
-    // coordenadas y sólo acierta por casualidad si el sheet empieza en y=0.
+    // Gesture positions are local; lyric-list bounds are in root coordinates.
     val sheetRootTopPx = remember { mutableFloatStateOf(0f) }
     var loadedLyrics by remember(song.path, song.id) { mutableStateOf(LoadedLyrics()) }
     val detailScrollActive by androidx.compose.runtime.rememberUpdatedState(!isQueueOpen && isLyricsOpen && loadedLyrics.hasLyrics)
@@ -443,14 +447,11 @@ internal fun NowPlayingExpandedScreen(
         if (com.akira.app.BuildConfig.DEBUG) android.util.Log.d("AkiraMotion",
             "detail=${if (isQueueOpen) "queue" else if (isLyricsOpen) "lyrics" else "player"} controls=${playerControlsVisible(true, isQueueOpen, isLyricsOpen, loadedLyrics.hasLyrics, hideScrubber, showControlsOnScroll)}")
     }
-    // Al hacer seek se vuelve a mostrar para no perder el control
     LaunchedEffect(isSeeking) {
         if (isSeeking && detailScrollActive) hideScrubber = false
     }
 
-    // Letras: carga en IO sin bloquear la composición. Orden: sidecar en disco,
-    // tags embebidos del audio (USLT/Vorbis/©lyr vía ContentResolver) y sidecar
-    // indexado en MediaStore.Files. Soporta .lrc/.txt/.srt/.vtt.
+    // Local and saved lyrics precede online lookup unless the user overrides the source.
     val internetAvailable = com.akira.app.core.lyrics.rememberInternetAvailable()
     val savedLyricsStore = remember(context) { com.akira.app.core.lyrics.SavedLyricsStore(java.io.File(context.filesDir, "downloaded_lyrics")) }
     val lyricsSongKey = remember(song.id,song.path,song.contentUri,song.durationMs) { com.akira.app.core.model.SongKey.of(song).encoded }
@@ -595,15 +596,11 @@ internal fun NowPlayingExpandedScreen(
     val currentPositionMs = (currentDisplayProgress * safeDurationMs).toLong()
     val remainingMs = (safeDurationMs - currentPositionMs).coerceAtLeast(0L)
 
-    // Índice de la línea activa (barato, un Int). Al cambiar de verso se
-    // re-lanza el auto-hide de controles, así que no tarda 2s en ocultarse.
     val lyricActiveLineKey = remember(lyricLines, currentPositionMs) {
         if (lyricLines.isEmpty()) -1
         else lyricLines.indexOfLast { it.timeMs <= currentPositionMs }.coerceAtLeast(0)
     }
 
-    // Al pasar de verso se ocultan de inmediato si el usuario los había
-    // revivido al scrollear (antes tardaban ~2s y se veían colgados).
     LaunchedEffect(showControlsOnScroll, isQueueOpen, isLyricsOpen, loadedLyrics.hasLyrics, isSeeking, volumeDragging, transportPressed) {
         if (showControlsOnScroll && detailScrollActive && !isSeeking && !volumeDragging && !transportPressed) {
             delay(DETAIL_CONTROLS_HIDE_DELAY_MS)
@@ -612,7 +609,6 @@ internal fun NowPlayingExpandedScreen(
         }
     }
 
-    // Audio Manager for Volume Slider
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager }
     val maxVolume = remember { audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15 }
     var volumeLevel by remember {
@@ -645,8 +641,6 @@ internal fun NowPlayingExpandedScreen(
     val currentCancelSettle by rememberUpdatedState(onCancelSettle)
     val currentSettle by rememberUpdatedState(onSettle)
     val currentDraggingChanged by rememberUpdatedState(onDraggingChanged)
-    // Swipe liviano: sigue al dedo 1:1 y al soltar decide por VELOCIDAD (fling)
-    // o por arrastre acumulado corto. El spring arranca con la velocidad real.
     Box(
         modifier = modifier.layerBackdrop(menuBackdrop).graphicsLayer {
             val outputSceneBlur=if(showAudioOutputSheet)14f*outputSource.presentationProgress() else 0f
@@ -680,18 +674,12 @@ internal fun NowPlayingExpandedScreen(
                         velocityTracker.resetTracking()
                         dragDeltaPx = 0f
                         trackedY = 0f
-                        // Con las letras abiertas, un arrastre que EMPIEZA en la cabecera
-                        // (por encima de la lista) siempre es del sheet. Antes, con la lista
-                        // desplazada (lo normal: se auto-desplaza a la línea activa) no se
-                        // podía minimizar con swipe en ningún punto.
-                        // startOffset es LOCAL al sheet; lyricsListTopPx está en
-                        // coordenadas raíz. Se comparan en el mismo sistema.
+                        // A drag starting above the lyrics belongs to the sheet.
                         val startYInRoot = sheetRootTopPx.floatValue + startOffset.y
                         startedInHeader = startYInRoot < lyricsListTopPx
                     },
                     onVerticalDrag = { change, dragAmount ->
-                        // Con las letras abiertas y el dedo sobre la lista, el arrastre es del
-                        // scroll mientras la lista tenga letras anteriores.
+                        // Preserve lyric scrolling when earlier lines remain.
                         val listOwnsGesture = isLyricsOpen && lyricsAtTopBoundary && !startedInHeader
                         if (listOwnsGesture) {
                             change.consume()
@@ -758,10 +746,7 @@ internal fun NowPlayingExpandedScreen(
                 )
             }
     ) {
-        // La progresión se lee SÓLO en la fase de dibujo (graphicsLayer) o a través de
-        // derivedStateOf. Antes `.value` se leía aquí, en composición, así que cada frame
-        // del arrastre recomponía toda la pantalla (letras, controles, sliders...): esa
-        // era la causa principal de que el sheet se sintiera "pesado".
+        // Read expansion in the graphics layer to avoid composing for each drag frame.
         val controlsAlphaOf: () -> Float = {
             if(referencePortrait) {
                 val reveal=((playerExpansionProgress.value-.22f)/.60f).coerceIn(0f,1f)
@@ -769,7 +754,6 @@ internal fun NowPlayingExpandedScreen(
             } else ((playerExpansionProgress.value - 0.72f) / 0.23f).coerceIn(0f, 1f)
         }
 
-        // Back cierra primero la cola o las letras, luego el player
         BackHandler(enabled = isLyricsOpen || isQueueOpen) {
             if (isQueueOpen) isQueueOpen = false
             else if (isLyricsOpen) isLyricsOpen = false
@@ -781,9 +765,7 @@ internal fun NowPlayingExpandedScreen(
         PlayerArtworkSurface(artworkMotion,song,playerExpansionProgress,config.screenWidthDp*density.density,
             motionArtwork=motionArtwork.takeIf {motionAllowed && playerSettled},isPlaying=isPlaying)
 
-        // Persistent layout and a single visible artwork surface across all pages.
-        // Solo el hero colapsa/expande al entrar/salir de lyrics o cola; scrubber, playback,
-        // volumen y barra inferior no se mueven.
+        // Page changes share one artwork owner and one transport.
         AkiraExpandedPlayerLayout(wide=landscape,
             modifier = Modifier
                 .fillMaxWidth()
@@ -837,7 +819,7 @@ internal fun NowPlayingExpandedScreen(
                                 queue = queue,
                                 currentPlayingIndex = currentMediaItemIndex,
                                 isShuffleActive = isShuffleActive,
-                                repeatMode = repeatMode,
+                                repeatState = repeatState,
                                 isAutoplayActive = isAutoplayActive,
                                 onCoverClick = {
                                     playHapticFeedback()
@@ -974,9 +956,6 @@ internal fun NowPlayingExpandedScreen(
                         },
                         onListTopChanged = { lyricsListTopPx = it },
                         onScrollBoundary = { canScrollBack ->
-                            // Si la lista todavía tiene letras anteriores por
-                            // recorrer, el gesto vertical es del scroll, no del
-                            // reproductor: se lo cedemos.
                             lyricsAtTopBoundary = canScrollBack
                         },
                         thumbModifier = artworkAnchor(14.dp, isLyricsOpen && !isQueueOpen)
@@ -1013,18 +992,15 @@ internal fun NowPlayingExpandedScreen(
 
                 Spacer(modifier = Modifier.height(if(compactPortrait)8.dp else 20.dp))
 
-// El pill de formato (FLAC · 24-bit / 96 kHz) se eliminó por petición del
-// usuario, pero se conserva SU ESPACIO con un Spacer de la misma altura
-// (6dp padding vertical + línea de texto ≈ 26dp) para que el resto del layout
-// (título, scrubber, controles) no se reacomode al quitarlo.
+                // Preserve the metadata gap specified by the player reference.
                 Spacer(modifier = Modifier.height(if(compactPortrait)8.dp else 26.dp))
 
 
-                    } // Cover and spacing
-                    } // Available hero bounds
-                } // ExpandedPage.PLAYER
-            } // when (page)
-            } // Persistent hero slot
+                    }
+                    }
+                }
+            }
+            }
 
             Box(Modifier.fillMaxWidth()) {
                 if (!isQueueOpen && (!isLyricsOpen || landscape)) {
@@ -1038,7 +1014,6 @@ internal fun NowPlayingExpandedScreen(
                             translationY = if(referencePortrait)0f else (1f-controlsAlpha)*80f
                         }
                 ) {
-                // 1. Song Title & Artist (Smooth slide transition on track change) + Star + 28dp 3-dots
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1073,8 +1048,8 @@ internal fun NowPlayingExpandedScreen(
                     PlayerTrackActions(isFavorite,playerInk,referencePortrait,
                         onFavorite={onToggleFavorite(song)},onMore={showOptionsSheet=true})
                 }
-                } // COL-C título (dentro del hero)
-            } // IF1 controlsAlpha (hero)
+                }
+            }
                 }
             }
             // Cover-complete portrait uses the reference's deeper metadata gap.
@@ -1087,11 +1062,7 @@ internal fun NowPlayingExpandedScreen(
                 }
             }
 
-            // -------------------------------------------------------------
-            // Controles: se ELIMINAN del árbol (no sólo se atenúan) cuando las
-            // letras o la cola están a pantalla completa, para que no ocupen espacio ni
-            // sigan siendo pulsables. AnimatedVisibility colapsa el alto.
-            // -------------------------------------------------------------
+            // Remove hidden detail controls from layout and input, rather than only fading them.
             Box(Modifier.fillMaxWidth().then(if(landscape || compactPortrait)Modifier.verticalScroll(rememberScrollState()) else Modifier)) {
             androidx.compose.animation.AnimatedVisibility(
                 visible = playerControlsVisible(true, isQueueOpen, isLyricsOpen, loadedLyrics.hasLyrics, hideScrubber, showControlsOnScroll),
@@ -1107,8 +1078,6 @@ internal fun NowPlayingExpandedScreen(
                             translationY = if(referencePortrait)0f else (1f-controlsAlpha)*80f
                         }
                 ) {
-                // 2. Scrubber / Time Bar + Timestamps (1:52 and -2:23)
-                // (el bloque completo de controles se atenúa arriba, en lyrics)
                 Column(modifier = Modifier.fillMaxWidth().padding(horizontal=if(referencePortrait)9.5.dp else 0.dp)) {
                     AkiraPlayerSlider(currentDisplayProgress, {
                         if (!isSeeking) playHapticFeedback()
@@ -1123,17 +1092,14 @@ internal fun NowPlayingExpandedScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 2.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = formatDuration(currentPositionMs),
-                            fontSize = 12.sp,
-                            fontFamily = if(referencePortrait)androidx.compose.ui.text.font.FontFamily.SansSerif else AkiraFontFamily,
-                            fontWeight = if(referencePortrait)FontWeight.Medium else FontWeight.Normal,
-                            letterSpacing = if(referencePortrait).6.sp else 0.sp,
-                            color = playerInk.copy(alpha = if(referencePortrait).35f else .55f)
-                        )
-                        // Temporizador activo: tiempo restante tocable que abre la hoja.
+                        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                            PlayerTimestamp(formatDuration(currentPositionMs), referencePortrait, playerArtworkBase(artworkColors.left))
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        qualityInfo?.let { AudioQualityBadge(song, it, onOpenAudioSettings) }
                         if (sleepActive) {
                             val sleepLabel = when (sleepMode) {
                                 SleepTimerBus.END_OF_SONG -> strings.sleepTimerEndOfSong
@@ -1162,26 +1128,21 @@ internal fun NowPlayingExpandedScreen(
                                 )
                             }
                         }
-                        Text(
-                            text = com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.S2, formatDuration(remainingMs)),
-                            fontSize = 12.sp,
-                            fontFamily = if(referencePortrait)androidx.compose.ui.text.font.FontFamily.SansSerif else AkiraFontFamily,
-                            fontWeight = if(referencePortrait)FontWeight.Medium else FontWeight.Normal,
-                            letterSpacing = if(referencePortrait).6.sp else 0.sp,
-                            color = playerInk.copy(alpha = if(referencePortrait).35f else .55f)
-                        )
+                        }
+                        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                            PlayerTimestamp(strings.ui(com.akira.app.core.i18n.AkiraUiText.S2, formatDuration(remainingMs)), referencePortrait,
+                                playerArtworkBase(artworkColors.right))
+                        }
                     }
-                } // fin Column scrubber
+                }
 
                 Spacer(modifier = Modifier.height(if(compactPortrait)8.dp else if(landscape)18.dp else if(referencePortrait)11.dp else 18.dp))
 
-                // 3. Playback Controls with Spring Bounce + Glowing Halo + Haptics (Matching pasar.mp4!)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Rewind / Previous Track
                     AnimatedControlButton(
                         onClick = {
                             haptics.transport()
@@ -1198,7 +1159,6 @@ internal fun NowPlayingExpandedScreen(
                             if(landscape || compactPortrait)Modifier.size(32.dp) else Modifier.offset(x=.3.dp).size(45.dp,44.7.dp), tint=transportInk)
                     }
 
-                    // Play / Pause Hero Button with Glyph Morph
                     AnimatedControlButton(
                         onClick = {
                             haptics.transport()
@@ -1214,7 +1174,6 @@ internal fun NowPlayingExpandedScreen(
                             tint=transportInk,modifier=Modifier.size(if(compactPortrait)44.dp else if(landscape)38.dp else 62.dp))
                     }
 
-                    // Fast Forward / Next Track
                     AnimatedControlButton(
                         onClick = {
                             haptics.transport()
@@ -1234,7 +1193,6 @@ internal fun NowPlayingExpandedScreen(
 
                 Spacer(modifier = Modifier.height(if(compactPortrait)12.dp else if(landscape)6.dp else if(referencePortrait)34.dp else 20.dp))
 
-                // 4. Volume Slider Row
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1269,7 +1227,6 @@ internal fun NowPlayingExpandedScreen(
 
                 Spacer(modifier = Modifier.height(if(compactPortrait)6.dp else if(landscape)6.dp else if(referencePortrait)12.dp else 20.dp))
 
-                // 5. Bottom Utilities: Lyrics (left), Audio Output (center), Queue (right)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1277,7 +1234,6 @@ internal fun NowPlayingExpandedScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Left: Lyrics Button
                     val lyricsTouch=remember { MutableInteractionSource() }
                     val lyricsPressed by lyricsTouch.collectIsPressedAsState()
                     val lyricsResponse=com.akira.app.core.design.components.rememberAkiraPressResponse(lyricsPressed)
@@ -1333,7 +1289,6 @@ internal fun NowPlayingExpandedScreen(
                         )
                     }
 
-                    // Center: Audio Output / Airplay
                     Box(
                         modifier = Modifier.then(outputSource.modifier)
                             .size(48.dp)
@@ -1353,7 +1308,6 @@ internal fun NowPlayingExpandedScreen(
                         )
                     }
 
-                    // Right: Queue Button
                     val queueActiveBgScale by animateFloatAsState(
                         targetValue = if (isQueueOpen) 1f else 0f,
                         animationSpec = if(playerMotionReduced)snap() else spring(dampingRatio = 0.74f, stiffness = 1000f),
@@ -1400,13 +1354,12 @@ internal fun NowPlayingExpandedScreen(
                         )
                     }
                 }
-                } // inner Column (controles fijos)
-            } // if (controlsAlpha)
-            } // Persistent transport slot in both orientations.
-        } // Column persistente (header + hero + controles)
+                }
+            }
+            }
+        }
 
 
-        // Sheets y diálogos modales
 androidx.compose.material3.MaterialTheme(colorScheme = com.akira.app.core.design.theme.DarkColorScheme) {
 androidx.compose.runtime.CompositionLocalProvider(LocalAppBackdrop provides modalBackdrop) {
 if (showOptionsSheet) {
@@ -1461,8 +1414,7 @@ if (showOptionsSheet) {
             )
         }
 
-        // Temporizador de apagado. Se manda por el bus porque el temporizador
-        // vive en el servicio y debe sobrevivir a que se cierre esta pantalla.
+        // The service owns the timer so it survives dismissal of this screen.
         if (showSleepTimerSheet) {
             SleepTimerSheet(
                 onDismiss = { showSleepTimerSheet = false },
@@ -1476,9 +1428,9 @@ if (showOptionsSheet) {
                 }
             )
         }
-        } // Overlay capture excludes the separate Dialog windows.
-        } // Player panels follow the immersive player, independently of the app theme.
-    } // Box raíz
-    } // All player menus sample the same live foreground scene.
-    } // Immersive palette includes lyrics, queue and every player selector.
-} // NowPlayingExpandedScreen
+        }
+        }
+    }
+    }
+    }
+}

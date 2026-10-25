@@ -41,11 +41,6 @@ import com.akira.app.core.design.backdrop.backdrops.rememberLayerBackdrop
 import com.akira.app.core.design.backdrop.backdrops.layerBackdrop
 import kotlinx.coroutines.launch
 
-data class DetailPage(val title: String, val artist: Boolean, val albumKey: String? = null, val transitionKey: String? = null)
-fun localAlbumKey(song: Song): String = "${song.albumId}|${song.album.lowercase()}|${if(song.albumId==0L)song.artist.lowercase() else ""}"
-fun albumDetail(song: Song, transitionKey: String? = null) = DetailPage(song.album, false, localAlbumKey(song), transitionKey)
-fun artistDetail(name: String) = DetailPage(name, true)
-
 @Composable
 fun LocalCollectionDetail(initial: DetailPage, library: List<Song>, current: Song?, playing: Boolean,
     bottom: Dp, onPlay: (Song, List<Song>) -> Unit, onTogglePlay: () -> Unit,
@@ -56,7 +51,9 @@ fun LocalCollectionDetail(initial: DetailPage, library: List<Song>, current: Son
     BackHandler(!obscured) { back() }
     val sessions = LocalDetailSessions.current
     val session = remember { Any() }
-    DisposableEffect(sessions, session) { sessions?.set(session, Unit); onDispose { sessions?.remove(session) } }
+    DisposableEffect(sessions, session) {
+        sessions?.set(session, true); onDispose { sessions?.remove(session) }
+    }
     val reduced = LocalContentMotionReduced.current
     val pageStates = rememberSaveableStateHolder()
     MaterialTheme(colorScheme = com.akira.app.core.design.theme.DarkColorScheme) {
@@ -115,7 +112,7 @@ fun LocalCollectionDetail(initial: DetailPage, library: List<Song>, current: Son
     PlaylistDetailScaffold(page.transitionKey,lead?.albumArtUri,state,onBack,onBack,
         contentPadding=PaddingValues(bottom=bottom),onMoreClick=lead?.let{{onMore(it)}}) {
         item("header") { PlaylistHeader(page.title, artists.map{CreatorUi(it.artist,it.albumArtUri)},
-            stats=listOfNotNull(lead?.year?.takeIf{it>0}?.toString(),localizedText("${tracks.size} songs","${tracks.size} canciones"),"${tracks.sumOf{it.durationMs}/60000} min").joinToString(" · "),
+            stats=listOfNotNull(lead?.year?.takeIf{it>0}?.toString(),localizedText("${tracks.size} ${if(tracks.size==1)"song" else "songs"}","${tracks.size} ${if(tracks.size==1)"canción" else "canciones"}"),"${tracks.sumOf{it.durationMs}/60000} min").joinToString(" · "),
             isPlaying=playing&&tracks.any{it.id==current?.id},onPlayClick={
                 if(tracks.any{it.id==current?.id})onToggle() else lead?.let{onPlay(it,tracks)}
             },onShuffleClick={tracks.shuffled().let{q->q.firstOrNull()?.let{onPlay(it,q)}}},

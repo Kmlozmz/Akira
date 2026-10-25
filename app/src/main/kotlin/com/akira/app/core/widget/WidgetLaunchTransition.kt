@@ -120,7 +120,7 @@ internal fun WidgetOpeningOverlay(state: WidgetLaunchState) {
 @Composable
 internal fun WidgetLaunchBackdrop(state: WidgetLaunchState) {
     if (state.finished || Build.VERSION.SDK_INT < 31) return
-    val activity = LocalContext.current as? MainActivity ?: return
+    val activity = androidx.activity.compose.LocalActivity.current as? MainActivity ?: return
     val manager = activity.getSystemService(WindowManager::class.java)
     val density = LocalDensity.current.density
     DisposableEffect(state) {

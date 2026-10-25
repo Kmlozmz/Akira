@@ -5,6 +5,11 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import com.akira.app.core.media.MediaItemMapper.queueIdentity
 
+internal fun remainingQueueIndexes(order: List<Int>, currentIndex: Int): List<Int> {
+    val position = order.indexOf(currentIndex)
+    return if (position < 0) emptyList() else order.drop(position)
+}
+
 /** UI indexes follow playback traversal, never the physical index in a shuffled playlist. */
 fun playbackQueueIndexes(player: Player): List<Int> {
     if(player is MediaController) {

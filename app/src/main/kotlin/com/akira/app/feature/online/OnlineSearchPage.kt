@@ -37,14 +37,9 @@ import kotlinx.coroutines.sync.withPermit
     var category by remember(account) { mutableStateOf<OnlineSearchCategory?>(null) }
     var browseLoading by remember(account) { mutableStateOf(true) }
     var browseFailure by remember(account) { mutableStateOf<OnlineFailure?>(null) }
-    var results by remember(account) { mutableStateOf<OnlinePage?>(null) }
-    var catalogLoading by remember { mutableStateOf(false) }
-    var catalogFailure by remember { mutableStateOf<OnlineFailure?>(null) }
     var libraryLoading by remember(account) { mutableStateOf(false) }
     var libraryFailure by remember(account) { mutableStateOf<OnlineFailure?>(null) }
     var revision by remember { mutableIntStateOf(0) }
-    var moreLoading by remember { mutableStateOf(false) }
-    var moreFailure by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val covers = remember(account) { mutableStateMapOf<OnlineSearchCategory, String>() }
     val coverRequests = remember(account) { Semaphore(3) }
@@ -53,11 +48,15 @@ import kotlinx.coroutines.sync.withPermit
     var filteredLibrary by remember(account) { mutableStateOf<OnlinePage?>(null) }
     var filteringLibrary by remember(account) { mutableStateOf(false) }
     val librarySearch = remember(account) { OnlineLibrarySearchCache() }
-    val loading = if (session.library) libraryLoading || filteringLibrary else catalogLoading
-    val failure = if (session.library) libraryFailure else catalogFailure
     val requestKey = "search:${session.query}:${session.kind}"
     val activeKey = if (session.library) "library:${session.query}" else category?.let { "search-category:${it.endpoint}" } ?: requestKey
-    val liveKey by rememberUpdatedState(activeKey)
+    val query = session.query
+    val kind = session.kind
+    val request = remember(account, query, kind, session.library, category, revision) { OnlineSearchRequestState() }
+    val liveRequest by rememberUpdatedState(request)
+    DisposableEffect(request) { onDispose { request.cancel() } }
+    val loading = if (session.library) libraryLoading || filteringLibrary else request.loading
+    val failure = if (session.library) libraryFailure else request.failure
     LaunchedEffect(account, revision) {
         browseLoading = true; browseFailure = null
         try {
@@ -94,22 +93,26 @@ import kotlinx.coroutines.sync.withPermit
         catch (error: Exception) { libraryFailure = error.onlineFailure() }
         finally { libraryLoading = false }
     }
-    LaunchedEffect(account, session.query, session.kind, session.library, category, revision) {
-        results = null; catalogFailure = null; moreFailure = false
-        if (session.library || session.query.isBlank() && category == null) { catalogLoading = false; return@LaunchedEffect }
+    LaunchedEffect(request) {
+        if (session.library || query.isBlank() && category == null) return@LaunchedEffect
         val key = activeKey
-        results = repository.cachedPage(key, account)
-        if (results != null && revision == 0 && repository.hasFreshPage(key, account)) { catalogLoading = false; return@LaunchedEffect }
-        catalogLoading = true
+        request.page = repository.cachedPage(key, account)
+        if (request.page != null && revision == 0 && repository.hasFreshPage(key, account)) return@LaunchedEffect
+        request.loading = true
         try {
-                if (category == null) delay(300)
-                results = withTimeout(22_000) {
-                    category?.let { repository.searchCategory(it) } ?: repository.search(session.query, session.kind)
-                }.also { repository.cachePage(key, it, account) }
-        } catch (timeout: TimeoutCancellationException) { catalogFailure = timeout.onlineFailure() }
+            if (category == null) delay(300)
+            val loaded = withTimeout(22_000) {
+                category?.let { repository.searchCategory(it) } ?: repository.search(query, kind)
+            }
+            ensureActive()
+            if (liveRequest === request && request.active) {
+                request.page = loaded
+                repository.cachePage(key, loaded, account)
+            }
+        } catch (timeout: TimeoutCancellationException) { request.failure = timeout.onlineFailure() }
         catch (cancelled: CancellationException) { throw cancelled }
-        catch (error: Exception) { catalogFailure = error.onlineFailure() }
-        finally { if (liveKey == key) catalogLoading = false }
+        catch (error: Exception) { request.failure = error.onlineFailure() }
+        finally { request.loading = false }
     }
     LaunchedEffect(session.submit) { if (session.submit > 0) repository.rememberSearch(session.query) }
     LaunchedEffect(session.editing) { if (session.editing) category = null }
@@ -131,7 +134,7 @@ import kotlinx.coroutines.sync.withPermit
             filteredLibrary = withContext(Dispatchers.Default) { index.filter(query) }
         } finally { if (currentCoroutineContext().isActive) filteringLibrary = false }
     }
-    val page = if (session.library) filteredLibrary else results
+    val page = if (session.library) filteredLibrary else request.page
     fun choose(item: YTItem, source: String?) {
         repository.rememberSearch(session.query)
         if (item is SongItem) {
@@ -142,23 +145,27 @@ import kotlinx.coroutines.sync.withPermit
         } else onOpen(item, source)
     }
     fun loadMore() {
-        val token = results?.continuation ?: return
-        if (moreLoading) return
+        val source = request.page ?: return
+        val token = source.continuation ?: return
+        if (!request.active || request.loading || request.loadingMore) return
         val key = activeKey
-        moreLoading = true; moreFailure = false
-        scope.launch {
+        request.loadingMore = true
+        request.moreFailed = false
+        request.paginationJob = scope.launch {
             try {
                 val next = withTimeout(15_000) { repository.moreSearch(token) }
-                if (liveKey == key) {
-                    val combined = listOf(OnlineShelf(results!!.shelves.firstOrNull()?.title.orEmpty(),
-                        (results!!.shelves + next.shelves).flatMap { it.items }.distinctBy { it.id }))
-                    results = results!!.copy(shelves = combined, continuation = next.continuation?.takeUnless { it == token })
-                    results?.let { repository.cachePage(key, it, account) }
+                ensureActive()
+                if (liveRequest === request && request.active && request.page === source) {
+                    val combined = listOf(OnlineShelf(source.shelves.firstOrNull()?.title.orEmpty(),
+                        (source.shelves + next.shelves).flatMap { it.items }.distinctBy { it.id }))
+                    val loaded = source.copy(shelves = combined, continuation = next.continuation?.takeUnless { it == token })
+                    request.page = loaded
+                    repository.cachePage(key, loaded, account)
                 }
-            } catch (_: TimeoutCancellationException) { if (liveKey == key) moreFailure = true }
+            } catch (_: TimeoutCancellationException) { request.moreFailed = true }
             catch (cancelled: CancellationException) { throw cancelled }
-            catch (_: Exception) { if (liveKey == key) moreFailure = true }
-            finally { moreLoading = false }
+            catch (_: Exception) { request.moreFailed = true }
+            finally { request.loadingMore = false }
         }
     }
     val resultContent: LazyListScope.() -> Unit = {
@@ -170,10 +177,12 @@ import kotlinx.coroutines.sync.withPermit
         }
         onlineBrowseSections(page?.shelves.orEmpty(), true, false, current, playing, "search-results", ::choose, onMore)
         if (loading && page != null) item("search-refreshing") { SearchLoading() }
-        if (!session.library && results?.continuation != null) item("search-next") {
-            LaunchedEffect(activeKey, results?.continuation) { if (!moreFailure) loadMore() }
-            if (moreLoading) SearchLoading()
-            if (moreFailure) TextButton(onClick = ::loadMore, modifier = Modifier.fillMaxWidth()) { Text(localizedText("Retry", "Reintentar")) }
+        if (!session.library && request.page?.continuation != null) item("search-next") {
+            LaunchedEffect(request, request.page?.continuation, request.loading) {
+                if (!request.moreFailed && !request.loading) loadMore()
+            }
+            if (request.loadingMore) SearchLoading()
+            if (request.moreFailed) TextButton(onClick = ::loadMore, modifier = Modifier.fillMaxWidth()) { Text(localizedText("Retry", "Reintentar")) }
         }
     }
     SearchPage(true, bottomPadding, onSettings, recent, repository::rememberSearch, repository::clearSearches,

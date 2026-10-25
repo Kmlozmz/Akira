@@ -66,12 +66,6 @@ enum class SortOrder(val field: SortField, val ascending: Boolean) {
     }
 }
 
-data class LibraryUiState(
-    val songs: List<Song> = emptyList(),
-    val initialized: Boolean = false,
-    val loadFailed: Boolean = false
-)
-
 class LibraryViewModel(application: Application) : AndroidViewModel(application) {
     private val scanner = MediaStoreScanner(application)
     private val favoritesDao = AppDatabase.getInstance(application).favoritesDao()
@@ -82,14 +76,11 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     val searchQuery = MutableStateFlow("")
     val currentCategory = MutableStateFlow("Tracks")
 
-    // Emite desde un MutableStateFlow propio: primero la caché (instantánea, para
-    // que la biblioteca NUNCA aparezca vacía al abrir), después el escaneo real,
-    // y luego sólo cuando el ContentObserver detecte cambios en el almacenamiento.
+    // Cached songs remain visible until MediaStore supplies a successful scan.
     private val scannedSongs = MutableStateFlow<List<Song>?>(null)
     private val scanFailed = MutableStateFlow(false)
 
     init {
-        // Restaura el orden y la pestaña inicial guardados.
         viewModelScope.launch {
             val prefs = prefsRepo.userPreferences.first()
             currentSortOrder.value = SortOrder.fromName(prefs.sortOrder)
@@ -124,17 +115,13 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
 
     private val favoritesFlow = favoritesDao.observeFavorites()
 
-    // Filtros de biblioteca definidos en Ajustes / onboarding. Antes se guardaban
-    // pero nadie los leía, así que "Duración mínima" no tenía ningún efecto.
     private val libraryFilter = prefsRepo.userPreferences
         .map { Triple(it.minDurationSeconds, it.excludedFolderPaths, it.whitelistedSongIds) }
         .distinctUntilChanged()
 
     private val librarySnapshot = combine(scannedSongs, favoritesFlow, libraryFilter, scanFailed) { raw, favorites, filter, failed ->
-        if (raw == null) LibraryUiState(loadFailed = failed) else {
-            val favIds = favorites.map { it.songId }.toSet()
-            LibraryUiState(raw.filter { com.akira.app.core.data.passesLibraryFilters(it, filter.first, filter.second, filter.third) }
-                .map { it.copy(isFavorite = it.id in favIds) }, initialized = true)
+        librarySnapshot(raw, favorites.map { it.songId }.toSet(), failed) {
+            com.akira.app.core.data.passesLibraryFilters(it, filter.first, filter.second, filter.third)
         }
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, LibraryUiState())
 
@@ -214,10 +201,7 @@ internal fun sortSongs(songs: List<Song>, order: SortOrder): List<Song> {
             .thenBy { it.artist }
             .thenBy { it.song.trackNumber }
             .thenBy { it.title }
-        // DATE_ADDED con respaldo en DATE_MODIFIED. En este dispositivo 10 de
-        // 1074 filas venían con date_added = NULL en MediaStore (el escáner lo
-        // deja en 0), y con el criterio puro esas 10 se agrupaban al principio
-        // como si fueran las más antiguas. dateModifiedSec sí está siempre.
+        // MediaStore may omit DATE_ADDED; use DATE_MODIFIED as the fallback.
         SortField.DATE_ADDED -> compareBy<Keyed> {
             if (it.song.dateAddedSec != 0L) it.song.dateAddedSec else it.song.dateModifiedSec
         }

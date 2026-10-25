@@ -33,8 +33,6 @@ import com.akira.app.feature.player.dock.navigation.*
 import com.akira.app.feature.search.LocalSearchSession
 import com.akira.app.feature.search.SearchDock
 
-enum class HomeDestination { HOME, SEARCH, LIBRARY, SETTINGS }
-
 data class AkiraDockAnchor(val mini: Rect, val artwork: Rect, val corner: Dp)
 
 @Stable
@@ -100,7 +98,7 @@ fun HomeNavigation(
     val density = androidx.compose.ui.platform.LocalDensity.current
     val reduced = com.akira.app.core.design.components.LocalContentMotionReduced.current
     val contentColor = glassContentColor()
-    val selectedContentColor = glassAccentColor(if(contentColor == Color.Black) Color(0xFFFF2D55) else Color(0xFFFF375F))
+    val selectedContentColor = if(contentColor == Color.Black) Color(0xFFFF2D55) else Color(0xFFFF375F)
     val haptics = rememberHaptics()
     val currentSelect by rememberUpdatedState(onSelect)
     val currentSelected by rememberUpdatedState(selected)

@@ -23,5 +23,12 @@ dependencies {
     implementation("io.ktor:ktor-client-encoding:3.4.0")
     implementation("org.brotli:dec:0.1.2")
     implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.5")
+    constraints {
+        implementation("org.jsoup:jsoup:1.23.2") {
+            because("Includes the HTML cleaner and XML parser security fixes")
+        }
+    }
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
+    testImplementation(libs.junit)
+    testImplementation("io.ktor:ktor-client-mock:3.4.0")
 }

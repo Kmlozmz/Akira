@@ -1,5 +1,3 @@
-// AlbumPage.kt
-
 package com.akira.innertube.pages
 
 import com.akira.innertube.models.Album
@@ -105,14 +103,14 @@ data class AlbumPage(
                 } ?: renderer.flexColumns.getOrNull(2)?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.firstOrNull()?.let {
                     Album(
                         name = it.text,
-                        id = it.navigationEndpoint?.browseEndpoint?.browseId!!
+                        id = it.navigationEndpoint?.browseEndpoint?.browseId ?: return@let null
                     )
-                }!!,
+                },
                 duration = renderer.fixedColumns?.firstOrNull()
                     ?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.firstOrNull()
                     ?.text?.parseTime(),
                 musicVideoType = renderer.musicVideoType,
-                thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: album?.thumbnail!!,
+                thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: album?.thumbnail ?: return null,
                 explicit = renderer.badges?.find {
                     it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
                 } != null,

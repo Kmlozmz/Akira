@@ -370,14 +370,17 @@ class MusicLibraryService : MediaLibraryService() {
             activeDeck.currentMediaItem?.mediaId?.startsWith("youtube:") == true ||
             !recentIdsLoaded || autoplayFilling || !activeDeck.playWhenReady ||
             activeDeck.mediaItemCount == 0 || activeDeck.repeatMode != Player.REPEAT_MODE_OFF ||
-            activeDeck.mediaItemCount - activeDeck.currentMediaItemIndex - 1 > 1 ||
             SleepTimerBus.activeMode.value != 0L) return
+        val player = activeDeck
+        val traversal = playbackQueueIndexes(player)
+        val upcoming = remainingQueueIndexes(traversal, player.currentMediaItemIndex)
+        if (upcoming.isEmpty() || upcoming.size > 2) return
         val prefs = prefsRepo.userPreferences.first()
         if (!prefs.autoplay) return
         autoplayFilling = true
         try {
-            val player = activeDeck
-            val queued = (player.currentMediaItemIndex.coerceAtLeast(0) until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }.toSet()
+            val currentEntry = player.currentMediaItem?.queueIdentity()
+            val queued = upcoming.map { player.getMediaItemAt(it).mediaId }.toSet()
             val favorites = com.akira.app.core.database.AppDatabase.getInstance(this)
                 .favoritesDao().observeFavorites().first().map { it.songId }.toSet()
             val current = player.currentMediaItem?.mediaMetadata ?: return
@@ -386,10 +389,18 @@ class MusicLibraryService : MediaLibraryService() {
                 current.artist?.toString().orEmpty(), current.genre?.toString().orEmpty(),
                 excludedIds = queued + recentAutoplayIds
             )
-            if (player === activeDeck && player.currentMediaItem?.mediaId in queued &&
+            if (player === activeDeck && player.currentMediaItem?.queueIdentity() == currentEntry &&
+                player.playWhenReady && player.repeatMode == Player.REPEAT_MODE_OFF &&
+                SleepTimerBus.activeMode.value == 0L && playbackQueueIndexes(player) == traversal &&
+                upcoming.map { player.getMediaItemAt(it).mediaId }.toSet() == queued &&
                 !com.akira.app.core.online.OnlineRepository.get(this).enabled.value &&
                 prefsRepo.userPreferences.first().autoplay && selected.isNotEmpty()) {
+                val firstAdded = player.mediaItemCount
                 player.addMediaItems(selected.map { it.toMediaItem() })
+                if (player.shuffleModeEnabled) {
+                    player.setShuffleOrder(androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder(
+                        (traversal + (firstAdded until player.mediaItemCount)).toIntArray(), System.nanoTime()))
+                }
             }
         } finally {
             autoplayFilling = false
@@ -759,7 +770,7 @@ class MusicLibraryService : MediaLibraryService() {
         SessionResult(SessionResult.RESULT_SUCCESS)
     } catch (e: Exception) {
         com.akira.app.core.logging.AkiraLog.e("Queue", "Queue edit rejected: ${e.javaClass.simpleName}", e)
-        SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE)
+        SessionResult(androidx.media3.session.SessionError.ERROR_BAD_VALUE)
     } finally {
         editingQueue=false
         transaction.end()
@@ -854,7 +865,7 @@ class MusicLibraryService : MediaLibraryService() {
             args: Bundle
         ): ListenableFuture<SessionResult> {
             if (customCommand.customAction == QueueEditCommand.ACTION) {
-                if (controller.packageName != packageName) return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED))
+                if (controller.packageName != packageName) return Futures.immediateFuture(SessionResult(androidx.media3.session.SessionError.ERROR_PERMISSION_DENIED))
                 return Futures.immediateFuture(editPlaybackQueue(args))
             }
             when (customCommand.customAction) {

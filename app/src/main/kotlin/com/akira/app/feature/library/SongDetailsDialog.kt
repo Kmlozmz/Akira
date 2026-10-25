@@ -91,7 +91,7 @@ private val DetailsInter = FontFamily(
             TextButton(onClick = onDismiss, contentPadding = PaddingValues(vertical = 12.dp),
                 modifier = Modifier.widthIn(min = 44.dp)) {
                 Text(strings.done, fontFamily = DetailsInter, fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold, color = Color(0xFFFF453A))
+                    fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
             }
         }
         LazyColumn(Modifier.fillMaxWidth().weight(1f), overscrollEffect = null,

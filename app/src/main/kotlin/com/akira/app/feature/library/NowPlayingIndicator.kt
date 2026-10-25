@@ -26,7 +26,7 @@ import kotlin.math.sin
 
 /** Animated only while the playing row is composed; respects system motion settings. */
 @Composable
-internal fun NowPlayingIndicator(modifier: Modifier = Modifier) {
+internal fun NowPlayingIndicator(modifier: Modifier = Modifier, color: Color = Color.White) {
     val context = LocalContext.current
     val reduceMotion = remember(context) { isReduceMotionActive(context) }
     val phase = if (reduceMotion) 0f else {
@@ -39,7 +39,7 @@ internal fun NowPlayingIndicator(modifier: Modifier = Modifier) {
         val width = size.width / 7f
         repeat(4) { index ->
             val height = size.height * (.25f + .65f * ((sin(phase + index * 1.7f) + 1f) / 2f))
-            drawRoundRect(Color.White, Offset(index * width * 2f, (size.height - height) / 2f),
+            drawRoundRect(color, Offset(index * width * 2f, (size.height - height) / 2f),
                 Size(width, height), CornerRadius(width / 2f))
         }
     }

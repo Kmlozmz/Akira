@@ -51,7 +51,8 @@ internal object PageSheetMotion {
     }
 }
 
-internal class AkiraPageEntry(val content: @Composable ColumnScope.() -> Unit, val dismiss: () -> Unit, val details: Boolean = false) {
+internal class AkiraPageEntry(val content: @Composable ColumnScope.() -> Unit, val dismiss: () -> Unit,
+    val details: Boolean = false, val immersive: Boolean = false) {
     var offset by mutableFloatStateOf(1f)
     val presence get() = PageSheetMotion.presence(offset)
     var height by mutableFloatStateOf(0f)
@@ -88,16 +89,17 @@ internal val LocalAkiraPageSheetState = staticCompositionLocalOf<AkiraPageSheetS
 
 @Composable
 internal fun AkiraPageSheet(onDismiss: () -> Unit, contentColor: Color, title: String?,
-    footer: (@Composable () -> Unit)?, containerColor: Color?, details: Boolean, content: @Composable ColumnScope.() -> Unit) {
+    footer: (@Composable () -> Unit)?, containerColor: Color?, details: Boolean, immersive: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit) {
     val state = LocalAkiraPageSheetState.current
     if (state == null) {
-        AkiraPresentationHost { AkiraPageSheet(onDismiss, contentColor, title, footer, containerColor, details, content) }
+        AkiraPresentationHost { AkiraPageSheet(onDismiss, contentColor, title, footer, containerColor, details, immersive, content) }
         return
     }
     val latestContent by rememberUpdatedState(content)
     val latestDismiss by rememberUpdatedState(onDismiss)
     val latestFooter by rememberUpdatedState(footer)
-    val entry = remember(details) { AkiraPageEntry({ latestContent() }, { latestDismiss() }, details) }
+    val entry = remember(details, immersive) { AkiraPageEntry({ latestContent() }, { latestDismiss() }, details, immersive) }
     val colors = MaterialTheme.colorScheme
     val typography = MaterialTheme.typography
     val reduced = LocalContentMotionReduced.current
@@ -258,16 +260,23 @@ internal fun AkiraPageSheetOverlay(state: AkiraPageSheetState, backdrop: Backdro
                         .then(if (!front) Modifier.clearAndSetSemantics { } else Modifier)) {
                         Column(Modifier.fillMaxWidth().then(if (entry.details) Modifier.fillMaxHeight() else Modifier)
                             .heightIn(min = with(density) { entry.minimumHeight.toDp() }.coerceAtMost(cap))
-                            .navigationBarsPadding()) {
-                            Box(Modifier.fillMaxWidth().height(32.dp).draggable(
+                            .then(if (entry.immersive) Modifier else Modifier.navigationBarsPadding())) {
+                            if (!entry.immersive) Box(Modifier.fillMaxWidth().height(32.dp).draggable(
                                 state = rememberDraggableState { move(it) }, orientation = Orientation.Vertical,
                                 enabled = front, onDragStarted = { job?.cancel() }, onDragStopped = { settle(it) }
                             ), contentAlignment = Alignment.Center) {
                                 Box(Modifier.size(36.dp, 4.dp).clip(CircleShape).background(entry.ink.copy(alpha = .4f)))
                             }
                             Column(Modifier.fillMaxWidth().weight(1f, fill = entry.details).nestedScroll(scroll)
-                                .padding(top = if (entry.details) 0.dp else 4.dp, bottom = if (entry.details) 0.dp else 20.dp), content = entry.content)
+                                .padding(top = if (entry.details || entry.immersive) 0.dp else 4.dp,
+                                    bottom = if (entry.details || entry.immersive) 0.dp else 20.dp), content = entry.content)
                             entry.footer?.let { Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp)) { it() } }
+                        }
+                        if (entry.immersive) Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().height(32.dp)
+                            .draggable(state=rememberDraggableState { move(it) }, orientation=Orientation.Vertical,
+                                enabled=front,onDragStarted={job?.cancel()},onDragStopped={settle(it)}),
+                            contentAlignment=Alignment.Center) {
+                            Box(Modifier.size(36.dp,4.dp).clip(CircleShape).background(entry.ink.copy(alpha=.7f)))
                         }
                         // Empty sheet areas and covered sheets never leak gestures to the scene.
                         if (!front) Box(Modifier.matchParentSize().clickable(

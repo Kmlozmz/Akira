@@ -15,30 +15,12 @@ import androidx.compose.ui.graphics.asComposeRenderEffect
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.roundToInt
 
-/**
- * High-performance RenderEffect cache for Compose.
- *
- * On Android 12-14 (API 31-34), HWUI applies Gaussian blurs at full layer resolution.
- * If radius is large (>54f), Skia cannot compute the convolution in a single pass,
- * causing multi-pass FBO buffer allocations and GPU fill-rate pipeline stalls.
- * On Android 15-16 (API 35+), HWUI has hardware pyramid downsampling and handles
- * arbitrary radii smoothly.
- *
- * This cache:
- * 1. Clamps extreme radii on API <= 34 to 54f by default to avoid multi-pass GPU stalls.
- * 2. Quantizes radii to prevent thousands of native SkImageFilter allocations.
- * 3. Returns null for radius <= 0.5f to immediately free offscreen layer overhead.
- */
+/** Reuses quantized blur radii; older-Android surfaces use a bounded radius by default. */
 object BlurEffectCache {
     private val composeCache = ConcurrentHashMap<Int, RenderEffect>()
     private val nativeCache = ConcurrentHashMap<Int, android.graphics.RenderEffect>()
 
-    /**
-     * Retrieves or creates a cached Compose RenderEffect.
-     * On Android 12-14 (API <= 34), blurs > 54f can cause multi-pass GPU FBO stalls,
-     * so they are clamped unless [allowLargeRadius] is explicitly enabled.
-     * On Android 15/16 (API 35+), full radius is preserved with HW pyramid downsampling.
-     */
+    /** [allowLargeRadius] lets a surface opt out of the API 31-34 radius budget. */
     fun get(
         radius: Float,
         tileMode: Shader.TileMode = Shader.TileMode.CLAMP,

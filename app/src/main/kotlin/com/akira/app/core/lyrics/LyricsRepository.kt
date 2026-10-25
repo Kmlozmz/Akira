@@ -314,18 +314,6 @@ object LyricsRepository {
         } catch (_: Exception) { LoadedLyrics() }
     }
 
-    private fun ByteArray.syncsafeAt(o: Int): Int =
-        ((this[o].toInt() and 0x7F) shl 21) or
-            ((this[o + 1].toInt() and 0x7F) shl 14) or
-            ((this[o + 2].toInt() and 0x7F) shl 7) or
-            (this[o + 3].toInt() and 0x7F)
-
-    private fun ByteArray.be32At(o: Int): Int =
-        ((this[o].toInt() and 0xFF) shl 24) or
-            ((this[o + 1].toInt() and 0xFF) shl 16) or
-            ((this[o + 2].toInt() and 0xFF) shl 8) or
-            (this[o + 3].toInt() and 0xFF)
-
     private fun ByteArray.le32At(o: Int): Int =
         (this[o].toInt() and 0xFF) or
             ((this[o + 1].toInt() and 0xFF) shl 8) or
@@ -343,83 +331,9 @@ object LyricsRepository {
     }
 
     private fun parseId3Lyrics(s: InputStream): LoadedLyrics {
-        val header = ByteArray(10)
-        if (!readFullyOrNull(s, header, 10)) return LoadedLyrics()
-        if (header[0] != 'I'.code.toByte() || header[1] != 'D'.code.toByte() || header[2] != '3'.code.toByte()) {
-            return LoadedLyrics()
-        }
-        val ver = header[3].toInt() and 0xFF
-        if (ver < 2 || ver > 4) return LoadedLyrics()
-        val tagSize = header.syncsafeAt(6)
-        if (tagSize <= 0 || tagSize > 512_000) return LoadedLyrics()
-
-        val tagBody = ByteArray(tagSize)
-        if (!readFullyOrNull(s, tagBody, tagSize)) return LoadedLyrics()
-
-        var plainFallback: List<String> = emptyList()
-        var o = 0
-        while (o + 10 <= tagSize) {
-            val id = String(tagBody, o, 4, StandardCharsets.ISO_8859_1)
-            if (id[0] == '\u0000') break
-            val frameSize = if (ver == 4) tagBody.syncsafeAt(o + 4) else tagBody.be32At(o + 4)
-            o += 10
-            if (frameSize <= 0 || o + frameSize > tagSize) break
-
-            if (id == "USLT" || id == "ULT") {
-                val enc = tagBody[o].toInt() and 0xFF
-                var textStart = o + 4
-                while (textStart < o + frameSize && tagBody[textStart] != 0.toByte()) textStart++
-                if (textStart < o + frameSize) textStart++
-                val textLen = (o + frameSize) - textStart
-                if (textLen > 0) {
-                    val raw = decodeId3String(tagBody, textStart, textLen, enc)
-                    val parsed = parseLrcText(raw)
-                    if (parsed.synced.isNotEmpty()) return parsed
-                    if (parsed.plain.isNotEmpty() && plainFallback.isEmpty()) plainFallback = parsed.plain
-                }
-            } else if (id == "SYLT") {
-                val parsed = parseSyltFrame(tagBody, o, frameSize)
-                if (parsed.synced.isNotEmpty()) return parsed
-            }
-            o += frameSize
-        }
-        return LoadedLyrics(plain = plainFallback)
+        return EmbeddedLyricsReader.readId3(s)
     }
 
-    private fun decodeId3String(buf: ByteArray, off: Int, len: Int, enc: Int): String = when (enc) {
-        1 -> String(buf, off, len, StandardCharsets.UTF_16)
-        2 -> String(buf, off, len, StandardCharsets.UTF_16BE)
-        3 -> String(buf, off, len, StandardCharsets.UTF_8)
-        else -> String(buf, off, len, StandardCharsets.ISO_8859_1)
-    }
-
-    private fun parseSyltFrame(buf: ByteArray, off: Int, len: Int): LoadedLyrics {
-        try {
-            if (len < 6) return LoadedLyrics()
-            val enc = buf[off].toInt() and 0xFF
-            val format = buf[off + 4].toInt() and 0xFF
-            val isMs = format == 2
-            var p = off + 6
-            while (p < off + len && buf[p] != 0.toByte()) p++
-            if (p < off + len) p++
-
-            val lines = mutableListOf<LyricLine>()
-            while (p < off + len) {
-                val textStart = p
-                while (p < off + len && buf[p] != 0.toByte()) p++
-                val textLen = p - textStart
-                if (p < off + len) p++
-                if (p + 4 > off + len) break
-                val stamp = buf.be32At(p).toLong() and 0xFFFFFFFFL
-                p += 4
-                val timeMs = if (isMs) stamp else (stamp * 1000L / 1000L)
-                val text = decodeId3String(buf, textStart, textLen, enc).trim()
-                if (text.isNotBlank()) lines.add(LyricLine(timeMs, text))
-            }
-            if (lines.isNotEmpty()) return LoadedLyrics(synced = lines.sortedBy { it.timeMs })
-        } catch (_: Exception) {}
-        return LoadedLyrics()
-    }
 
     private fun parseFlacLyrics(s: InputStream): LoadedLyrics {
         val magic = ByteArray(4)
@@ -464,24 +378,9 @@ object LyricsRepository {
     }
 
     private fun parseMp4Lyrics(s: InputStream): LoadedLyrics {
-        val buf = ByteArray(128_000)
-        val read = s.read(buf)
-        if (read < 16) return LoadedLyrics()
-        val lyrTag = byteArrayOf(0xA9.toByte(), 'l'.code.toByte(), 'y'.code.toByte(), 'r'.code.toByte())
-        val idx = indexOfSubarray(buf, 0, read, lyrTag)
-        if (idx >= 0) {
-            val dataTag = "data".toByteArray(StandardCharsets.US_ASCII)
-            val dataIdx = indexOfSubarray(buf, idx, read - idx, dataTag)
-            if (dataIdx >= 0) {
-                val textStart = dataIdx + 12
-                if (textStart < read) {
-                    val raw = String(buf, textStart, (read - textStart).coerceAtMost(64_000), StandardCharsets.UTF_8)
-                    return parseLrcText(raw)
-                }
-            }
-        }
-        return LoadedLyrics()
+        return EmbeddedLyricsReader.readMp4(s)
     }
+
 
     private fun parseVorbisCommentBlock(block: ByteArray): LoadedLyrics {
         try {

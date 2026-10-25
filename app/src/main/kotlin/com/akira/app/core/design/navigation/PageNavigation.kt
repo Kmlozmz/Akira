@@ -31,8 +31,6 @@ import androidx.compose.ui.unit.*
 import com.akira.app.R
 import com.akira.app.core.design.theme.AkiraFontFamily
 import com.akira.app.core.design.util.rememberAkiraHaptics
-import com.akira.app.core.design.glass.LocalLiquidGlassEnabled
-import com.akira.app.core.design.glass.liquidGlass
 import com.akira.app.core.design.backdrop.Backdrop
 import com.akira.app.core.design.backdrop.backdrops.rememberCanvasBackdrop
 
@@ -79,13 +77,13 @@ private val HeaderCollapseDistance = 68.dp
     val pageColor = MaterialTheme.colorScheme.background
     val fallback = rememberCanvasBackdrop { drawRect(pageColor) }
     val backdrop = LocalPageHeaderBackdrop.current ?: fallback
-    val glass = LocalLiquidGlassEnabled.current
-    Box(modifier.size(40.dp).clip(CircleShape)
-        .clickable { haptics.light(); onBack() }, contentAlignment = Alignment.Center) {
-        Box(Modifier.matchParentSize()
-            .then(Modifier.liquidGlass(CircleShape, backdropOverride = backdrop)))
-        Icon(painterResource(R.drawable.ic_navigation_back), localizedText("Back", "Atrás"),
-            Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface)
+    Box(modifier.size(AkiraNavigationMetrics.Target), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(AkiraNavigationMetrics.BackSurface).akiraNavigationSurface(CircleShape, backdrop))
+        Box(Modifier.matchParentSize().clip(CircleShape).clickable { haptics.light(); onBack() },
+            contentAlignment = Alignment.Center) {
+            Icon(painterResource(R.drawable.ic_navigation_back), localizedText("Back", "Atrás"),
+                Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface)
+        }
     }
 }
 
@@ -103,7 +101,7 @@ private val HeaderCollapseDistance = 68.dp
         .48f to background.copy(alpha=.82f*p),
         .78f to background.copy(alpha=.32f*p),
         1f to Color.Transparent)).padding(top=topInset).padding(horizontal = 20.dp)) {
-        if (onBack != null) PageBackButton(onBack, Modifier.padding(top = 16.dp), collapseProgress = p)
+        if (onBack != null) PageBackButton(onBack, Modifier.padding(top = 12.dp).offset(x = (-4).dp), collapseProgress = p)
         trailing?.let { Box(Modifier.align(Alignment.TopEnd).padding(top=12.dp)) { it() } }
         Text(title, fontFamily = AkiraFontFamily, fontSize = 32.sp, fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis,

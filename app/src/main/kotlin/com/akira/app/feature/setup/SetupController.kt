@@ -27,6 +27,17 @@ internal class SetupController(
     val state = mutable.asStateFlow()
     private var job: Job? = null
 
+    /** Reconcile a restored completion request with the operation that still exists. */
+    fun resumeCompletion() {
+        val current = mutable.value
+        if (current.failure != null || current.saving || current.completed) return
+        when (current.status) {
+            SetupStatus.IDLE -> start()
+            SetupStatus.SCANNING -> Unit
+            SetupStatus.READY -> finish()
+        }
+    }
+
     fun start() {
         if (mutable.value.saving || mutable.value.completed) return
         job?.cancel()

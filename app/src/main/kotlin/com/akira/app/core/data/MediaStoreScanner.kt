@@ -142,14 +142,7 @@ class MediaStoreScanner(private val context: Context) {
                     val albumArtUri = ContentUris.withAppendedId(Uri.parse("content://media/external/audio/albumart"), albumId).toString()
                     val toneIndex = (album.hashCode() xor artist.hashCode()).mod(tones.size)
 
-                    val format = when {
-                        mime.contains("flac", ignoreCase = true) -> "FLAC"
-                        mime.contains("wav", ignoreCase = true) -> "WAV"
-                        mime.contains("ogg", ignoreCase = true) -> "OGG"
-                        mime.contains("aac", ignoreCase = true) -> "AAC"
-                        mime.contains("mp4", ignoreCase = true) || mime.contains("m4a", ignoreCase = true) -> "M4A"
-                        else -> "MP3"
-                    }
+                    val format = indexedAudioFormat(mime)
 
                     val hasLyrics = com.akira.app.core.lyrics.LyricsRepository.scanAndCacheSidecarLyrics(filePath, id.toString())
 
@@ -192,7 +185,6 @@ class MediaStoreScanner(private val context: Context) {
                     }
                 }
                 com.akira.app.core.lyrics.LyricsRepository.clearDirCache()
-                // Ensure final count is emitted
                 if (songs.isNotEmpty()) {
                     onProgress(songs.size, "Finalizing library...")
                 }
@@ -209,14 +201,9 @@ class MediaStoreScanner(private val context: Context) {
             com.akira.app.core.lyrics.LyricsRepository.clearDirCache()
         }
 
-        // Sin datos de ejemplo: si no hay canciones o falta el permiso devolvemos vacío
-        // para que la UI muestre el estado vacío real en vez de canciones falsas.
         songs
     }
 
-    /**
-     * Observa cambios en MediaStore (canciones agregadas, eliminadas o modificadas por el usuario).
-     */
     fun observeMediaStoreChanges(): Flow<Unit> = callbackFlow {
         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {

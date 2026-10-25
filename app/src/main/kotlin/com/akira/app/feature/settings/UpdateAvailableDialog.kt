@@ -135,8 +135,6 @@ internal fun UpdatesHost(allowAutomaticPrompt: Boolean, model: UpdatesViewModel 
     if (state.dialogVisible && !state.pageVisible && update != null) UpdateAvailableDialog(state, update, model)
 }
 
-internal enum class InstallationNotice { Permission, Error }
-
 @Composable
 internal fun UpdateAvailableDialog(state: UpdatesState, update: AppUpdate, model: UpdatesViewModel) {
     UpdateAvailablePanel(state, update, onDownload = { model.download(update) },

@@ -563,7 +563,7 @@ val StringsSpanish = AkiraStrings(
     exportLogsDesc = "Genera un archivo con eventos técnicos de la app",
     includeTrackTitles = "Incluir nombres de pistas",
     includeTrackTitlesDesc = "Desmarcado por defecto para proteger tu privacidad",
-    logsPrivacyNotice = "El registro contiene eventos de reproducción, mezcla y escaneo. Las rutas se anonimizan automáticamente.",
+    logsPrivacyNotice = "El registro contiene eventos de reproducción, mezcla y escaneo. La exportación oculta rutas y campos de credenciales.",
     logsExportedSuccess = "Registro preparado para compartir",
     logsEmpty = "No hay registros disponibles todavía",
 
@@ -816,7 +816,7 @@ val StringsEnglish = AkiraStrings(
     exportLogsDesc = "Generates a file with technical app events",
     includeTrackTitles = "Include track titles",
     includeTrackTitlesDesc = "Unchecked by default to protect your privacy",
-    logsPrivacyNotice = "The log contains playback, transition, and scanning events. Storage paths are automatically anonymized.",
+    logsPrivacyNotice = "The log contains playback, transition, and scanning events. Export hides paths and credential fields.",
     logsExportedSuccess = "Log prepared for sharing",
     logsEmpty = "No logs available yet",
 

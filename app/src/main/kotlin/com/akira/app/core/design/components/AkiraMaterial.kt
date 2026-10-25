@@ -8,13 +8,13 @@ import androidx.compose.ui.Modifier
 import com.akira.app.core.design.glass.liquidGlass
 import com.akira.app.core.design.backdrop.Backdrop
 
-/** Roles describe the surface's purpose, never a separate optical recipe. */
+/** Reading surfaces protect foreground contrast while controls retain clear glass. */
 enum class AkiraMaterialRole { Control, Panel, AudioOutput }
 
 @Composable
-@Suppress("UNUSED_PARAMETER")
 fun Modifier.akiraMaterial(shape: CornerBasedShape, role: AkiraMaterialRole = AkiraMaterialRole.Control,
-    backdrop: Backdrop? = null): Modifier = liquidGlass(shape, backdrop)
+    backdrop: Backdrop? = null): Modifier = liquidGlass(shape, backdrop,
+        readableContent = role != AkiraMaterialRole.Control)
 
 @Composable
 fun AkiraMaterialSurface(shape: CornerBasedShape, modifier: Modifier = Modifier,

@@ -68,7 +68,7 @@ internal fun DeleteSongDialog(song: Song, onDismiss: () -> Unit, onConfirm: () -
                 Button(onClick = onDismiss, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .08f), contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)) { Text(strings.cancel) }
                 Button(onClick = onConfirm, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB93636), contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)) {
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB93636), contentColor = Color.White)) {
                     Text(strings.continueBtn)
                 }
             }

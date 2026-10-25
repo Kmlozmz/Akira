@@ -32,9 +32,6 @@ import androidx.compose.ui.window.*
 import com.akira.app.core.design.icon.AkiraIcons
 import com.akira.app.core.design.glass.LocalAppBackdrop
 import com.akira.app.core.design.glass.LocalLiquidGlassEnabled
-import com.akira.app.core.design.glass.glassAccentColor
-import com.akira.app.core.design.glass.glassContentColor
-import com.akira.app.core.design.glass.isGlassSupported
 import com.akira.app.core.design.backdrop.Backdrop
 import com.akira.app.core.design.backdrop.backdrops.rememberLayerBackdrop
 import com.akira.app.core.design.backdrop.backdrops.layerBackdrop
@@ -44,9 +41,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlin.math.*
 import com.akira.app.core.design.motion.ElasticGlassShape
-import com.akira.app.core.design.motion.ElasticContentWarp
 import com.akira.app.core.design.motion.ElasticBoundsSpec
-import com.akira.app.core.design.motion.MenuBoundsSpec
+import com.akira.app.core.design.motion.presentationBoundsSpec
+import com.akira.app.core.design.motion.presentationProgress
+import com.akira.app.core.design.motion.presentationContentTransform
+import com.akira.app.core.design.motion.PresentationContentOptics
+import com.akira.app.core.design.motion.ElasticContentWarp
+import com.akira.app.core.design.glass.GlassContrast
+import com.akira.app.core.design.glass.glassContentColor
+import com.akira.app.core.design.glass.isGlassSupported
+import androidx.compose.ui.graphics.luminance
 import com.akira.app.core.design.glass.LocalGlassDeformation
 
 private val RectConverter = TwoWayConverter<Rect, AnimationVector4D>(
@@ -54,7 +58,12 @@ private val RectConverter = TwoWayConverter<Rect, AnimationVector4D>(
     { Rect(it.v1, it.v2, it.v3, it.v4) }
 )
 
-internal enum class AkiraPresentationKind { Menu, Panel, CompactPanel, Update, AudioOutput }
+internal fun presentationSourcePresence(progress: Float): Float {
+    val fraction = (progress / com.akira.app.core.design.motion.GlassMotionProfile.SourceHandoffEnd).coerceIn(0f, 1f)
+    return fraction * fraction * (3f - 2f * fraction)
+}
+
+internal enum class AkiraPresentationKind { Menu, Panel, CompactPanel, Update, AudioOutput, AudioQuality }
 internal class AkiraPresentationEntry(
     val kind: AkiraPresentationKind,
     val anchor: Rect?,
@@ -82,6 +91,18 @@ internal class AkiraPresentationState(val anchors: AkiraMenuAnchors?) {
     var closing by mutableStateOf<AkiraPresentationEntry?>(null)
     var rootAnchor: Rect? = null
     var rootSource: AkiraMenuSource? = null
+
+    val desiredEntry: AkiraPresentationEntry?
+        get() = if (closing != null && closing?.removed == false)
+            entries.takeWhile { it !== closing }.lastOrNull { !it.removed }
+        else entries.lastOrNull { !it.removed }
+
+    // Direct actions dispose their caller before the return animation finishes.
+    val returningEntry: AkiraPresentationEntry?
+        get() = closing ?: entries.lastOrNull()
+
+    fun showsBody(entry: AkiraPresentationEntry): Boolean =
+        entry === desiredEntry || (desiredEntry == null && entry === returningEntry)
 
     fun add(entry: AkiraPresentationEntry) {
         entry.parent = entries.lastOrNull { !it.removed }
@@ -127,6 +148,16 @@ fun AkiraPresentationHost(content: @Composable () -> Unit) {
         state.release()
     } }
     val scene = rememberLayerBackdrop()
+    val sourceView = LocalView.current
+    val sourceRevision = remember { mutableLongStateOf(0L) }
+    val redraw = remember { { sourceRevision.longValue } }
+    val presenting = state.entries.isNotEmpty() || pages.entries.isNotEmpty()
+    DisposableEffect(sourceView, presenting) {
+        val observer = sourceView.viewTreeObserver
+        val listener = android.view.ViewTreeObserver.OnDrawListener { sourceRevision.longValue++ }
+        if (presenting) observer.addOnDrawListener(listener)
+        onDispose { if (presenting && observer.isAlive) observer.removeOnDrawListener(listener) }
+    }
     CompositionLocalProvider(LocalAkiraPresentationState provides state, LocalAkiraPageSheetState provides pages) {
       Box(Modifier.fillMaxSize().drawBehind {
           if (pages.presence > 0f) drawRect(Color.Black)
@@ -138,14 +169,15 @@ fun AkiraPresentationHost(content: @Composable () -> Unit) {
         // A hidden Dialog still owns a Compose text-input/window session on
         // some IMEs. Dispose it after the return animation, so Search belongs
         // exclusively to the activity again. Keep it for nested presentations.
-        if (state.entries.isNotEmpty() || pages.entries.isNotEmpty()) AkiraPresentationWindow(state, pages, scene)
+        if (presenting) AkiraPresentationWindow(state, pages, scene, redraw)
       }
     }
 }
 
 /** Reuse one native window while a presentation chain is open. */
 @Composable
-private fun AkiraPresentationWindow(state: AkiraPresentationState, pages: AkiraPageSheetState, scene: Backdrop) {
+private fun AkiraPresentationWindow(state: AkiraPresentationState, pages: AkiraPageSheetState,
+    scene: Backdrop, redraw: () -> Long) {
     val active = state.entries.isNotEmpty() || pages.entries.isNotEmpty()
     Dialog(onDismissRequest = {
         if (state.entries.isNotEmpty()) {
@@ -153,6 +185,7 @@ private fun AkiraPresentationWindow(state: AkiraPresentationState, pages: AkiraP
         } else pages.close()
     }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false,
         dismissOnClickOutside=true)) {
+        com.akira.app.core.design.rendering.PreferInteractiveFrameRate()
         val view = LocalView.current
         val flags = android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
             android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
@@ -166,12 +199,7 @@ private fun AkiraPresentationWindow(state: AkiraPresentationState, pages: AkiraP
             view.importantForAccessibility = if (active) android.view.View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
                 else android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
         }
-        val frame=remember { mutableLongStateOf(0L) }
-        val redraw=remember { { frame.longValue } }
-        LaunchedEffect(Unit) {
-            while(true)withFrameNanos { frame.longValue=it }
-        }
-        // Invalidate draw only, without recomposing menus or pausing lyrics.
+        // Follow activity draws across windows without keeping an idle frame clock alive.
         CompositionLocalProvider(com.akira.app.core.design.glass.LocalGlassRedrawSignal provides redraw) {
             Box(Modifier.fillMaxSize()) {
                 if (pages.entries.isNotEmpty()) AkiraPageSheetOverlay(pages, scene)
@@ -235,8 +263,7 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
     idleEntry.glass = LocalLiquidGlassEnabled.current
     val top = state.entries.lastOrNull { !it.removed }
     val closing = state.closing
-    val desired = if (closing != null && !closing.removed)
-        state.entries.takeWhile { it !== closing }.lastOrNull { !it.removed } else top
+    val desired = state.desiredEntry
     val first = state.entries.firstOrNull() ?: idleEntry
     val density = LocalDensity.current
     val reduced = desired?.reduced ?: first.reduced
@@ -250,26 +277,34 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
     val backdropEntry = desired ?: top ?: state.entries.lastOrNull() ?: idleEntry
     val source = state.rootSource
     val progressEntry by rememberUpdatedState(desired ?: closing ?: top ?: first)
+    val returning by rememberUpdatedState(desired == null)
+    val returnFloor = remember { mutableFloatStateOf(1f) }
+    var windowOrigin by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     fun sourceProgress(): Float {
         if(first.kind==AkiraPresentationKind.AudioOutput)return materialization.value.coerceIn(0f,1f)
         val origin = state.rootAnchor ?: return 1f
-        // Nested presentations can have a different resting size. Comparing
-        // them with the first menu held strain above zero indefinitely.
         val target = progressEntry.bounds ?: return 0f
-        // Area also advances when a wide capsule first becomes a round bubble:
-        // its width can stay constant while its height and contents inflate.
-        val from=sqrt((origin.width*origin.height).coerceAtLeast(1f))
-        val to=sqrt((target.width*target.height).coerceAtLeast(1f))
-        val current=sqrt((geometry.value.width*geometry.value.height).coerceAtLeast(1f))
-        return if(abs(to-from)<1f)1f else ((current-from)/(to-from)).coerceIn(0f,1f)
+        return presentationProgress(geometry.value,
+            origin.translate(-windowOrigin.x, -windowOrigin.y), target)
+    }
+    fun handoffProgress(): Float {
+        val progress = sourceProgress()
+        return if (returning) min(progress, returnFloor.floatValue) else progress
+    }
+    LaunchedEffect(returning, state.generation) {
+        returnFloor.floatValue = 1f
+        if (returning) snapshotFlow { sourceProgress() }.collect { progress ->
+            // A settling spring must not hide the restored control again.
+            returnFloor.floatValue = min(returnFloor.floatValue, progress)
+        }
     }
     DisposableEffect(source) {
-        source?.progressProvider = ::sourceProgress
-        onDispose { source?.progressProvider = null }
+        source?.progressProvider = ::handoffProgress
+        source?.returningProvider = { returning }
+        onDispose { source?.progressProvider = null; source?.returningProvider = null }
     }
     var preparedGeneration by remember { mutableLongStateOf(-1L) }
     var returnedGeneration by remember { mutableLongStateOf(-1L) }
-    var windowOrigin by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     fun close() {
         if (state.closing == null && top != null) state.closing = top
     }
@@ -282,8 +317,8 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
             state.release()
             return@LaunchedEffect
         }
-        val departingSource = active && preparedGeneration != state.generation
-        if (active && preparedGeneration != state.generation) {
+        val departingSource=active && preparedGeneration!=state.generation
+        if (departingSource) {
             val origin = liveOrigin?.translate(-windowOrigin.x, -windowOrigin.y)
                 ?: destination?.let { Rect(it.center.x-1f,it.center.y-1f,it.center.x+1f,it.center.y+1f) }
                 ?: Rect(0f,0f,1f,1f)
@@ -300,7 +335,7 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
             geometry.snapTo(Rect(center.x - 8f, center.y - 8f, center.x + 8f, center.y + 8f))
         }
         val radius = if (desired != null) with(density) {
-            (when(desired.kind) { AkiraPresentationKind.AudioOutput->34.dp; AkiraPresentationKind.Update->32.dp; AkiraPresentationKind.Panel->28.dp; else->22.dp }).toPx()
+            (when(desired.kind) { AkiraPresentationKind.AudioOutput->34.dp; AkiraPresentationKind.Update, AkiraPresentationKind.AudioQuality->32.dp; AkiraPresentationKind.Panel->28.dp; else->22.dp }).toPx()
         } else if(dissolving)corner.value else min(end.width, end.height) / 2f
         val dragged = top?.dragOffset ?: 0f
         val releaseVelocity = top?.releaseVelocity ?: 0f
@@ -313,10 +348,9 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
             geometry.snapTo(end); corner.snapTo(radius); smoothing.snapTo(if (desired != null) 1f else 0f)
             materialization.snapTo(if(desired!=null)1f else 0f)
         } else coroutineScope {
-            // Akira tuning, not claimed as private Apple system constants. Animatable
-            // retargets from its current value AND velocity when Back interrupts.
-            val travel = if(first.kind==AkiraPresentationKind.Menu && liveOrigin!=null && (departingSource || desired==null))
-                MenuBoundsSpec(desired!=null,density.density) else ElasticBoundsSpec(desired!=null,first.kind==AkiraPresentationKind.AudioOutput)
+            val travel = if(first.kind==AkiraPresentationKind.AudioOutput)
+                ElasticBoundsSpec(desired!=null, true) else presentationBoundsSpec(desired!=null,
+                    liveOrigin!=null && (departingSource || desired==null))
             launch { geometry.animateTo(end, travel,
                 initialVelocity = if (dragged != 0f) Rect(0f, releaseVelocity, 0f, releaseVelocity) else geometry.velocity) }
             launch { corner.animateTo(radius, spring(.82f, 850f)) }
@@ -334,7 +368,7 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
 
     val scrim = animateFloatAsState(if (desired != null) .12f else 0f,
         if (reduced) snap() else tween(180), label = "presentationScrim")
-        BoxWithConstraints(Modifier.fillMaxSize().onGloballyPositioned { windowOrigin = it.positionInWindow() }) {
+    BoxWithConstraints(Modifier.fillMaxSize().onGloballyPositioned { windowOrigin = it.positionInWindow() }) {
             val window = with(density) { Size(maxWidth.toPx(), maxHeight.toPx()) }
             val layoutDirection = LocalLayoutDirection.current
             val insets = WindowInsets.safeDrawing.union(WindowInsets.ime)
@@ -356,39 +390,48 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
                 else {
                     val span=(target.center-origin.center).getDistance().coerceAtLeast(1f)
                     val direction=(origin.center-target.center)/span
-                    direction*(4f*p*(1f-p))
+                    val contact=if(returning).26f*exp(-((p-.12f)/.10f).pow(2)) else 0f
+                    direction*(.20f*4f*p*(1f-p)+contact)
                 }
             }
             val shape = remember(corner, smoothing, density, first, reduced) {
                 ElasticGlassShape({
                     val p=sourceProgress()
-                    val t=((p-.45f)/.55f).coerceIn(0f,1f)
-                    val settle=t*t*(3f-2f*t)
+                    val rounded=((p-.64f)/.36f).coerceIn(0f,1f)
+                    val settle=rounded*rounded*(3f-2f*rounded)
                     val round=min(geometry.value.width,geometry.value.height)/2f
-                    round+(corner.value-round)*settle
-                }, { smoothing.value }, strain, density)
+                    val resting=with(density) { when(progressEntry.kind) {
+                        AkiraPresentationKind.AudioOutput -> 34.dp
+                        AkiraPresentationKind.Update, AkiraPresentationKind.AudioQuality -> 32.dp
+                        AkiraPresentationKind.Panel -> 28.dp
+                        else -> 22.dp
+                    }.toPx() }
+                    if(first.kind==AkiraPresentationKind.AudioOutput)corner.value
+                    else round+(resting.coerceAtMost(round)-round)*settle
+                }, { if(first.kind==AkiraPresentationKind.AudioOutput)smoothing.value else sourceProgress() }, strain, density)
             }
             val copies = state.entries.toList()
+            val returningEntry = state.returningEntry
             val bodies = copies.map { entry ->
-                remember(entry, desired, reduced) {
+                remember(entry, desired, reduced, returningEntry) {
                     @Composable {
-                        val contentWarp=remember { ElasticContentWarp() }
-                        // The final body returns into its source with the surface.
-                        // Fading it away in 140 ms left an empty shrinking panel.
-                        val visible = animateFloatAsState(if (entry === desired || (desired == null && entry === closing)) 1f else 0f,
+                        val optics=remember { PresentationContentOptics() }
+                        val visible = animateFloatAsState(if (state.showsBody(entry)) 1f else 0f,
                             if (reduced) snap() else tween(140), label = "presentationContent")
                         Box(Modifier.graphicsLayer {
                             val final = entry.bounds
-                            val sx = if(final==null)0f else geometry.value.width/final.width.coerceAtLeast(1f)
-                            val sy = if(final==null)0f else geometry.value.height/final.height.coerceAtLeast(1f)
-                            val reveal = ((min(sx,sy) - .10f) / .80f).coerceIn(0f, 1f)
-                            // The contents transform with the surface, instead of
-                            // revealing a cropped, already full-sized menu.
+                            val p=sourceProgress()
+                            val pose=presentationContentTransform(geometry.value.size,
+                                final?.size ?: geometry.value.size,p)
+                            val reveal=((p-.10f)/.55f).coerceIn(0f,1f)
                             transformOrigin=androidx.compose.ui.graphics.TransformOrigin(0f,0f)
-                            scaleX=sx.coerceAtLeast(.001f)
-                            scaleY=sy.coerceAtLeast(.001f)
-                            renderEffect=if(reduced || final==null)null else contentWarp.effect(final.size,shape.strain())
-                            alpha = visible.value * reveal * reveal * (3f - 2f * reveal)
+                            scaleX=pose.scale;scaleY=pose.scale
+                            translationX=pose.offset.x;translationY=pose.offset.y
+                            renderEffect=if(reduced)null else optics.effect(geometry.value.size,pose,
+                                shape.topStart.toPx(geometry.value.size,density),p,density.density)
+                            // The parent fades the returning surface and its contents together.
+                            val presence=reveal*reveal*(3f-2f*reveal)
+                            alpha = visible.value * presence
                         }
                             .pointerInput(entry === desired) {
                                 if (entry !== desired) awaitPointerEventScope {
@@ -402,16 +445,15 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
             }
             val sourceGlyph = remember(first, geometry, active, shape, reduced) {
                 @Composable {
-                    val warp=remember {ElasticContentWarp()}
+                    val warp=remember { ElasticContentWarp() }
                     val icon = if(active && source?.hasOwnSurface==true) source.icon else null
                     val body=if(active && source?.hasOwnSurface==true)source.surfaceContent else null
                     if(body!=null) Box(Modifier.graphicsLayer {
                         val origin=state.rootAnchor ?: return@graphicsLayer
                         val p=(sourceProgress()/.45f).coerceIn(0f,1f)
                         alpha=1f-p*p*(3f-2f*p)
-                        scaleX=geometry.value.width/origin.width.coerceAtLeast(1f)
+                        scaleX=1f+.06f*sin(PI.toFloat()*p)
                         scaleY=scaleX
-                        translationY=-(geometry.value.height-origin.height)*.5f*(1f-p)
                         renderEffect=if(reduced)null else warp.effect(origin.size,shape.strain())
                     }) {body()}
                     else if (icon != null) Icon(icon, null,
@@ -424,13 +466,18 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
             }
             MaterialTheme(colorScheme = backdropEntry.colors ?: MaterialTheme.colorScheme,
                 typography = backdropEntry.typography ?: MaterialTheme.typography) {
-                val ink = glassContentColor()
-                val accent = glassAccentColor()
-                val colors = if (backdropEntry.glass && isGlassSupported()) MaterialTheme.colorScheme.copy(
-                    onSurface = ink, onSurfaceVariant = ink.copy(alpha = .7f), primary = accent,
-                    onPrimary = if (ink == Color.Black) Color.White else Color.Black,
-                ) else MaterialTheme.colorScheme
-                MaterialTheme(colorScheme = colors) {
+                val scheme=MaterialTheme.colorScheme
+                val ink=glassContentColor()
+                val lightInk=ink.luminance()>.5f
+                val readableScheme=remember(scheme,ink,backdropEntry.glass) {
+                    if(backdropEntry.glass && isGlassSupported()) {
+                        val primary=GlassContrast.readableAccent(scheme.primary,lightInk)
+                        scheme.copy(onSurface=ink,onSurfaceVariant=ink.copy(alpha=GlassContrast.SecondaryAlpha),
+                            primary=primary,onPrimary=if(primary.luminance()>.179f)Color.Black else Color.White,
+                            error=GlassContrast.readableAccent(scheme.error,lightInk))
+                    } else scheme
+                }
+                MaterialTheme(colorScheme=readableScheme) {
                 CompositionLocalProvider(LocalAppBackdrop provides (backdropEntry.backdrop ?: LocalAppBackdrop.current),
                     LocalContentColor provides MaterialTheme.colorScheme.onSurface,
                     LocalLiquidGlassEnabled provides backdropEntry.glass,
@@ -441,8 +488,9 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
                     SubcomposeLayout(Modifier.graphicsLayer {
                         // A bare glyph or a member of a shared capsule has no
                         // independent circular material to return to.
-                        alpha = if(!active)0f else if(first.kind==AkiraPresentationKind.AudioOutput)materialization.value.coerceIn(0f,1f) else if(source!=null && !source.hasOwnSurface)
-                            (sourceProgress()/.16f).coerceIn(0f,1f) else 1f
+                        alpha = if(!active)0f else if(first.kind==AkiraPresentationKind.AudioOutput)materialization.value.coerceIn(0f,1f)
+                            else if(source!=null && (!source.hasOwnSurface || returning))
+                                presentationSourcePresence(handoffProgress()) else 1f
                     }.offset {
                         val rect = geometry.value.translate(0f, top?.dragOffset ?: 0f)
                         IntOffset(rect.left.roundToInt(), rect.top.roundToInt())
@@ -451,7 +499,22 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
                         val rect = geometry.value.translate(0f, top?.dragOffset ?: 0f)
                         val placeables = copies.mapIndexed { index, entry ->
                             val output = entry.kind == AkiraPresentationKind.AudioOutput
-                            val maxWidth = min(with(density) { (if (entry.kind == AkiraPresentationKind.Menu) 260.dp else if(output)340.dp else if(entry.kind==AkiraPresentationKind.Update)380.dp else if(entry.kind==AkiraPresentationKind.CompactPanel)360.dp else 560.dp).toPx() }, safe.width - if(output)with(density){16.dp.toPx()} else 0f).roundToInt().coerceAtLeast(1)
+                            val availableWidth = when {
+                                entry.kind == AkiraPresentationKind.AudioQuality -> min(safe.width, window.width * .82f)
+                                output -> safe.width - with(density) { 16.dp.toPx() }
+                                else -> safe.width
+                            }
+                            val preferredWidth = with(density) {
+                                when (entry.kind) {
+                                    AkiraPresentationKind.Menu -> 260.dp
+                                    AkiraPresentationKind.AudioOutput -> 340.dp
+                                    AkiraPresentationKind.AudioQuality -> 328.dp
+                                    AkiraPresentationKind.Update -> 380.dp
+                                    AkiraPresentationKind.CompactPanel -> 360.dp
+                                    else -> 560.dp
+                                }.toPx()
+                            }
+                            val maxWidth = min(preferredWidth, availableWidth).roundToInt().coerceAtLeast(1)
                             val maxHeight = (safe.height - if(output)with(density){64.dp.toPx()} else 0f).roundToInt().coerceAtLeast(1)
                             val child = subcompose(entry, bodies[index]).single()
                                 .measure(Constraints(minWidth = maxWidth, maxWidth = maxWidth, maxHeight = maxHeight))

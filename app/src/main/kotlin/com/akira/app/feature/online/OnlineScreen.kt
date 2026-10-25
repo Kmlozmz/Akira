@@ -10,6 +10,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.listSaver
+import androidx.activity.compose.BackHandler
+import com.akira.app.feature.library.*
+import com.akira.app.core.design.icon.AkiraIcons
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -40,6 +47,17 @@ import kotlinx.coroutines.flow.first
     playbackError: Boolean, route: OnlineRoute?, depth: Int, navigationSettled: Boolean,
     onOpen: (YTItem, String?) -> Unit, onBack: () -> Unit,
     onMore: (Song) -> Unit = {}, onSettings: () -> Unit = {}) {
+    val body: @Composable () -> Unit = { OnlinePageScreenBody(repository, destination, current, playing,
+        bottomPadding, onPlay, onTogglePlay, obscured, playbackError, route, depth, navigationSettled, onOpen, onBack, onMore, onSettings) }
+    if (destination == HomeDestination.LIBRARY && route == null) LibraryChromeHost(body) else body()
+}
+
+@Composable private fun OnlinePageScreenBody(repository: OnlineRepository, destination: HomeDestination,
+    current: Song?, playing: Boolean, bottomPadding: androidx.compose.ui.unit.Dp,
+    onPlay: (Song, List<Song>) -> Unit, onTogglePlay: () -> Unit, obscured: Boolean,
+    playbackError: Boolean, route: OnlineRoute?, depth: Int, navigationSettled: Boolean,
+    onOpen: (YTItem, String?) -> Unit, onBack: () -> Unit,
+    onMore: (Song) -> Unit = {}, onSettings: () -> Unit = {}) {
     if (destination == HomeDestination.SEARCH && route == null) {
         OnlineSearchPage(repository, current, playing, bottomPadding, onPlay, onTogglePlay, onOpen, onMore, onSettings)
         return
@@ -51,6 +69,13 @@ import kotlinx.coroutines.flow.first
     var query by rememberSaveable { mutableStateOf("") }
     var searchKind by rememberSaveable { mutableStateOf("all") }
     var libraryKind by rememberSaveable { mutableStateOf("playlists") }
+    var libraryCategoryVisible by rememberSaveable { mutableStateOf(false) }
+    var libraryQuery by rememberSaveable { mutableStateOf("") }
+    var librarySearchVisible by rememberSaveable { mutableStateOf(false) }
+    var libraryMenu by remember { mutableStateOf(false) }
+    var librarySortMenu by remember { mutableStateOf(false) }
+    var librarySortName by rememberSaveable { mutableStateOf(SortOrder.TITLE_ASC.name) }
+    val librarySort = SortOrder.fromName(librarySortName)
     var loadingMore by remember { mutableStateOf(false) }
     var moreFailed by remember { mutableStateOf(false) }
     var homePageCount by remember { mutableIntStateOf(1) }
@@ -145,6 +170,9 @@ import kotlinx.coroutines.flow.first
     }
     val songs = shelves.flatMap { it.items }.filterIsInstance<SongItem>().distinctBy { it.id }
     val continueLabel = localizedText("Continue listening", "Continuar escuchando")
+    val libraryEntries = remember(shelves, libraryQuery, librarySort) {
+        orderOnlineLibraryItems(shelves.flatMap { it.items }, libraryQuery, librarySort)
+    }
     val heroTargets = remember(shelves) { shelves.sortedBy { shelf ->
         when {
             shelf.reason != null -> 0
@@ -176,6 +204,17 @@ import kotlinx.coroutines.flow.first
     } }
     val browseRoot = active == null && destination != HomeDestination.HOME
     val libraryRoot = active == null && destination == HomeDestination.LIBRARY
+    val libraryDensity = LocalDensity.current
+    val libraryPullSearch = remember(list) { object : NestedScrollConnection {
+        var distance = 0f
+        override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+            if (source == NestedScrollSource.UserInput && list.firstVisibleItemIndex == 0 && list.firstVisibleItemScrollOffset == 0 && available.y > 0) {
+                distance += available.y
+                if (distance > with(libraryDensity) { 30.dp.toPx() }) librarySearchVisible = true
+            } else if (consumed.y < 0) distance = 0f
+            return Offset.Zero
+        }
+    } }
     val searchRoot = active == null && destination == HomeDestination.SEARCH
     val headerProgress by rememberPageCollapse(list)
     val homeRoot = destination == HomeDestination.HOME && active == null
@@ -231,7 +270,21 @@ import kotlinx.coroutines.flow.first
     val status = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val headerTitle = title
     val retryLabel = localizedText("Retry", "Reintentar")
+    val localizedPlaybackFailure = localizedText("Couldn't play this collection. Try again.", "No se pudo reproducir esta colección. Reintenta.")
     if (showAccount) OnlineAccountSheet { showAccount = false }
+    BackHandler(libraryRoot && libraryCategoryVisible && !obscured) { libraryCategoryVisible = false }
+    if (libraryRoot && !libraryCategoryVisible) {
+        val links = if (account.connected) listOf(
+            LibraryCategoryLink("playlists", localizedText("Playlists", "Playlists"), LibraryIcons.Playlists),
+            LibraryCategoryLink("artists", localizedText("Artists", "Artistas"), LibraryIcons.Artists),
+            LibraryCategoryLink("albums", localizedText("Albums", "Álbumes"), LibraryIcons.Albums),
+            LibraryCategoryLink("songs", localizedText("Songs", "Canciones"), LibraryIcons.Songs))
+        else listOf(
+            LibraryCategoryLink("songs", localizedText("Liked songs", "Me gusta"), AkiraIcons.StarFilled),
+            LibraryCategoryLink("recent", localizedText("Recently played", "Recientes"), Icons.Rounded.Schedule))
+        LibraryOverview(links, { libraryKind = it; libraryCategoryVisible = true; libraryQuery = "" }, onSettings)
+        return
+    }
     if (active != null && page?.collection != null) {
         key(active.id) { OnlineCollectionDetail(page!!, current, playing, bottomPadding, obscured, ::choose,
             onPlay, onTogglePlay, onMore, onBack, loadingMore, moreFailed, ::loadMore,
@@ -241,14 +294,40 @@ import kotlinx.coroutines.flow.first
         return
     }
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        LazyColumn(state = list, modifier = Modifier.fillMaxSize().layerBackdrop(backdrop)
+        LazyColumn(state = list, modifier = Modifier.fillMaxSize().then(if (libraryRoot) Modifier.nestedScroll(libraryPullSearch) else Modifier).layerBackdrop(backdrop)
                 .then(if (homeRoot) Modifier.glassRoot(homeGlass, isActive = { heroProgress() > 0f }) else Modifier),
-            contentPadding = PaddingValues(top = if (homeRoot) 0.dp else if(searchRoot) status + 82.dp + searchControlsHeight else status + 82.dp,
+            contentPadding = PaddingValues(top = if (homeRoot || libraryRoot) 0.dp else if(searchRoot) status + 82.dp + searchControlsHeight else status + 82.dp,
                 bottom = bottomPadding + 28.dp), verticalArrangement = Arrangement.spacedBy(if (browseRoot) 12.dp else 20.dp),
             flingBehavior = com.akira.app.core.design.motion.rememberAkiraBouncingFling()) {
             if (libraryRoot) {
-                item("library-intro") { OnlineLibraryIntro(account) { showAccount = true } }
-                item("library-kinds") { OnlineLibraryKinds(effectiveLibraryKind, account.connected) { libraryKind = it } }
+                item("library-heading") {
+                    Box(Modifier.padding(horizontal = 20.dp)) {
+                    LibraryBrowseHeading(onlineKindLabel(effectiveLibraryKind), libraryQuery, { libraryQuery = it }, librarySearchVisible,
+                        onPlay = {
+                            scope.launch {
+                                try {
+                                    val entries = shelves.flatMap { it.items }
+                                    val queue = entries.filterIsInstance<SongItem>().ifEmpty {
+                                        entries.firstOrNull { it is AlbumItem || it is PlaylistItem }?.let { repository.open(it).shelves.flatMap { shelf -> shelf.items }.filterIsInstance<SongItem>() }.orEmpty()
+                                    }.map { it.asOnlineSong() }
+                                    queue.firstOrNull()?.let { onPlay(it, queue) }
+                                } catch (cancel: CancellationException) { throw cancel }
+                                catch (_: Exception) { AkiraNotices.show(localizedPlaybackFailure) }
+                            }
+                        }, onShuffle = {
+                            scope.launch {
+                                try {
+                                    val entries = shelves.flatMap { it.items }.shuffled()
+                                    val queue = entries.filterIsInstance<SongItem>().ifEmpty {
+                                        entries.firstOrNull { it is AlbumItem || it is PlaylistItem }?.let { repository.open(it).shelves.flatMap { shelf -> shelf.items }.filterIsInstance<SongItem>() }.orEmpty()
+                                    }.map { it.asOnlineSong() }.shuffled()
+                                    queue.firstOrNull()?.let { onPlay(it, queue) }
+                                } catch (cancel: CancellationException) { throw cancel }
+                                catch (_: Exception) { AkiraNotices.show(localizedPlaybackFailure) }
+                            }
+                        })
+                    }
+                }
             }
             run {
                 if (homeRoot) item("hero") { key(account) { HeroCarousel(if (loading && page == null) emptyList() else heroItems, songs.map { it.asOnlineSong() }, current?.id, playing,
@@ -310,7 +389,8 @@ import kotlinx.coroutines.flow.first
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                if (browseRoot) onlineBrowseSections(shelves, destination == HomeDestination.SEARCH, query.isBlank(),
+                if (libraryRoot) onlineLibrarySections(libraryEntries, libraryQuery, current, playing, sourcePrefix, ::choose, onMore)
+                else if (browseRoot) onlineBrowseSections(shelves, destination == HomeDestination.SEARCH, query.isBlank(),
                     current, playing, sourcePrefix, ::choose, onMore)
                 else onlineHomeSections(shelves, current, playing, sourcePrefix, ::choose, onMore)
                 if (homeRoot || libraryRoot || searchRoot) {
@@ -336,6 +416,8 @@ import kotlinx.coroutines.flow.first
             }
         }
         if (homeRoot) HomeTopBar(heroProgress, onSettings, homeGlass, { if (obscured) 1f else 0f }, heroHeight)
+        else if (libraryRoot) LibraryFloatingBar(onlineKindLabel(effectiveLibraryKind), headerProgress, backdrop,
+            onBack = { libraryCategoryVisible = false }, onFirst = { librarySortMenu = true }, onMore = { libraryMenu = true })
         else CompositionLocalProvider(LocalPageHeaderBackdrop provides backdrop) {
             PagePageHeader(headerTitle, if (active != null) onBack else null,
                 progress = headerProgress, topInset = status,
@@ -343,10 +425,15 @@ import kotlinx.coroutines.flow.first
                     com.akira.app.core.design.components.AkiraAccountButton({ showAccount = true })
                 } })
         }
+        if (libraryMenu) AkiraContextMenu(onDismiss = { libraryMenu = false }, groups = listOf(listOf(
+            AkiraContextAction(Icons.Rounded.Search, localizedText("Search", "Buscar")) { librarySearchVisible = true },
+            AkiraContextAction(Icons.Rounded.Person, localizedText("Account", "Cuenta")) { showAccount = true })))
+        if (librarySortMenu) LibrarySortMenu(librarySort, { librarySortName = it.name },
+            { librarySortMenu = false }, originalOrder = true)
     }
 }
 
-@Composable private fun OnlineAccountSheet(onDismiss: () -> Unit) {
+@Composable internal fun OnlineAccountSheet(onDismiss: () -> Unit) {
     AkiraModalSheet(onDismissRequest = onDismiss, title = "YouTube Music") {
         Column(Modifier.weight(1f, fill = false).verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 20.dp)) {
             OnlineModeControl()

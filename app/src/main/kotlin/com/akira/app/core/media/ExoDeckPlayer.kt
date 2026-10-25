@@ -12,6 +12,7 @@ import androidx.media3.exoplayer.ExoPlayer
  * [nextWindowIndex], que contiene la consulta a `currentTimeline` que el
  * motor hacía directamente y que es lo que impedía probar sin Media3.
  */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class ExoDeckPlayer(private val player: ExoPlayer) : DeckPlayer {
     override var playbackParameters: androidx.media3.common.PlaybackParameters
         get()=player.playbackParameters

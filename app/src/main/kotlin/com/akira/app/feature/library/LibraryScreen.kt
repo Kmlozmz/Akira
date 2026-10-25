@@ -40,12 +40,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.graphics.luminance
 
-import android.app.Activity
 import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.IntentSenderRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.wrapContentSize
@@ -98,8 +94,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import android.os.Build
-import android.provider.MediaStore
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -193,25 +187,13 @@ import androidx.compose.ui.geometry.Size
 import com.akira.app.core.design.util.rememberAkiraHaptics
 import kotlinx.coroutines.flow.first
 
-/**
- * Screen 2 - Main Library (Mi Colección) & Expandable Now Playing Player.
- *
- * Implements user's approved aesthetic:
- * 1. AMOLED Black with transparent surface (shares persistent living starfield).
- * 2. Pure borderless tonal cards (#0E0E16, #141420), ZERO outline lines.
- * 3. Functional category filtering: Tracks, Albums, Artists, Folders.
- * 4. Touch-consuming Floating Mini Player with live progress bar.
- * 5. Full-screen Now Playing expanded player with seekbar and playback controls.
- */
 @OptIn(UnstableApi::class, androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 @Composable
 fun LibraryScreen(
     initialSongs: List<Song>, // Kept for backwards compatibility but not actively used
     modifier: Modifier = Modifier,
     libraryViewModel: LibraryViewModel = viewModel(),
-    // Canción externa de "Abrir con...". Al llegar se reproduce sola en una
-    // cola de un elemento (sin entrar en la biblioteca) y se expande el
-    // reproductor. Luego se avisa para limpiarla y no repetir.
+    // External files use a one-song queue and are consumed after opening the player.
     externalSong: Song? = null,
     onExternalConsumed: () -> Unit = {},
     openPlayerFromWidget: Boolean = false,
@@ -235,34 +217,30 @@ fun LibraryScreen(
     val searchQuery by libraryViewModel.searchQuery.collectAsStateWithLifecycle()
     val currentSortOrder by libraryViewModel.currentSortOrder.collectAsStateWithLifecycle()
     var showSortBottomSheet by remember { mutableStateOf(false) }
-    var showSettings by remember { mutableStateOf(false) }
     var destination by rememberSaveable { mutableStateOf(HomeDestination.HOME) }
+    val showSettings = destination == HomeDestination.SETTINGS
+    var settingsStartWithSound by rememberSaveable { mutableStateOf(false) }
     val searchSession = rememberSearchSession()
     var previousDestination by rememberSaveable { mutableStateOf(HomeDestination.HOME) }
     var homeScrollRequest by remember { mutableStateOf(0) }
     val homeStateHolder=androidx.compose.runtime.saveable.rememberSaveableStateHolder()
-    fun openSettings() { previousDestination=destination;destination=HomeDestination.SETTINGS;showSettings=true }
-    fun closeSettings() { showSettings=false;destination=previousDestination }
+    fun openSettings(startWithSound: Boolean = false) {
+        settingsStartWithSound = startWithSound
+        previousDestination = com.akira.app.feature.home.settingsReturnDestination(destination, previousDestination)
+        destination = HomeDestination.SETTINGS
+    }
+    fun closeSettings() { destination = previousDestination.takeUnless { it == HomeDestination.SETTINGS } ?: HomeDestination.HOME }
 
 
-    // Sub-filters for drill-down in Albums, Artists, Folders
     var selectedAlbumFilter by remember { mutableStateOf<String?>(null) }
     var selectedArtistFilter by remember { mutableStateOf<String?>(null) }
     var selectedFolderFilter by remember { mutableStateOf<String?>(null) }
-    // Claves estables del elemento seleccionado. Los *Filter guardan el NOMBRE
-    // (es lo que se pinta en el breadcrumb), pero el nombre no identifica:
-    // dos álbumes titulados igual de artistas distintos, o dos carpetas
-    // "Music/Movies" y "Video/Movies", colapsaban en un único grupo y el
-    // drill-down enseñaba canciones del otro. El filtrado va por clave.
+    // Display names are not identities: duplicate album and folder names need stable keys.
     var selectedAlbumKey by remember { mutableStateOf<String?>(null) }
     var selectedFolderKey by remember { mutableStateOf<String?>(null) }
 
-    // Media3 background service connection (Foreground Service + System Media Notification!)
     val musicService = remember { MusicServiceConnection(context, scope) }
-    // El remember anterior creaba un MusicController por cada recomposición de la
-    // pantalla que sobrevivía a su compositions (y en rotación se acumulaba uno por
-    // instancia). Se libera al salir de la composición; en un cambio de
-    // configuración la conexión se reconstruye sola, que es lo esperado.
+    // The controller belongs to this composition, including across activity recreation.
     DisposableEffect(musicService) {
         onDispose { musicService.release() }
     }
@@ -303,24 +281,16 @@ fun LibraryScreen(
             musicService.selectSourceMode(onlineEnabled, userPrefs?.autoResume == true || openPlayerFromWidget)
         }
     }
-    // Durante el crossfade se mantiene la canción saliente que se está escuchando
-    // hasta que termine su fade out; una vez finalizado el crossfade el servicio
-    // actualiza serviceSong a la canción entrante.
+    // El servicio decide cuándo cambiar la canción visible durante el crossfade.
     val currentSong: Song? = (serviceSong ?: localCurrentSong)?.takeIf {
         it.contentUri.startsWith("akira-youtube:") == onlineEnabled
     }
 
-    val repeatMode = when (serviceRepeatMode) {
-        Player.REPEAT_MODE_ONE -> 2
-        Player.REPEAT_MODE_ALL -> 1
-        else -> 0
-    }
+    val repeatState = queueRepeatState(serviceRepeatMode)
 
-    // Expandable Player Progress (0f = MiniPlayer, 1f = FullScreen Expanded)
     var restoredPlayerExpanded by rememberSaveable { mutableStateOf(openPlayerFromWidget || openPlayerFromMediaSession) }
     val playerExpansionProgress = remember { Animatable(if (restoredPlayerExpanded) 1f else 0f) }
-    // The feed/dock only need the visibility boundary. Reading the continuous
-    // value here recomposed the entire library on every sheet frame.
+    // Subscribe to visibility here; continuous progress is consumed by player layers.
     val miniVisible by remember { derivedStateOf { playerExpansionProgress.value <= .001f } }
     LaunchedEffect(playerExpansionProgress) {
         androidx.compose.runtime.snapshotFlow { playerExpansionProgress.value }.collect {
@@ -343,43 +313,14 @@ fun LibraryScreen(
             if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) musicService.undoQueueInsertion(entryId)
         }
     }
-    var pendingDeleteSong by remember { mutableStateOf<Song?>(null) }
     var deletePreviewSong by remember { mutableStateOf<Song?>(null) }
-    fun finishDelete(song: Song) {
-        if (currentSong?.id == song.id) musicService.pause()
-        musicService.removeSongFromQueue(song.id)
+    val performDeleteSong = rememberSongDeleter(onDeleted = { songId ->
+        if (currentSong?.id == songId) musicService.pause()
+        musicService.removeSongFromQueue(songId)
         scope.launch { snackbarHostState.showAkiraSnackbar(strings.fileDeleted) }
-    }
-    val deleteRequestLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        // MediaStore performs deletion after approval. Cancellation leaves
-        // both playback and queue untouched; do not issue another delete.
-        if (result.resultCode == Activity.RESULT_OK) pendingDeleteSong?.let { finishDelete(it) }
-        pendingDeleteSong = null
-    }
-    fun performDeleteSong(song: Song) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            try {
-                val request = MediaStore.createDeleteRequest(context.contentResolver, listOf(Uri.parse(song.contentUri)))
-                pendingDeleteSong = song
-                deleteRequestLauncher.launch(IntentSenderRequest.Builder(request.intentSender).build())
-            } catch (_: Exception) {
-                pendingDeleteSong = null
-                scope.launch { snackbarHostState.showAkiraSnackbar(strings.library.error) }
-            }
-        } else {
-            val deleted = runCatching { context.contentResolver.delete(Uri.parse(song.contentUri), null, null) }.getOrDefault(0)
-            if (deleted > 0) finishDelete(song) else scope.launch { snackbarHostState.showAkiraSnackbar(strings.library.error) }
-        }
-    }
+    }, onError = { scope.launch { snackbarHostState.showAkiraSnackbar(strings.library.error) } })
     fun requestDeleteSong(song: Song) { deletePreviewSong = song }
 
-    // Dynamic Artwork Colors (Shared seamlessly between Mini Player and Full Expanded Screen)
-    // Con `dynamicColor` apagado se usan los colores base del tema, así que
-    // los tres estados empiezan ya en sus valores de tema y NO en los de la
-    // portada: sin esa lectura inicial se veían los colores de la canción
-    // anterior hasta que terminase la extracción.
     val visualPrefs = userPrefs ?: if (openPlayerFromWidget) com.akira.app.core.datastore.AppUiSnapshot.read(context) else null
     val dynamicColorEnabled = visualPrefs?.dynamicColor ?: false
     val cachedWidgetColor = if (openPlayerFromWidget) Color(context.getSharedPreferences("akira_widget", android.content.Context.MODE_PRIVATE).getInt("background_color", 0xFF222432.toInt())) else Color(0xFF222432)
@@ -388,19 +329,11 @@ fun LibraryScreen(
     var dynamicAccentColor by remember { mutableStateOf(cachedWidgetColor) }
     var artworkColors by remember { mutableStateOf(PlayerArtworkColors(cachedWidgetColor)) }
 
-    // Paleta del tema cuando el color dinámico está apagado.
-    //
-    // Se usa la ESCALA DE SUPERFICIES, no `primary`: en el esquema AMOLED de
-    // esta app `primary` es blanco puro, y con él el fondo ambiente salía casi
-    // blanco (un reproductor oscuro con fondo claro). Lo que "colores base"
-    // debe significar aquí es la jerarquía tonal del propio tema.
+    // Use surface tones for the ambient scene; the AMOLED primary token is white.
     val themePrimary = MaterialTheme.colorScheme.background
     val themeSecondary = MaterialTheme.colorScheme.surfaceContainer
     val themeSurface = MaterialTheme.colorScheme.surfaceContainerHigh
 
-    // Colores que se pintan. Es un `derivedStateOf` para que el simple hecho
-    // de cambiar el interruptor NO propague a todo el subárbol: sólo cambian
-    // los tres valores de color que consumen el fondo y el reproductor.
     val effectivePrimary by remember(dynamicColorEnabled, dynamicPrimaryColor, themePrimary) {
         derivedStateOf { if (dynamicColorEnabled) dynamicPrimaryColor else themePrimary }
     }
@@ -411,9 +344,6 @@ fun LibraryScreen(
         derivedStateOf { if (dynamicColorEnabled) dynamicAccentColor else themeSurface }
     }
 
-    // Al apagar el color dinámico, la extracción de paleta es trabajo
-    // desperdiciado (decodifica el bitmap y corre Palette). Se cancela y se
-    // devuelven los colores de tema de inmediato.
     LaunchedEffect(dynamicColorEnabled) {
         if (!dynamicColorEnabled) {
             dynamicPrimaryColor = Color(0xFF222432)
@@ -427,7 +357,7 @@ fun LibraryScreen(
         if (!dynamicColorEnabled) return@LaunchedEffect
         val song = currentSong ?: return@LaunchedEffect
 
-        // Only set default if song has NO album art; otherwise let decoder do smooth transition
+        // Con portada, el decoder conserva el color anterior hasta tener la nueva paleta.
         if (song.albumArtUri.isNullOrBlank()) {
             artworkColors = PlayerArtworkColors(Color(song.tone.hex))
             dynamicPrimaryColor = vibrantBoost(Color(song.tone.hex), isGrayscaleFallback = Color(0xFF222432))
@@ -469,10 +399,7 @@ fun LibraryScreen(
 
     var isInitialSongRestored by remember { mutableStateOf(false) }
 
-    // Restaura SÓLO la última canción reproducida. Antes caía a
-    // `songsList.first()`, así que en una instalación limpia (sin
-    // lastPlayedSongId) ya aparecía una canción "en reproducción" sin que
-    // el usuario hubiera tocado nada.
+    // Do not invent a current song on a fresh installation without a saved session.
     LaunchedEffect(songsList, userPrefs, onlineEnabled) {
         val prefs = userPrefs ?: return@LaunchedEffect
         if (!onlineEnabled && !isInitialSongRestored && songsList.isNotEmpty()) {
@@ -486,13 +413,19 @@ fun LibraryScreen(
         }
     }
 
-    fun playSong(song: Song) {
-        localCurrentSong = song
+    fun playSong(song: Song, collection: List<Song>, shuffle: Boolean = isShuffleActive) {
+        val selection = collectionPlayback(song, collection, shuffle) ?: return
+        localCurrentSong = selection.song
         scope.launch {
-            prefsRepo.savePlaybackState(song.id, 0L)
+            prefsRepo.savePlaybackState(selection.song.id, 0L)
         }
-        val queue = if (isShuffleActive) songsList.shuffled() else songsList
-        musicService.playSong(song, queue)
+        musicService.mediaController?.shuffleModeEnabled = selection.shuffle
+        musicService.playSong(selection.song, selection.queue)
+    }
+
+    fun playCollection(collection: List<Song>, shuffle: Boolean) {
+        val first = if (shuffle) collection.randomOrNull() else collection.firstOrNull()
+        first?.let { playSong(it, collection, shuffle) }
     }
 
     // A cold launcher session needs the same real queue as a widget session.
@@ -508,7 +441,7 @@ fun LibraryScreen(
     // System media surfaces reopen the active player without changing playback.
     LaunchedEffect(openPlayerFromMediaSession, isConnected) {
         if (!openPlayerFromMediaSession || !isConnected) return@LaunchedEffect
-        showSettings = false
+        if (showSettings) closeSettings()
         if ((musicService.mediaController?.mediaItemCount ?: 0) > 0) playerExpansionProgress.snapTo(1f)
         else playerExpansionProgress.snapTo(0f)
         onMediaSessionPlayerOpened()
@@ -518,7 +451,7 @@ fun LibraryScreen(
     LaunchedEffect(openPlayerFromWidget, isConnected) {
         if (!openPlayerFromWidget || !isConnected) return@LaunchedEffect
         val controller = musicService.mediaController ?: return@LaunchedEffect
-        showSettings = false
+        if (showSettings) closeSettings()
         musicService.restorePausedSession()
         if (controller.mediaItemCount == 0) {
             val saved = withContext(Dispatchers.IO) { WidgetPlaybackStore.read(context) }
@@ -546,9 +479,7 @@ fun LibraryScreen(
         onWidgetPlayerOpened()
     }
 
-    // "Abrir con...": reproduce el archivo externo solo, sin mezclarlo con la
-    // biblioteca, y abre el reproductor expandido. La cola es de un elemento
-    // para que al terminar no salte a la biblioteca.
+    // Keep external playback isolated from the library queue.
     LaunchedEffect(externalSong) {
         val song = externalSong ?: return@LaunchedEffect
         onlineRepository.setEnabled(false)
@@ -565,7 +496,7 @@ fun LibraryScreen(
     fun togglePlayPause() {
         if (currentSong != null) {
             if (serviceSong == null) {
-                playSong(currentSong)
+                playSong(currentSong, wholeLibrary.ifEmpty { listOf(currentSong) })
             } else {
                 musicService.togglePlayPause()
             }
@@ -595,13 +526,9 @@ fun LibraryScreen(
         }
     }
 
-    // songsList YA viene filtrado por searchQuery en LibraryViewModel (mismo
-    // predicado título/artista/álbum, con Collator y fuera del hilo principal).
-    // Aquí se filtraba por segunda vez: trabajo duplicado en cada pulsación del
-    // teclado y riesgo de que ambos filtros se desincronicen.
+    // Search filtering is owned by LibraryViewModel.
     val searchFilteredSongs = songsList
 
-    // Active songs based on category and sub-filters
     val displaySongs = remember(
         searchFilteredSongs, selectedTab,
         selectedAlbumFilter, selectedAlbumKey, selectedArtistFilter, selectedFolderKey
@@ -632,7 +559,6 @@ fun LibraryScreen(
         }
     }
 
-    // Grouping models for Albums, Artists, Folders
     val albumsList = remember(searchFilteredSongs) {
         searchFilteredSongs.groupBy { albumKeyOf(it) }
             .map { (_, songs) ->
@@ -686,7 +612,7 @@ fun LibraryScreen(
                     return@launch
                 }
                 onlineCollection = target
-                showSettings = false; destination = HomeDestination.LIBRARY; songForOptions = null
+                destination = HomeDestination.LIBRARY; songForOptions = null
                 if (!miniVisible) { dockState.capture(); playerExpansionProgress.animateTo(0f, playerSheetAnimationSpec()) }
                 return@launch
             }
@@ -695,7 +621,6 @@ fun LibraryScreen(
                 if(homeMotionReduced) playerExpansionProgress.snapTo(0f)
                 else playerExpansionProgress.animateTo(0f,playerSheetAnimationSpec())
             }
-            showSettings=false
             destination=HomeDestination.LIBRARY
             libraryViewModel.setSearchQuery("")
             libraryViewModel.setCategory(if(artist)"Artists" else "Albums")
@@ -708,8 +633,9 @@ fun LibraryScreen(
     }
     val isPlayerExpanded by remember { derivedStateOf { playerExpansionProgress.value > 0.05f } }
 
-    val detailSessions = remember { androidx.compose.runtime.mutableStateMapOf<Any, Unit>() }
-    val libraryLightBars = detailSessions.isEmpty() && com.akira.app.core.design.theme.LocalThemeMode.current == "LIGHT" && (!isPlayerExpanded || studioNavigation.active != null)
+    val detailSessions = remember { androidx.compose.runtime.mutableStateMapOf<Any, Boolean>() }
+    val darkDetails = detailSessions.values.any { it }
+    val libraryLightBars = !darkDetails && MaterialTheme.colorScheme.background.luminance() > .5f && (!isPlayerExpanded || studioNavigation.active != null)
     androidx.compose.runtime.SideEffect {
         (context as? com.akira.app.MainActivity)?.window?.let { window ->
             androidx.core.view.WindowCompat.getInsetsController(window, view).apply {
@@ -718,8 +644,6 @@ fun LibraryScreen(
         }
     }
 
-    // Handle back gestures. La búsqueda ya no tiene un estado "activo"
-    // aparte: el back sólo limpia el texto cuando hay algo escrito.
     BackHandler(enabled = destination != HomeDestination.HOME || isPlayerExpanded || showSettings) {
         when {
             isPlayerExpanded -> {
@@ -761,7 +685,6 @@ fun LibraryScreen(
         LocalAkiraGlassBackdrop provides glassBackdrop,
         LocalAppBackdrop provides dockBackdrop,
         com.akira.app.core.design.glass.LocalLiquidGlassEnabled provides (userPrefs?.liquidGlassEnabled ?: false),
-        com.akira.app.core.design.glass.LocalDockLiquidGlassEnabled provides (userPrefs?.dockLiquidGlassEnabled ?: true),
         com.akira.app.core.design.glass.LocalLiquidGlassOpacity provides glassOpacity,
         com.akira.app.core.design.glass.LocalLiquidGlassDiffusion provides glassDiffusion,
         com.akira.app.core.design.components.LocalAkiraAccent provides androidx.compose.ui.graphics.lerp(effectivePrimary, androidx.compose.material3.MaterialTheme.colorScheme.onSurface, .5f)
@@ -905,6 +828,17 @@ fun LibraryScreen(
                     onPlay={s,q -> localCurrentSong=s;musicService.playSong(s,q)},
                     onTogglePlay={togglePlayPause()},onMore={songForOptions=it},
                     onBack={selectedAlbumFilter=null;selectedAlbumKey=null;selectedArtistFilter=null})
+            } else if (screen == HomeDestination.LIBRARY) {
+                homeStateHolder.SaveableStateProvider("local-library-browse") {
+                    LibraryBrowseScreen(wholeLibrary, currentSong, isPlaying,
+                        with(dockDensity) { dockState.heightPx.toDp() } + 24.dp,
+                        musicService, currentSortOrder, { showSortBottomSheet = true }, { openSettings() },
+                        onAlbum = { song -> selectedAlbumFilter = song.album; selectedAlbumKey = albumKeyOf(song) },
+                        onArtist = { selectedArtistFilter = it },
+                        onPlay = { song, queue -> localCurrentSong = song; musicService.playSong(song, queue) },
+                        onMore = { songForOptions = it }, initialized = libraryState.initialized,
+                        failed = libraryState.loadFailed, onRetry = libraryViewModel::retryLoad)
+                }
             } else {
             var rootScrollOffset by rememberSaveable(screen) { mutableStateOf(0f) }
             val headerScroll = remember(screen) {
@@ -915,8 +849,7 @@ fun LibraryScreen(
                     }
                 }
             }
-            // Search and library geometry read the actual consumed scroll, not
-            // a 900 ms animation started after crossing a Boolean threshold.
+            // Header geometry follows consumed scroll distance.
             val libraryBottomClearance = with(dockDensity) { dockState.heightPx.toDp() } + 24.dp
             val collapsedHeader = (rootScrollOffset / with(dockDensity) { 62.dp.toPx() }).coerceIn(0f, 1f)
             Column(
@@ -924,7 +857,6 @@ fun LibraryScreen(
                     .fillMaxSize()
                     .statusBarsPadding().nestedScroll(headerScroll)
             ) {
-                // 1. Cabecera: título, buscador y pestañas (ver LibraryHeader.kt).
                 LibraryHeader(
                     title = if(screen==HomeDestination.SEARCH) localizedText("Search","Buscar") else localizedText("Library","Biblioteca"),
                     showCategories = screen != HomeDestination.SEARCH,
@@ -944,6 +876,9 @@ fun LibraryScreen(
                     onSortClick = { showSortBottomSheet = true },
                     onSettingsClick = { openSettings() }
                 )
+                if (libraryState.initialized && libraryState.loadFailed) {
+                    LibraryRefreshError(libraryViewModel::retryLoad, Modifier.padding(horizontal = 24.dp))
+                }
 
                 // Collection detail header shares the same bare back action as other screens.
                 val activeFilterLabel = selectedAlbumFilter ?: selectedArtistFilter ?: selectedFolderFilter
@@ -1003,7 +938,6 @@ fun LibraryScreen(
                             }
                         }
                         pageRoute[0] == "Playlists" -> PlaylistTab(wholeLibrary, musicService, !isPlayerExpanded && !showSettings, bottomContentPadding = libraryBottomClearance) { songForOptions = it }
-                        // 0. Empty library: estado vacío claro en vez de una lista en blanco
                         songsList.isEmpty() -> {
                             Column(
                                 modifier = Modifier
@@ -1047,70 +981,52 @@ fun LibraryScreen(
                             }
                         }
 
-                        // 1. Drilled down in a specific Album, Artist, or Folder -> Show track list of that group
                         pageRoute[1] != null || pageRoute[2] != null || pageRoute[3] != null -> {
                             SongsListView(
                                 songs = pageSongs,
                                 bottomContentPadding = libraryBottomClearance,
                                 currentSong = currentSong,
                                 isPlaying = isPlaying,
-                                onSongClick = { playSong(it) },
+                                onSongClick = { playSong(it, pageSongs) },
                                 onSongMoreClick = { songForOptions = it },
                                 onSwipeNext = { enqueueFromSwipe(it, true) },
                                 onSwipeQueue = { enqueueFromSwipe(it, false) },
                                 onSortClick = { showSortBottomSheet = true },
                                 onPlayAllClick = {
-                                    if (pageSongs.isNotEmpty()) {
-                                        if (isShuffleActive) toggleShuffle()
-                                        playSong(pageSongs.first())
-                                    }
+                                    playCollection(pageSongs, shuffle = false)
                                 },
                                 onShuffleAllClick = {
-                                    if (pageSongs.isNotEmpty()) {
-                                        if (!isShuffleActive) toggleShuffle()
-                                        val shuffled = pageSongs.shuffled()
-                                        playSong(shuffled.first())
-                                    }
+                                    playCollection(pageSongs, shuffle = true)
                                 }
                             )
                         }
 
-                        // 2. Tab: Tracks (Default flat list)
                         pageRoute[0] == "Tracks" -> {
                             SongsListView(
                                 songs = pageSongs,
                                 bottomContentPadding = libraryBottomClearance,
                                 currentSong = currentSong,
                                 isPlaying = isPlaying,
-                                onSongClick = { playSong(it) },
+                                onSongClick = { playSong(it, pageSongs) },
                                 onSongMoreClick = { songForOptions = it },
                                 onSwipeNext = { enqueueFromSwipe(it, true) },
                                 onSwipeQueue = { enqueueFromSwipe(it, false) },
                                 onSortClick = { showSortBottomSheet = true },
                                 onPlayAllClick = {
-                                    if (pageSongs.isNotEmpty()) {
-                                        if (isShuffleActive) toggleShuffle()
-                                        playSong(pageSongs.first())
-                                    }
+                                    playCollection(pageSongs, shuffle = false)
                                 },
                                 onShuffleAllClick = {
-                                    if (pageSongs.isNotEmpty()) {
-                                        if (!isShuffleActive) toggleShuffle()
-                                        val shuffled = pageSongs.shuffled()
-                                        playSong(shuffled.first())
-                                    }
+                                    playCollection(pageSongs, shuffle = true)
                                 }
                             )
                         }
 
-                        // 3. Tab: Albums (Album cards grid)
                         pageRoute[0] == "Albums" -> {
                             AlbumCollectionView(albumsList, libraryBottomClearance) { album ->
                                 selectedAlbumFilter = album.name; selectedAlbumKey = album.key
                             }
                         }
 
-                        // 4. Tab: Artists (Artist list)
                         pageRoute[0] == "Artists" -> {
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
@@ -1128,7 +1044,6 @@ fun LibraryScreen(
                             }
                         }
 
-                        // 5. Tab: Folders (Folder directory list)
                         pageRoute[0] == "Folders" -> {
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
@@ -1158,6 +1073,7 @@ fun LibraryScreen(
             } else {
                 SettingsScreen(
                     prefsRepo = prefsRepo,
+                    startWithSound = settingsStartWithSound,
                     previewSongs = songsList.take(4), previewSong = currentSong,
                     onBack = { closeSettings() },
                     onTestCrossfade = {
@@ -1188,23 +1104,20 @@ fun LibraryScreen(
             }
             } // Captured library background and contents; player stays outside.
             if (showSortBottomSheet) {
-                SortSheet(
+                LibrarySortMenu(
                     current = currentSortOrder,
                     onSelect = { libraryViewModel.setSortOrder(it) },
                     onDismiss = { showSortBottomSheet = false }
                 )
             }
 
-            // Ajustes a pantalla completa. No se usa un bottom sheet porque el
-            // ecualizador con 5 sliders no cabe en media hoja sin que quede
-            // ilegible.
-            if (!keyboardVisible || destination == HomeDestination.SEARCH) MaterialTheme(colorScheme=if(detailSessions.isNotEmpty()) com.akira.app.core.design.theme.DarkColorScheme else MaterialTheme.colorScheme) {
+            if (!keyboardVisible || destination == HomeDestination.SEARCH) MaterialTheme(colorScheme=if(darkDetails) com.akira.app.core.design.theme.DarkColorScheme else MaterialTheme.colorScheme) {
             HomeNavigation(destination,onSelect={next ->
                 if(next==HomeDestination.HOME && destination==next)homeScrollRequest++
                 dockState.scroll.expand()
                 if(next==HomeDestination.SETTINGS)openSettings() else {
                     if(next != HomeDestination.SEARCH) { searchSession.close(); focusManager.clearFocus(); keyboardController?.hide() }
-                    showSettings=false;destination=next
+                    destination=next
                     if(next==HomeDestination.SEARCH){libraryViewModel.setCategory("Tracks");selectedAlbumFilter=null;selectedArtistFilter=null;selectedFolderFilter=null}
                 }
             }, state = dockState, song = currentSong, isPlaying = isPlaying, isLoading = loading,
@@ -1233,7 +1146,7 @@ fun LibraryScreen(
                 isPlaying = isPlaying,
                 musicService = musicService,
                 isShuffleActive = isShuffleActive,
-                repeatMode = repeatMode,
+                repeatState = repeatState,
                 playerExpansionProgress = playerExpansionProgress,
                 dynamicPrimaryColor = effectivePrimary,
                 artworkColors = if(dynamicColorEnabled)artworkColors else PlayerArtworkColors(effectivePrimary),
@@ -1248,6 +1161,7 @@ fun LibraryScreen(
                 onToggleRepeat = { toggleRepeat() },
                 onSeekTo = { fraction -> seekTo(fraction) },
                 onToggleFavorite = { toggleSongFavorite(it) },
+                onOpenAudioSettings = { openSettings(startWithSound = true) },
                 onDeleteSong = if (onlineEnabled) null else ({ requestDeleteSong(it) }),
                 onGoToAlbum = { openSongCollection(it,false) },
                 onGoToArtist = { openSongCollection(it,true) }
@@ -1323,7 +1237,7 @@ private fun UnifiedPlayerContainer(
     isPlaying: Boolean,
     musicService: MusicServiceConnection,
     isShuffleActive: Boolean,
-    repeatMode: Int,
+    repeatState: QueueRepeatState,
     playerExpansionProgress: Animatable<Float, *>,
     dynamicPrimaryColor: Color,
     artworkColors: PlayerArtworkColors,
@@ -1338,6 +1252,7 @@ private fun UnifiedPlayerContainer(
     onToggleRepeat: () -> Unit,
     onSeekTo: (Float) -> Unit,
     onToggleFavorite: (Song) -> Unit,
+    onOpenAudioSettings: () -> Unit,
     onDeleteSong: ((Song) -> Unit)? = null,
     onGoToAlbum: (Song) -> Unit,
     onGoToArtist: (Song) -> Unit
@@ -1384,7 +1299,6 @@ private fun UnifiedPlayerContainer(
     val miniArtTop = with(density) { ((miniArt?.top ?: 0f) - (mini?.top ?: 0f)).toDp() }
     val miniArtSize = with(density) { miniArt?.width?.toDp() ?: 40.dp }
 
-    // ONE UNIFIED PLAYER CONTAINER (Morphs continuously between mini pill and full-screen player)
     if (surfaceVisible || isDraggingSheet) song?.let { currentSongTarget ->
         val miniRect=androidx.compose.ui.geometry.Rect(
             with(density){miniLeft.toPx()},miniRestingTopPx,
@@ -1425,8 +1339,7 @@ private fun UnifiedPlayerContainer(
                     val velocityTracker = VelocityTracker()
                     var dragDeltaPx = 0f
                     var trackedY = 0f
-                    // Este handler posee los gestos que EMPIEZAN colapsados (mini player).
-                    // Los que empiezan expandidos los lleva el handler interno.
+                    // Este handler recibe gestos del mini player; el interno recibe los del expandido.
                     var ownsGesture = false
                     detectVerticalDragGestures(
                         onDragStart = {
@@ -1442,14 +1355,10 @@ private fun UnifiedPlayerContainer(
                             change.consume()
                             dragDeltaPx += dragAmount
                             trackedY += dragAmount
-                            // Posición ACUMULADA del dedo, no change.position: este nodo se
-                            // mueve con el dedo, así que su posición local casi no cambia y
-                            // la velocidad salía ~0 (los flings no se detectaban).
+                            // Track accumulated finger travel because this node moves with the finger.
                             velocityTracker.addPosition(change.uptimeMillis, Offset(0f, trackedY))
                             val newProgress = (playerExpansionProgress.value - dragAmount / travelPx).coerceIn(0f, 1f)
-                            // UNDISPATCHED: snapTo se aplica en este mismo evento. Antes cada
-                            // evento lanzaba una corrutina que se aplicaba un frame tarde y
-                            // cancelaba la anterior: el sheet iba a la zaga del dedo.
+                            // Apply snapTo within this input event, before a later frame can settle the sheet.
                             scope.launch(start = CoroutineStart.UNDISPATCHED) {
                                 runCatching { playerExpansionProgress.snapTo(newProgress) }
                             }
@@ -1476,7 +1385,6 @@ private fun UnifiedPlayerContainer(
                 }
         ) {
             val playerBackdrop = rememberLayerBackdrop()
-            // Dynamic ambient background is ONLY active when player is expanding/expanded (alpha 0 for progress <= 0.05)
             run {
                 val ambientModifier=Modifier.layerBackdrop(playerBackdrop).graphicsLayer {
                     alpha=com.akira.app.feature.player.dock.playerMaterialReveal(playerExpansionProgress.value)
@@ -1487,9 +1395,8 @@ private fun UnifiedPlayerContainer(
             }
 
             val travellingArtwork: @Composable () -> Unit = {
-            // One opaque artwork travels between measured expanded bounds and the 48 dp mini artwork.
-            // Keep Coil's painter alive at rest. Both copies switch visibility in
-            // the drawing phase from the same progress, without a new image load.
+            // La portada conserva su painter durante el viaje; ambas copias intercambian
+            // visibilidad en dibujo usando el mismo progreso, sin cargar otra imagen.
                 val artworkRequest = rememberPlayerArtworkRequest(currentSongTarget.albumArtUri)
                 val fullStyle=fullscreenArtwork && playerConfig.screenWidthDp<=playerConfig.screenHeightDp
                 val fallback=with(density) {
@@ -1535,9 +1442,7 @@ private fun UnifiedPlayerContainer(
                 }
             }
 
-            // The live mini remains in the shared dock. Fade only its text and
-            // controls; this layer owns the single travelling artwork.
-            // Full cover uses a single direct scene; the framed ambient retains its material reveal.
+            // La portada viaja en esta capa; el mini del dock solo desvanece texto y controles.
             if (surfaceVisible || isDraggingSheet) {
                 androidx.compose.runtime.CompositionLocalProvider(LocalAppBackdrop provides playerBackdrop) {
                 NowPlayingExpandedScreen(
@@ -1545,7 +1450,7 @@ private fun UnifiedPlayerContainer(
                     isPlaying = isPlaying,
                     musicService = musicService,
                     isShuffleActive = isShuffleActive,
-                    repeatMode = repeatMode,
+                    repeatState = repeatState,
                     playerExpansionProgress = playerExpansionProgress,
                     sheetTravelPx = miniRestingTopPx,
                     dynamicPrimaryColor = dynamicPrimaryColor,
@@ -1565,9 +1470,8 @@ private fun UnifiedPlayerContainer(
                         isDraggingSheet = dragging
                     },
                     onArtworkBounds = { bounds, radius, mask ->
-                        // Latch the first full-layout local measurement, then freeze it
-                        // during travel. Invalidate for artwork style/orientation changes;
-                        // retaining the old profile made the first opening snap at rest.
+                        // Congelar la medida durante el viaje; invalidarla al cambiar
+                        // el estilo de portada o la orientación para no reutilizar otra geometría.
                         if (artworkBounds == null || playerExpansionProgress.value >= .999f) {
                             artworkBounds = bounds; artworkRadius = radius; artworkMask=mask
                         }
@@ -1579,6 +1483,10 @@ private fun UnifiedPlayerContainer(
                     onToggleRepeat = onToggleRepeat,
                     onSeekTo = onSeekTo,
                     onToggleFavorite = onToggleFavorite,
+                    onOpenAudioSettings = {
+                        onOpenAudioSettings()
+                        settleTo(0f)
+                    },
                     onDeleteSong = onDeleteSong,
                     onGoToAlbum = onGoToAlbum,
                     onGoToArtist = onGoToArtist,
@@ -1594,9 +1502,7 @@ private fun UnifiedPlayerContainer(
             }
                 }
 
-            // A compact header belongs to the moving surface during its final
-            // approach. Drawing it only in the dock underneath left an empty
-            // coloured pill while the travelling player still covered it.
+            // La cabecera compacta viaja con la superficie para no quedar tapada por ella.
             val inlineMini = dockState.scroll.isInline
             val compactInk = if (isDark) Color.White else Color.Black
             val compactSlot = if (inlineMini) 32.dp else 34.dp
@@ -1660,7 +1566,6 @@ internal fun SongsListView(
                 isPlaying = isCurrent && isPlaying,
                 onClick = { onSongClick(song) },
                 onMoreClick = { onSongMoreClick(song) },
-                // La lista se reordena con una animación suave al cambiar el orden.
                 modifier = rowModifier.padding(horizontal = 24.dp)
             ) }
             if (onSwipeNext != null && onSwipeQueue != null) {
@@ -1694,7 +1599,6 @@ internal fun SongRowItem(
             .padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Album Art Thumbnail
         Box(
             modifier = Modifier
                 .size(48.dp)
@@ -1743,7 +1647,6 @@ internal fun SongRowItem(
 
         Spacer(modifier = Modifier.width(14.dp))
 
-        // Title & Artist
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = song.title,
@@ -1797,9 +1700,6 @@ internal fun SongRowItem(
     }
 }
 
-// -------------------------------------------------------------
-// Category View Components (Albums, Artists, Folders)
-// -------------------------------------------------------------
 
     private data class AlbumItem(val key: String, val name: String, val artist: String, val songCount: Int, val artUri: String?)
 private data class ArtistItem(val name: String, val songCount: Int, val artUri: String?, val covers: List<String>, val albumCount: Int)
@@ -1895,9 +1795,6 @@ private fun FolderListItem(folder: FolderItem, onClick: () -> Unit) {
     }
 }
 
-// -------------------------------------------------------------
-// Floating Mini Player (Click-Consuming & Interactive)
-// -------------------------------------------------------------
 
 @Composable
 private fun ApplePauseIcon(
@@ -1943,20 +1840,7 @@ private fun ApplePlayIcon(
     }
 }
 
-// -------------------------------------------------------------
-// -------------------------------------------------------------
-// Dynamic Ambient Background with Movement and Gaussian Blur
-// -------------------------------------------------------------
-// Living Liquid Dynamic Ambient Background & Now Playing Screen
-// -------------------------------------------------------------
-
-// -------------------------------------------------------------
-// Player sheet swipe tuning
-// Antes decidía solo por posición final (había que arrastrar ~45% de la pantalla),
-// por eso un swipe normal desde la mitad volvía solo a su sitio.
-// Ahora manda la VELOCIDAD del fling o un arrastre acumulado corto, y el spring
-// arranca con la velocidad real del dedo para que se sienta físico.
-// -------------------------------------------------------------
+// Fling velocity and accumulated travel can commit before the positional threshold.
 private const val SheetFlingVelocityPxPerSec = 450f
 private const val SheetDragDismissFraction = 0.08f
 private const val SheetDragMinPx = 56f
@@ -1988,9 +1872,7 @@ private fun vibrantBoost(
 ): Color {
     val hsv = FloatArray(3)
     android.graphics.Color.colorToHSV(color.toArgb(), hsv)
-    // Un cover blanco/gris NO es "sin color": es un cover claro. Antes devolvíamos
-    // un gris oscuro y el fondo salía negro. Ahora respetamos su luminosidad y le
-    // damos un tinte sutil para que no sea un blanco plano.
+    // Preserve brightness for monochrome covers while applying a subtle tint.
     if (hsv[1] < 0.12f) {
         hsv[0] = fallbackHue
         hsv[1] = 0.10f
@@ -2050,9 +1932,6 @@ private fun DynamicAmbientBackground(
     )
 
     val infiniteTransition = rememberInfiniteTransition(label = "ambient_motion")
-    // Ritmos más largos y desfasados entre sí: mismo movimiento perceptible,
-    // menos cambios de estado por segundo (cada animateFloat cambia el estado
-    // Compose y dispara recomposición del Canvas).
     val phaseX1 by infiniteTransition.animateFloat(
         initialValue = 0f, targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(14_000, easing = LinearEasing), RepeatMode.Reverse),
@@ -2069,9 +1948,6 @@ private fun DynamicAmbientBackground(
         label = "px2"
     )
 
-// Base moderada: ni el color al 22% sobre negro (apagaba todo) ni al 92%
-    // (parecía un color sólido y plano). Queda en un punto medio en el que se
-    // distinguen los tonos de la carátula pero los glows en movimiento se notan.
     val lightBase = isLightColor(animatedPrimary)
     val baseCanvasColor = if (lightBase) {
         capLuminance(animatedPrimary, 0.18f).copy(alpha = 0.65f).compositeOver(Color(0xFF0B0B14))
@@ -2092,11 +1968,7 @@ private fun DynamicAmbientBackground(
             val width = size.width
             val height = size.height
 
-            // Los glows se dibujan a plena intensidad (no al 0.92 atenuado) para que
-            // el color de la carátula se note Y el movimiento sea visible sobre la base.
-            // Además el radio respira (breathing) además de desplazarse.
 
-            // Glow 1: color dominante, zona superior
             val g1c = Offset(
                 width * (0.10f + 0.78f * phaseX1),
                 height * (0.08f + 0.30f * phaseY1)
@@ -2116,7 +1988,6 @@ private fun DynamicAmbientBackground(
                 radius = g1r
             )
 
-            // Glow 2: color secundario, cuerpo medio-inferior (contraste de tono)
             val g2c = Offset(
                 width * (0.90f - 0.80f * phaseX2),
                 height * (0.38f + 0.36f * phaseY1)
@@ -2136,7 +2007,6 @@ private fun DynamicAmbientBackground(
                 radius = g2r
             )
 
-            // Glow 3: acento, Adds a third moving hue so it doesn't read as one solid color
             val g3c = Offset(
                 width * (0.20f + 0.62f * phaseX1),
                 height * (0.72f - 0.26f * phaseX2)
@@ -2157,8 +2027,7 @@ private fun DynamicAmbientBackground(
             )
         }
 
-        // Ambient overlay: sólo modera el contraste para que el texto se lea.
-        // El 0.92 negro del final era lo que mataba los colores de las carátulas claras.
+        // Moderate the ambient scene behind player text.
         Box(
             modifier = Modifier
                 .fillMaxSize()

@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Kmlozmz/Akira/releases"><img src="https://img.shields.io/badge/versi%C3%B3n-0.1.1-FA243C?style=flat-square" alt="Versión 0.1.1" /></a>
+  <a href="https://github.com/Kmlozmz/Akira/releases"><img src="https://img.shields.io/badge/versi%C3%B3n-0.2.0-FA243C?style=flat-square" alt="Versión 0.2.0" /></a>
   <img src="https://img.shields.io/badge/Android-8.0%2B-242428?style=flat-square" alt="Android 8.0 o posterior" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/licencia-GPL--3.0-242428?style=flat-square" alt="GPL versión 3" /></a>
   <img src="https://img.shields.io/badge/idiomas-ES%20%2F%20EN-242428?style=flat-square" alt="Español e inglés" />

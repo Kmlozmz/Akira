@@ -31,13 +31,15 @@ fun AkiraPlayerMarquee(text: String, fontSize: TextUnit, fontWeight: FontWeight,
     color: Color, modifier: Modifier = Modifier, lineHeight: TextUnit = fontSize * 1.3f,
     fontFamily: FontFamily = AkiraFontFamily) {
     val measurer = rememberTextMeasurer()
+    val reducedMotion = LocalContentMotionReduced.current
     val style = TextStyle(fontFamily = fontFamily, fontSize = fontSize,
         fontWeight = fontWeight, lineHeight = lineHeight)
     BoxWithConstraints(modifier.clipToBounds()) {
         val available = with(LocalDensity.current) { maxWidth.roundToPx() }
         val overflows = measurer.measure(text, style = style, maxLines = 1).size.width > available
+        val moving = overflows && !reducedMotion
         val fade = with(LocalDensity.current) { 10.dp.toPx() }
-        val edges = if (overflows) Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        val edges = if (moving) Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
             .drawWithContent {
                 drawContent()
                 val width = fade.coerceAtMost(size.width / 4)
@@ -46,8 +48,9 @@ fun AkiraPlayerMarquee(text: String, fontSize: TextUnit, fontWeight: FontWeight,
                 drawRect(Brush.horizontalGradient(listOf(Color.Black, Color.Transparent), startX = size.width - width, endX = size.width),
                     topLeft = Offset(size.width - width, 0f), size = Size(width, size.height), blendMode = BlendMode.DstIn)
             } else Modifier
-        Text(text, color = color, style = style, maxLines = 1, overflow = TextOverflow.Clip,
-            modifier = Modifier.fillMaxWidth().then(edges).then(if (overflows)
+        Text(text, color = color, style = style, maxLines = 1,
+            overflow = if (moving) TextOverflow.Clip else TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth().then(edges).then(if (moving)
                 Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 1500,
                     repeatDelayMillis = 1500, velocity = 22.dp) else Modifier))
     }

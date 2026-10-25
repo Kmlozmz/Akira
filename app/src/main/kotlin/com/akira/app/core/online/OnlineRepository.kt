@@ -16,6 +16,7 @@ import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import java.io.IOException
 import java.util.Locale
+import kotlin.coroutines.resume
 
 data class OnlineAccount(val connected: Boolean = false, val name: String = "", val image: String? = null)
 enum class OnlineShelfLayout { COVERS, TRACKS, RANKED_TRACKS, VIDEOS, ARTISTS }
@@ -64,7 +65,7 @@ class OnlineRepository private constructor(context: Context) {
     private val initialized = CompletableDeferred<Unit>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Mutex()
-    private val streams = mutableMapOf<String, Pair<Long, OnlineStream>>()
+    private val streams = StreamRequestCache<OnlineStream>(scope, android.os.SystemClock::elapsedRealtime)
     private val rouletteWinners = ArrayDeque<String>()
     private val browsePages = linkedMapOf<String, Triple<OnlineAccount, OnlinePage, Long>>()
     private val pageStore = OnlinePageCache(app)
@@ -125,6 +126,7 @@ class OnlineRepository private constructor(context: Context) {
     fun setEnabled(value: Boolean) {
         prefs.edit().putBoolean("enabled", value).apply(); _enabled.value = value
         if (value) prefetchHome() else {
+            streams.clear()
             homeRequest?.second?.cancel()
             libraryIndexRequest?.result?.cancel()
         }
@@ -221,6 +223,7 @@ class OnlineRepository private constructor(context: Context) {
     suspend fun connect(cookie: String, visitor: String?, sync: String?) = withContext(Dispatchers.IO) {
         initialized.await()
         lock.withLock {
+            streams.clear()
             val saved = JSONObject().put("cookie", cookie).put("visitor", visitor.orEmpty()).put("sync", sync.orEmpty())
             applySession(saved)
             try {
@@ -247,6 +250,7 @@ class OnlineRepository private constructor(context: Context) {
     suspend fun disconnect() = withContext(Dispatchers.IO) {
         initialized.await()
         val previousProfile = historyScope
+        streams.clear()
         sessionGeneration.incrementAndGet(); homeRequest?.second?.cancel(); pageWriteJob?.cancel()
         libraryIndexRequest?.result?.cancel(); pageRestoreJob?.cancel()
         _homePages.value = null
@@ -858,68 +862,92 @@ class OnlineRepository private constructor(context: Context) {
     /** Called only from a Media3 loading thread. Persist virtual URIs, not expiring URLs. */
     suspend fun resolve(videoId: String, refresh: Boolean = false): OnlineStream = withContext(Dispatchers.IO) {
         ready()
-        lock.withLock {
-            ready()
-            val now = android.os.SystemClock.elapsedRealtime()
-            if (!refresh) streams[videoId]?.takeIf { it.first > now }?.let { return@withLock it.second }
-            streams.remove(videoId)
-            val clients = listOf(YouTubeClient.VISIONOS, YouTubeClient.WEB_REMIX, YouTubeClient.IOS, YouTubeClient.ANDROID_VR_1_65_10)
-            var denied = false
-            var playable = false
-            for (client in clients) {
-                ensureActive()
-                ready()
-                val timestamp = if (client.useSignatureTimestamp) NewPipeExtractor.getSignatureTimestamp(videoId).getOrNull() else null
-                val response = YouTube.player(videoId, client = client, signatureTimestamp = timestamp).getOrNull() ?: continue
-                if (response.playabilityStatus.status != "OK") { denied = true; continue }
-                playable = true
-                val formats = response.streamingData?.adaptiveFormats.orEmpty()
-                    .filter { it.mimeType.startsWith("audio/") }.sortedByDescending { it.bitrate }
-                val headers = mapOf("User-Agent" to client.userAgent, "Accept" to "*/*",
-                    "Origin" to if (client == YouTubeClient.WEB_REMIX) "https://music.youtube.com" else "https://www.youtube.com",
-                    "Referer" to if (client == YouTubeClient.WEB_REMIX) "https://music.youtube.com/" else "https://www.youtube.com/")
-                for (format in formats.take(2)) {
-                    val url = NewPipeExtractor.getStreamUrl(format, videoId) ?: format.url ?: continue
-                    val stream = OnlineStream(url, headers)
-                    if (!usable(stream, format.contentLength)) continue
-                    ready()
-                    streams[videoId] = now + 4 * 60_000L to stream
-                    return@withLock stream
-                }
-            }
-            // A client-specific rejection must not discard another client's playable response.
-            if (playable || !denied) {
-                val audioItags = setOf(140, 141, 139, 249, 250, 251, 171, 172)
-                val url = NewPipeExtractor.newPipePlayer(videoId).lastOrNull { it.first in audioItags }?.second
-                val stream = url?.let { OnlineStream(it, mapOf("User-Agent" to YouTubeClient.USER_AGENT_WEB)) }
-                if (stream != null && usable(stream, null)) {
-                    ready()
-                    streams[videoId] = now + 4 * 60_000L to stream
-                    return@withLock stream
-                }
-            }
-            throw IOException("YouTube Music no entregó una fuente reproducible para esta canción")
+        val generation = sessionGeneration.get()
+        val stream = streams.get(videoId, refresh) {
+            resolveStream(videoId, generation)
         }
+        checkStreamSession(generation)
+        stream
+    }
+
+    private suspend fun checkStreamSession(generation: Long) {
+        currentCoroutineContext().ensureActive()
+        if (generation != sessionGeneration.get()) throw CancellationException("Online session changed")
+        check(_enabled.value) { "Modo online desactivado" }
+    }
+
+    private suspend fun resolveStream(videoId: String, generation: Long): OnlineStream {
+        checkStreamSession(generation)
+        ready()
+        val clients = listOf(YouTubeClient.VISIONOS, YouTubeClient.WEB_REMIX, YouTubeClient.IOS, YouTubeClient.ANDROID_VR_1_65_10)
+        var denied = false
+        var playable = false
+        for (client in clients) {
+            checkStreamSession(generation)
+            ready()
+            val timestamp = if (client.useSignatureTimestamp) NewPipeExtractor.getSignatureTimestamp(videoId).getOrNull() else null
+            val response = YouTube.player(videoId, client = client, signatureTimestamp = timestamp).getOrNull() ?: continue
+            if (response.playabilityStatus.status != "OK") { denied = true; continue }
+            playable = true
+            val formats = response.streamingData?.adaptiveFormats.orEmpty()
+                .filter { it.mimeType.startsWith("audio/") }.sortedByDescending { it.bitrate }
+            val web = client == YouTubeClient.WEB_REMIX
+            val headers = mapOf("User-Agent" to client.userAgent, "Accept" to "*/*",
+                "Origin" to if (web) "https://music.youtube.com" else "https://www.youtube.com",
+                "Referer" to if (web) "https://music.youtube.com/" else "https://www.youtube.com/")
+            for (format in formats.take(2)) {
+                checkStreamSession(generation)
+                val url = NewPipeExtractor.getStreamUrl(format, videoId) ?: format.url ?: continue
+                val stream = OnlineStream(url, headers)
+                if (!usable(stream, format.contentLength)) continue
+                checkStreamSession(generation)
+                return stream
+            }
+        }
+        // One client's rejection must not discard another client's playable response.
+        checkStreamSession(generation)
+        if (playable || !denied) {
+            val audioItags = setOf(140, 141, 139, 249, 250, 251, 171, 172)
+            val url = NewPipeExtractor.newPipePlayer(videoId).lastOrNull { it.first in audioItags }?.second
+            val stream = url?.let { OnlineStream(it, mapOf("User-Agent" to YouTubeClient.USER_AGENT_WEB)) }
+            if (stream != null && usable(stream, null)) {
+                checkStreamSession(generation)
+                return stream
+            }
+        }
+        throw IOException("YouTube Music no entregó una fuente reproducible para esta canción")
     }
     /** Validate the open request used by Media3, then a bounded seek away from the header. */
-    private fun usable(stream: OnlineStream, length: Long?): Boolean = runCatching {
+    private suspend fun usable(stream: OnlineStream, length: Long?): Boolean {
         val uri = Uri.parse(stream.url)
-        if (uri.scheme != "https" || !uri.host.orEmpty().endsWith(".googlevideo.com")) return@runCatching false
-        fun request(first: Long?, last: Long? = null): Boolean {
+        if (uri.scheme != "https" || !uri.host.orEmpty().endsWith(".googlevideo.com")) return false
+        suspend fun request(first: Long?, last: Long? = null): Boolean {
             val request = okhttp3.Request.Builder().url(stream.url)
             stream.headers.forEach { (name, value) -> request.header(name, value) }
             if (first != null) request.header("Range", "bytes=$first-${last ?: ""}")
-            return streamClient.newCall(request.build()).execute().use { response ->
-                (if (first == null) response.isSuccessful else response.code == 206 &&
-                    response.header("Content-Range").orEmpty().startsWith("bytes $first-$last/")) &&
-                    (response.body?.byteStream()?.read() ?: -1) >= 0
+            return suspendCancellableCoroutine { continuation ->
+                val call = streamClient.newCall(request.build())
+                continuation.invokeOnCancellation { call.cancel() }
+                call.enqueue(object : okhttp3.Callback {
+                    override fun onFailure(call: okhttp3.Call, error: IOException) { continuation.resume(false) }
+                    override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                        val valid = response.use {
+                            runCatching {
+                                (if (first == null) it.isSuccessful else it.code == 206 &&
+                                    it.header("Content-Range").orEmpty().startsWith("bytes $first-$last/")) &&
+                                    (it.body?.byteStream()?.read() ?: -1) >= 0
+                            }.getOrDefault(false)
+                        }
+                        continuation.resume(valid)
+                    }
+                })
             }
         }
-        request(null) && (length == null || length <= 1 || run {
+        return request(null) && (length == null || length <= 1 || run {
             val first = minOf(length - 1, 1_048_576)
             request(first, minOf(length - 1, first + 262_143))
         })
-    }.getOrDefault(false)
+    }
     companion object {
         @Volatile private var instance: OnlineRepository? = null
         fun get(context: Context): OnlineRepository = instance ?: synchronized(this) {

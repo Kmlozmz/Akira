@@ -28,7 +28,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import org.json.JSONObject
 
-@UnstableApi
+@androidx.annotation.OptIn(UnstableApi::class)
 open class AkiraWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) { AkiraWidgets.refresh(context) }
     override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
@@ -113,7 +113,7 @@ class SmallMusicWidget : AkiraWidgetProvider()
 class MediumMusicWidget : AkiraWidgetProvider()
 
 /** Event driven: no position timer or periodic widget update. Last song survives process death, always paused. */
-@UnstableApi
+@androidx.annotation.OptIn(UnstableApi::class)
 object AkiraWidgets {
     const val EXTRA_VARIANT = "com.akira.app.widget.VARIANT"
     const val EXTRA_OPEN_PLAYER = "com.akira.app.widget.OPEN_PLAYER"

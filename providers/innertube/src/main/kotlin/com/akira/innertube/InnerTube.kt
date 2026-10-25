@@ -1,5 +1,3 @@
-// InnerTube.kt
-
 package com.akira.innertube
 
 import com.akira.innertube.models.Context
@@ -11,6 +9,9 @@ import com.akira.innertube.models.body.*
 import com.akira.innertube.models.response.NextResponse
 import com.akira.innertube.utils.parseCookieString
 import com.akira.innertube.utils.sha1
+import com.akira.innertube.utils.currentProxyAuthenticator
+import com.akira.innertube.utils.retryRequest
+import com.akira.innertube.utils.runCatchingCancellable
 import com.akira.innertube.models.IpVersion
 import okhttp3.Dns
 import java.net.InetAddress
@@ -30,8 +31,6 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import java.net.Proxy
-import java.io.IOException
-import kotlinx.coroutines.delay
 import java.util.*
 import kotlin.io.encoding.Base64
 
@@ -59,6 +58,7 @@ class InnerTube {
             httpClient = createClient()
         }
 
+    @Volatile
     var proxyAuth: String? = null
 
     var ipVersion: IpVersion = IpVersion.AUTO
@@ -70,7 +70,7 @@ class InnerTube {
 
     var useLoginForBrowse: Boolean = false
 
-    /** Offline mode: every request fails at once with [OfflineModeException], none goes out. */
+    /** Blocks new attempts; requests already in flight are not cancelled. */
     @Volatile
     var offline: Boolean = false
 
@@ -108,7 +108,16 @@ class InnerTube {
 
                 protocols(listOf(okhttp3.Protocol.HTTP_2, okhttp3.Protocol.HTTP_1_1))
 
-                retryOnConnectionFailure(true)
+                // Only read operations may be replayed by withRetry.
+                retryOnConnectionFailure(false)
+                addInterceptor { chain ->
+                    if (this@InnerTube.offline) throw OfflineModeException()
+                    chain.proceed(chain.request())
+                }
+                addNetworkInterceptor { chain ->
+                    if (this@InnerTube.offline) throw OfflineModeException()
+                    chain.proceed(chain.request())
+                }
 
                 dns(object : Dns {
                     override fun lookup(hostname: String): List<InetAddress> {
@@ -125,13 +134,7 @@ class InnerTube {
                     proxy(proxyConfig)
                 }
 
-                this@InnerTube.proxyAuth?.let { auth ->
-                    proxyAuthenticator { _, response ->
-                        response.request.newBuilder()
-                            .header("Proxy-Authorization", auth)
-                            .build()
-                    }
-                }
+                proxyAuthenticator(currentProxyAuthenticator { this@InnerTube.proxyAuth })
             }
         }
 
@@ -175,24 +178,8 @@ class InnerTube {
 
     private suspend fun <T> withRetry(
         maxAttempts: Int = 3,
-        initialDelay: Long = 500L,
-        factor: Double = 2.0,
         block: suspend () -> T,
-    ): T {
-        if (offline) throw OfflineModeException()
-        var currentDelay = initialDelay
-        var attempt = 0
-        while (true) {
-            try {
-                return block()
-            } catch (e: IOException) {
-                attempt++
-                if (attempt >= maxAttempts) throw e
-                delay(currentDelay)
-                currentDelay = (currentDelay * factor).toLong()
-            }
-        }
-    }
+    ): T = retryRequest(isOffline = { offline }, maxAttempts = maxAttempts, block = block)
 
     suspend fun search(
         client: YouTubeClient,
@@ -260,7 +247,7 @@ class InnerTube {
         cpn: String,
         playlistId: String?,
         client: YouTubeClient = YouTubeClient.WEB_REMIX,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.get(url) {
             ytClient(client, true)
             parameter("ver", "2")
@@ -328,7 +315,7 @@ class InnerTube {
     suspend fun feedback(
         client: YouTubeClient,
         tokens: List<String>
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("feedback") {
             ytClient(client, setLogin = true)
             setBody(
@@ -415,7 +402,7 @@ class InnerTube {
     suspend fun likeVideo(
         client: YouTubeClient,
         videoId: String,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("like/like") {
             ytClient(client, setLogin = true)
             setBody(
@@ -430,7 +417,7 @@ class InnerTube {
     suspend fun unlikeVideo(
         client: YouTubeClient,
         videoId: String,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("like/removelike") {
             ytClient(client, setLogin = true)
             setBody(
@@ -445,7 +432,7 @@ class InnerTube {
     suspend fun subscribeChannel(
         client: YouTubeClient,
         channelId: String,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("subscription/subscribe") {
             ytClient(client, setLogin = true)
             setBody(
@@ -460,7 +447,7 @@ class InnerTube {
     suspend fun unsubscribeChannel(
         client: YouTubeClient,
         channelId: String,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("subscription/unsubscribe") {
             ytClient(client, setLogin = true)
             setBody(
@@ -475,7 +462,7 @@ class InnerTube {
     suspend fun likePlaylist(
         client: YouTubeClient,
         playlistId: String,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("like/like") {
             ytClient(client, setLogin = true)
             setBody(
@@ -490,7 +477,7 @@ class InnerTube {
     suspend fun unlikePlaylist(
         client: YouTubeClient,
         playlistId: String,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("like/removelike") {
             ytClient(client, setLogin = true)
             setBody(
@@ -506,7 +493,7 @@ class InnerTube {
         client: YouTubeClient,
         playlistId: String,
         videoId: String,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("browse/edit_playlist") {
             ytClient(client, setLogin = true)
             setBody(
@@ -525,7 +512,7 @@ class InnerTube {
         client: YouTubeClient,
         playlistId: String,
         videoIds: List<String>,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("browse/edit_playlist") {
             ytClient(client, setLogin = true)
             setBody(
@@ -542,7 +529,7 @@ class InnerTube {
         client: YouTubeClient,
         playlistId: String,
         addPlaylistId: String,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("browse/edit_playlist") {
             ytClient(client, setLogin = true)
             setBody(
@@ -562,7 +549,7 @@ class InnerTube {
         playlistId: String,
         videoId: String,
         setVideoId: String,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("browse/edit_playlist") {
             ytClient(client, setLogin = true)
             setBody(
@@ -585,7 +572,7 @@ class InnerTube {
         playlistId: String,
         setVideoId: String,
         successorSetVideoId: String?,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("browse/edit_playlist") {
             ytClient(client, setLogin = true)
             setBody(
@@ -606,7 +593,7 @@ class InnerTube {
     suspend fun createPlaylist(
         client: YouTubeClient,
         title: String,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("playlist/create") {
             ytClient(client, true)
             setBody(
@@ -622,7 +609,7 @@ class InnerTube {
         client: YouTubeClient,
         playlistId: String,
         name: String,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("browse/edit_playlist") {
             ytClient(client, setLogin = true)
             setBody(
@@ -642,7 +629,7 @@ class InnerTube {
     suspend fun getUploadCustomThumbnailLink(
         client: YouTubeClient,
         contentLength: Int
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("https://music.youtube.com/playlist_image_upload/playlist_custom_thumbnail") {
             ytClient(client, setLogin = true)
             headers {
@@ -657,7 +644,7 @@ class InnerTube {
         client: YouTubeClient,
         uploadId: String,
         image: ByteArray,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("https://music.youtube.com/playlist_image_upload/playlist_custom_thumbnail") {
             ytClient(client, setLogin = true)
             parameter("upload_id", uploadId)
@@ -674,7 +661,7 @@ class InnerTube {
         client: YouTubeClient,
         playlistId: String,
         blobId: String,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("browse/edit_playlist") {
             ytClient(client, setLogin = true)
             setBody(
@@ -696,7 +683,7 @@ class InnerTube {
     suspend fun removeThumbnailPlaylist(
         client: YouTubeClient,
         playlistId: String
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("browse/edit_playlist") {
             ytClient(client, setLogin = true)
             setBody(
@@ -714,7 +701,7 @@ class InnerTube {
     suspend fun deletePlaylist(
         client: YouTubeClient,
         playlistId: String,
-    ) = withRetry {
+    ) = withRetry(maxAttempts = 1) {
         httpClient.post("playlist/delete") {
             ytClient(client, setLogin = true)
             setBody(
@@ -733,7 +720,7 @@ class InnerTube {
     }
 
     suspend fun getMediaInfo(videoId: String): Result<MediaInfo> =
-        runCatching {
+        runCatchingCancellable {
             val response = next(client = YouTubeClient.WEB, videoId, null, null, null, null, null).body<NextResponse>()
 
             val baseForInfo =
@@ -757,7 +744,7 @@ class InnerTube {
             val returnYouTubeDislikeResponse =
                 returnYouTubeDislike(videoId).body<ReturnYouTubeDislikeResponse>()
 
-            return@runCatching MediaInfo(
+            return@runCatchingCancellable MediaInfo(
                 videoId = videoId,
                 title = baseForTitle
                     ?.title

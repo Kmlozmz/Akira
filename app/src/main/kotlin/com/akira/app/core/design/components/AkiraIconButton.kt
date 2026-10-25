@@ -45,7 +45,8 @@ fun AkiraIconButton(
     popOnTrue: Boolean = false,
     surfaceSize: Dp = 40.dp,
     glassSurface: Boolean = true,
-    menuSourceOverride: AkiraMenuSource? = null
+    menuSourceOverride: AkiraMenuSource? = null,
+    glyphOverride: ImageVector? = null
 ) {
     val defaultSource=rememberAkiraMenuSource(hasOwnSurface=showBackground)
     val menuSource=menuSourceOverride ?: defaultSource
@@ -106,7 +107,7 @@ fun AkiraIconButton(
             )
         }
         AkiraAnimatedGlyph(
-            icon = icon,
+            icon = glyphOverride ?: icon,
             label = contentDescription ?: if(isMore)com.akira.app.core.i18n.akiraStrings().options else null,
             tint = tint,
             modifier = Modifier.size(glyphSize).graphicsLayer { scaleX=1f+pop.value;scaleY=scaleX }

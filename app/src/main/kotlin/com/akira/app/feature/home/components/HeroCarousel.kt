@@ -2,7 +2,6 @@
 // Adapted from realidkroo/page, commit bb28993b9f7abbac984d3eed8a8f4b62af83f256.
 // Akira adaptation: local Song data, Coil 2, local playback callbacks and light mode.
 // Original geometry, shaders, wipe, reel and motion are retained. See THIRD_PARTY_NOTICES.md.
-// HeroCarousel.kt
 
 package com.akira.app.feature.home.components
 
@@ -140,6 +139,7 @@ import kotlin.math.sin
 
 import com.akira.app.R
 import com.akira.app.core.model.Song
+import com.akira.app.feature.home.HomeCollectionRoute
 import com.akira.app.core.artwork.ArtistEditorialArtwork
 import com.akira.app.core.artwork.MotionArtworkRepository
 import com.akira.app.feature.player.MotionArtworkVideo
@@ -190,6 +190,7 @@ data class HeroCarouselItem(
  val song: Song? = null, val reason: HeroLabel = HeroLabel(""), val opensPage: Boolean = false,
  val isGacha: Boolean = false, val collection: List<Song> = emptyList(), val artistName: String? = null,
  val transitionKey: String? = null,
+  val collectionRoute: HomeCollectionRoute? = null,
 ) {
  val mediaId: String? get() = song?.id
  @Composable fun label(isPlaying: Boolean): HeroLabel = if (isPlaying) HeroLabel(localizedText("Now playing", "Ahora suena")) else reason
@@ -228,6 +229,7 @@ private fun HeroPager(items: List<HeroCarouselItem>, gachaPool: List<Song>, curr
     val itemClick by rememberUpdatedState(onItemClick)
     val prepare by rememberUpdatedState(prepareRandom)
     val randomFailure by rememberUpdatedState(onRandomFailure)
+    val currentPool by rememberUpdatedState(gachaPool)
     val motionReduced = LocalContentMotionReduced.current
 
     // with one card an infinite pager wraps onto itself and auto-advances against nothing,
@@ -255,14 +257,11 @@ private fun HeroPager(items: List<HeroCarouselItem>, gachaPool: List<Song>, curr
     val sounds = remember { GachaSounds(context.applicationContext) }
     DisposableEffect(sounds) { onDispose { sounds.release() } }
 
-    // the reel's covers are picked once; they're only picked again (while it's idle) if there were
-    // too few songs to fill it and more have turned up, so the covers never shuffle under your eyes
-    LaunchedEffect(gachaPool) {
-        if (gacha.phase != GachaPhase.Idle) return@LaunchedEffect
-        val available = gachaPool.distinctBy { it.id }.size
-        if (gacha.candidates.isEmpty() || (gacha.candidates.size < GachaCandidates && available > gacha.candidates.size)) {
-            gacha.candidates = pickGachaCandidates(gachaPool)
-        }
+    // Preserve surviving slots, but never retain removed IDs or stale metadata.
+    LaunchedEffect(gachaPool, gacha.phase, prepareRandom) {
+        if (gacha.phase == GachaPhase.Rolling || gacha.phase == GachaPhase.Preparing || prepareRandom != null) return@LaunchedEffect
+        gacha.candidates = reconcileGachaCandidates(gacha.candidates, gachaPool, GachaCandidates)
+        gacha.result = gacha.result?.let { currentGachaWinner(it, gachaPool) }
     }
 
     // every cover that passes the pointer ticks, like a case opening: a click, a buzz you can
@@ -295,8 +294,9 @@ private fun HeroPager(items: List<HeroCarouselItem>, gachaPool: List<Song>, curr
                     gacha.phase = GachaPhase.Preparing
                     kotlinx.coroutines.withTimeout(16_000) { load() }
                 }
-                val pool = fresh ?: gachaPool
+                val pool = fresh ?: currentPool
                 if(pool.distinctBy { it.id }.size < 2) { gacha.failed = true; randomFailure(); return@launch }
+                gacha.candidates = reconcileGachaCandidates(gacha.candidates, pool, GachaCandidates)
                 gacha.candidates = if(gacha.candidates.size < minOf(GachaCandidates, pool.size) && fresh != null)
                     pickGachaCandidates(pool) else refreshHiddenCandidates(gacha, pool)
                 // Online selection uses the entire fetched pool, including tracks outside the visible reel.
@@ -320,7 +320,14 @@ private fun HeroPager(items: List<HeroCarouselItem>, gachaPool: List<Song>, curr
                 val landing = start + spins + (winner - (start + spins)).mod(count)
                 gacha.reel.animateTo(landing.toFloat(), tween(duration, easing = GachaRollEasing))
 
-                val won = candidates[winner]
+                // The pool may change while the reel is moving.
+                val won = currentGachaWinner(candidates[winner], if (fresh == null) currentPool else pool)
+                if (won == null) {
+                    gacha.result = null
+                    gacha.failed = true
+                    randomFailure()
+                    return@launch
+                }
                 gacha.result = won
                 gacha.phase = GachaPhase.Landed
                 sounds.win()
@@ -1089,7 +1096,6 @@ private fun HeroBones() {
     }
 }
 
-// ---- the gacha card ---------------------------------------------------------------------------
 
 // the reel's geometry, in Figma points on the 527pt tall hero (frame 25:1508); scaled to the real hero
 private const val GachaDesignHeight = 527f
@@ -1537,8 +1543,7 @@ private fun GachaPage(
                     GachaTint(lerp(from.light, to.light, between), lerp(from.deep, to.deep, between))
                 }
                 val busy = speed.floatValue > 0.05f || state.burst.value > 0f
-                // at rest the slow sway and breathing only need ~30 steps a second: a step is
-                // under 2px of a soft gradient, too small to see, at a quarter of 120 Hz's redraws
+                // Limit idle updates; active reel motion follows the frame clock.
                 idleTime += dt
                 if (busy || idleTime >= IdleStepSeconds) {
                     val step = if (busy) dt else idleTime
@@ -1564,11 +1569,8 @@ private fun GachaPage(
             val coverShape = RoundedCornerShape(unit * GachaCornerRadius)
             val count = candidates.size
 
-            // the wash, the glows and the win ring. Its own layer, so its per-frame redraw doesn't
-            // re-record the reel or the shading. On Android 13+ the whole field is one shader pass
-            // (see GachaMeshShader); below that the gradients are built once at unit size and only
-            // re-coloured when the colours actually move; position and size change through each
-            // shader's matrix, so an idle card allocates nothing per frame.
+            // Separate this animated layer from the reel and static shading.
+            // Older Android versions use cached unit gradients instead of AGSL.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1688,9 +1690,7 @@ private fun GachaPage(
                     }
             )
 
-            // white until a cover loads, as a painter rather than a background behind it: one draw
-            // per cover means a fading cover can simply draw at lower alpha, instead of being
-            // rendered offscreen and composited every frame (each one a full tile flush on Mali)
+            // The placeholder belongs to the painter so it fades with the cover.
             val blankCover = remember { ColorPainter(Color.White) }
             candidates.forEachIndexed { index, song ->
                 key(song.id) {
