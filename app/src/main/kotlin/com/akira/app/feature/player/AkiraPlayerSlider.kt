@@ -52,7 +52,7 @@ internal fun AkiraPlayerSlider(value: Float, onValueChange: (Float)->Unit, label
             onValueChange(next)
         }
     }
-    if (enabled && com.akira.app.core.design.glass.LocalLiquidGlassEnabled.current && com.akira.app.core.design.glass.isGlassSupported() && !LocalContentMotionReduced.current) {
+    if (animatedThumb && enabled && com.akira.app.core.design.glass.LocalLiquidGlassEnabled.current && com.akira.app.core.design.glass.isGlassSupported() && !LocalContentMotionReduced.current) {
         val updatedValue by rememberUpdatedState(value)
         com.akira.app.core.design.controls.components.LiquidSlider(
             value = { updatedValue }, onValueChange = change,

@@ -9,14 +9,7 @@ import org.json.JSONObject
 import java.io.File
 import android.util.AtomicFile
 
-/**
- * Caché de la última biblioteca escaneada.
- *
- * Sin esto, cada arranque parte de `emptyList()` y la UI muestra "0 tracks"
- * hasta que MediaStore termina de responder (o hasta que escaneas en el setup).
- * Guardamos un volcado ligero en filesDir y lo emitimos de inmediato al abrir,
- * mientras el escaneo real sigue en marcha y después reemplaza la caché.
- */
+/** Cache the last scanned library in filesDir and emit it immediately at startup; the live MediaStore scan replaces it when ready. */
 class LibraryCache(context: Context) {
 
     private val file = File(context.filesDir, "library_cache.json")

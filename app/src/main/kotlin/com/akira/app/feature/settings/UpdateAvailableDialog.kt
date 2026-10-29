@@ -209,7 +209,7 @@ internal fun UpdateAvailablePanel(state: UpdatesState, update: AppUpdate, onDown
                         fontWeight = FontWeight.SemiBold, color = ink)
                     Box(Modifier.fillMaxWidth().then(if (scrollAll) Modifier else Modifier.weight(1f, fill = false).heightIn(max = 190.dp))
                         .clip(RoundedCornerShape(20.dp)).background(ink.copy(alpha = .075f))) {
-                        Text(releaseNotes(update.releaseNotes).ifBlank {
+                        Text(releaseNotes(com.akira.app.core.updates.localizedReleaseNotes(update.releaseNotes, com.akira.app.core.i18n.LocalStrings.current.locale)).ifBlank {
                             localizedText("This release includes improvements and fixes.", "Esta versión incluye mejoras y correcciones.")
                         }, modifier = Modifier.then(if (scrollAll) Modifier else Modifier.verticalScroll(rememberScrollState())).padding(16.dp),
                             style = MaterialTheme.typography.bodyMedium, lineHeight = 22.sp, color = secondary)

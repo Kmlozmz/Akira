@@ -8,11 +8,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
-/**
- * Vectores propios de Akira diseñados específicamente con proporciones M3 Expressive,
- * bordes y uniones redondeadas.
- * No infringen licencias ni utilizan glifos propietarios restringidos (SF Symbols de Apple).
- */
+/** Akira vectors use rounded edges and joins with Material 3 Expressive proportions. */
 object AkiraIcons {
     /** Three centred lines, progressively shorter like the supplied filter. */
     val Filter: ImageVector by lazy {
@@ -843,12 +839,7 @@ object AkiraIcons {
         }.build()
     }
 
-    /**
-     * Reloj de arena simplificado para el temporizador de apagado.
-     *
-     * Trazo continuo con esquinas redondeadas, en el mismo estilo que el resto
-     * de iconos de AkiraIcons (viewport 24x24, relleno blanco).
-     */
+    /** Sleep-timer hourglass with a continuous rounded stroke, a 24x24 viewport and white fill. */
     val SleepTimer: ImageVector by lazy {
         ImageVector.Builder(
             name = "AkiraSleepTimer",
@@ -857,7 +848,7 @@ object AkiraIcons {
             viewportWidth = 24f,
             viewportHeight = 24f
         ).apply {
-            // Contorno del reloj (aro)
+            // Clock outline.
             path(
                 fill = null,
                 stroke = SolidColor(Color.White),

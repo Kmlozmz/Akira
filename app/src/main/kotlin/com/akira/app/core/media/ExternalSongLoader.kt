@@ -8,24 +8,12 @@ import android.provider.OpenableColumns
 import android.util.Log
 import com.akira.app.core.model.Song
 
-/**
- * Convierte una URI externa ("Abrir con...") en un [Song] reproducible.
- *
- * Reglas del flujo:
- *  - el archivo NO entra en la biblioteca: se reproduce solo y la cola es de un
- *    elemento, para no contaminar el escaneo;
- *  - los metadatos salen del propio archivo con MediaMetadataRetriever, no de
- *    MediaStore, porque el archivo puede venir de Descargas, del gestor de
- *    archivos o de otra app y puede no estar indexado;
- *  - el permiso de URI vale mientras viva el proceso que lo recibio, asi que
- *    hay que.takePersistableUriPermission cuando se puede. Si falla, se
- *    reproduce igualmente y se avisa.
- */
+/** Resolve an external Open with URI as a standalone playable Song without adding it to the library. Read file metadata directly and retain URI access when the provider allows it. */
 object ExternalSongLoader {
 
     private const val TAG = "ExternalSongLoader"
 
-    /** Extrae el titulo del nombre de archivo cuando no hay metadatos. */
+    /** Use the filename as the title when embedded metadata is missing. */
     private fun fallbackTitle(uri: Uri): String {
         val last = uri.lastPathSegment ?: return "Audio"
         val base = last.substringAfterLast('/')
@@ -41,10 +29,7 @@ object ExternalSongLoader {
         null
     }
 
-    /**
-     * Intenta persistir el permiso del URI. Sin esto, el archivo deja de poder
-     * leerse en cuanto el proceso que lo FilesProvider temple se reinicia.
-     */
+    /** Try to retain URI permission so the file remains readable after process restart. */
     fun persistPermission(context: Context, uri: Uri) {
         if (uri.scheme != "content") return
         try {
@@ -53,15 +38,12 @@ object ExternalSongLoader {
                 android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
         } catch (_: Exception) {
-            // No todos los emisores ofrecen permiso persistente; no es fatal.
+            // Providers may omit persistable access; playback can still proceed.
             Log.w(TAG, "no se pudo persistir el permiso de $uri")
         }
     }
 
-    /**
-     * Devuelve null si el archivo no existe, no se puede leer o no es audio
-     * decodificable. Nunca lanza: un archivo inválido no debe tumbar la app.
-     */
+    /** Return null for missing, unreadable or undecodable audio instead of crashing. */
     fun load(context: Context, uri: Uri): Song? {
         if (uri.scheme !in setOf("content", "file")) return null
         return try {
@@ -86,7 +68,7 @@ object ExternalSongLoader {
             title = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
             artist = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
             album = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-            // Hay extractores que solo devuelven la caratula si se pide el frame.
+            // Some extractors expose artwork only when a frame is requested.
             mmr.embeddedPicture
         } catch (e: Exception) {
             Log.w(TAG, "no se pudo leer metadatos de $uri", e)
@@ -95,7 +77,7 @@ object ExternalSongLoader {
         }
         mmr.release()
 
-        // Sin duracion no hay nada que reproducir: el decoder no abriria el URI.
+        // Reject missing duration because the decoder cannot open a playable stream.
         if (durationMs <= 0L) {
             Log.w(TAG, "duracion invalida en $uri; se descarta")
             return null
@@ -118,8 +100,7 @@ object ExternalSongLoader {
         }
 
         return Song(
-            // Id con prefijo: evita colisionar con el id de MediaStore de un
-            // archivo que ya este en la biblioteca.
+            // Prefix external IDs to avoid collisions with existing MediaStore entries.
             id = "external:$uri",
             title = resolvedTitle,
             artist = resolvedArtist,
@@ -128,8 +109,7 @@ object ExternalSongLoader {
             contentUri = uri.toString(),
             format = format,
             mimeType = mime,
-            // No tiene ruta en disco accesible de forma fiable: se deja vacia
-            // para que el escaner y las letras no la intenten resolver.
+            // Leave the disk path empty when it cannot be resolved reliably, so scanning and lyrics lookup do not use a fabricated path.
             path = ""
         )
     }

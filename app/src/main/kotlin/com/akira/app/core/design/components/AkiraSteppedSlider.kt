@@ -24,19 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.akira.app.core.design.theme.AkiraFontFamily
 import com.akira.app.core.design.util.AkiraHaptics
 
-/**
- * Slider con PASOS discretos y respuesta háptica al cruzar cada uno.
- *
- * El Slider continuo de Material 3 no sirve para valores que son un conjunto
- * cerrado de opciones (0, 3, 5, 10, 15...): el dedo nunca cae exactamente en el
- * valor y acaba redondeando a algo inesperado. Aquí:
- *  - el valor se limita a los pasos declarados,
- *  - cada cambio de paso dispara un tick (no en cada píxel),
- *  - hay marcas visuales para que se vea dónde están los valores.
- *
- * @param steps valores permitidos, ORDENADOS de menor a mayor. El primero es
- *   el mínimo y el último el máximo.
- */
+/** Snap to the declared ordered steps, emit one haptic tick per step, and display tick marks. The first and last steps define the range. */
 @Composable
 fun AkiraSteppedSlider(
     label: String,
@@ -53,12 +41,11 @@ fun AkiraSteppedSlider(
     val maxValue = sorted.last().toFloat()
     val range = (maxValue - minValue).coerceAtLeast(1f)
 
-    // Índice del paso más cercano: es el "snap" que evita valores intermedios.
+    // Find the nearest allowed step.
     val index = remember(value, sorted) {
         sorted.indices.minByOrNull { kotlin.math.abs(sorted[it] - value) } ?: 0
     }
-    // Se recuerda el último paso para no repetir el tick si Compose recompone
-    // con el mismo valor.
+    // Retain the last step to avoid duplicate haptics during recomposition.
     var lastTickIndex by remember { mutableIntStateOf(index) }
 
     val effectiveHaptics = haptics ?: com.akira.app.core.design.util.rememberAkiraHaptics()
@@ -100,7 +87,7 @@ fun AkiraSteppedSlider(
                 onValueChange(sorted[newIndex])
             },
             valueRange = 0f..sorted.lastIndex.toFloat(),
-            // Un paso intermedio menos: los valores posibles son los de `sorted`.
+            // Material counts intermediate steps, excluding the two endpoints.
             steps = (sorted.lastIndex - 1).coerceAtLeast(0),
             colors = SliderDefaults.colors(
                 thumbColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,

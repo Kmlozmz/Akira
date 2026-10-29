@@ -54,9 +54,7 @@ object AkiraColors {
     fun artistColor(index: Int): Color = ArtistPalette[Math.floorMod(index, ArtistPalette.size)]
 }
 
-/**
- * Tonos categóricos de carátulas y géneros:
- */
+/** Categorical artwork and genre tones. */
 enum class PlayerTone(val hex: Long) {
     CIAN(0xFF7CD5FF),
     AZUL(0xFFA6C8FF),
@@ -74,7 +72,7 @@ enum class PlayerTone(val hex: Long) {
         @Composable @ReadOnlyComposable get() = Color(hex)
 }
 
-/** Mezcla de color sRGB con base tonal. */
+/** Blend sRGB color with a tonal base. */
 fun mix(c: Color, p: Float, base: Color): Color = c.copy(alpha = p).compositeOver(base)
 
 val DarkColorScheme = darkColorScheme(
@@ -110,15 +108,7 @@ val DarkColorScheme = darkColorScheme(
     onErrorContainer = AkiraColors.OnErrorContainer
 )
 
-/**
- * Fondo "elevado" para el modo Oscuro.
- *
- * AMOLED deja los píxeles apagados (negro absoluto) y es la razón de ser de la
- * paleta original, pero sobre una pantalla OLED muy brillante satura. El modo
- * Oscuro sube el fondo unos pocos pasos para que el contenido no "flote" sobre
- * negro puro. Los tokens de superficie NO se tocan: sólo el fondo, de modo que
- * la jerarquía por elevación tonal se mantiene igual en ambos modos.
- */
+/** Elevate the dark background while preserving surface tokens and their tonal hierarchy; AMOLED retains pure black. */
 private val DarkBackground = Color(0xFF0B0B10)
 
 /** Esquema AMOLED: negro absoluto en fondo y superficies (comportamiento original). */

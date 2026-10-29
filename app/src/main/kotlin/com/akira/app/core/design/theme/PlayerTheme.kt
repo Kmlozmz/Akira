@@ -88,14 +88,7 @@ val PlayerTypography = Typography(
     )
 )
 
-/**
- * Modo de tema resuelto, legible desde cualquier pantalla.
- *
- * Antes `themeMode` se guardaba en DataStore y no lo leía nadie: el tema estaba
- * fijado a DarkColorScheme. Con este CompositionLocal las pantallas que pintan
- * su propio fondo (Ajustes, biblioteca) pueden respetar el modo sin tener que
- * recibir el parámetro a mano.
- */
+/** Expose the resolved theme to screens that draw their own backgrounds. */
 val LocalThemeMode = staticCompositionLocalOf { "AMOLED" }
 val LocalAppearancePreset = staticCompositionLocalOf { "MIDNIGHT" }
 val LocalSpaceMode = staticCompositionLocalOf { false }

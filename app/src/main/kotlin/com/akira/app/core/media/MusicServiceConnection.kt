@@ -98,7 +98,7 @@ class MusicServiceConnection(
         }
     }
     private var pendingCommand: (() -> Unit)? = null
-    // Anti-rebote: un doble-tap rápido no debe ciclar el modo dos veces
+    // Debounce double taps so playback mode does not cycle twice.
     private var lastShuffleToggleMs = 0L
     private var lastRepeatToggleMs = 0L
 
@@ -380,9 +380,7 @@ class MusicServiceConnection(
         if (now - lastShuffleToggleMs < 350L) return
         lastShuffleToggleMs = now
         val controller = mediaController ?: return
-        // Sin escritura optimista: la única fuente de verdad es el callback
-        // onShuffleModeEnabledChanged. El write local + callback async era una
-        // fuente de parpadeo (true -> false -> true) si el player re-emitía.
+        // Treat onShuffleModeEnabledChanged as the source of truth; optimistic local writes can flicker when callbacks arrive.
         controller.shuffleModeEnabled = !controller.shuffleModeEnabled
     }
 
@@ -397,7 +395,7 @@ class MusicServiceConnection(
             Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
             else -> Player.REPEAT_MODE_OFF
         }
-        // Sin escritura optimista: manda el callback onRepeatModeChanged.
+        // Let onRepeatModeChanged own the state instead of writing optimistically.
         controller.repeatMode = nextMode
     }
 

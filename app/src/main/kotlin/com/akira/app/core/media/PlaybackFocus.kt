@@ -6,25 +6,12 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.util.Log
 
-/**
- * Único dueño del foco de audio de la app.
- *
- * Antes cada ExoPlayer gestionaba su propio foco y en cada handover del crossfade se
- * activaba en un deck y se desactivaba en el otro (setAudioAttributes(..., true/false))
- * mientras sonaban los dos. Eso fuerza una cadena abandonar -> pedir foco justo en el
- * instante más delicado, y si una petición no se concede ExoPlayer pausa el deck
- * entrante: es una de las causas probables del "pausa/play y se queda pausado".
- *
- * Ahora los dos decks tienen handleAudioFocus = false y este objeto pide el foco UNA
- * vez al empezar a sonar y lo suelta al pausar, sin importar qué deck esté activo.
- *
- * Ducking: se deja al sistema (setWillPauseWhenDucked(false)), que baja el volumen solo.
- */
+/** Own audio focus once for both decks. Disable per-deck focus handling to avoid abandon/request cycles during crossfade. Let Android handle ducking through setWillPauseWhenDucked(false). */
 internal class PlaybackFocus(
     context: Context,
-    /** Foco perdido. willResume = pérdida transitoria (llamada, otra app): hay que reanudar al volver. */
+    /** Focus lost; willResume indicates a transient interruption that permits automatic resume. */
     private val onLost: (willResume: Boolean) -> Unit,
-    /** Foco recuperado tras una pérdida transitoria. */
+    /** Focus restored after a transient interruption. */
     private val onGained: () -> Unit
 ) {
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -50,7 +37,7 @@ internal class PlaybackFocus(
         }
     }
 
-    /** Pide el foco si no lo tiene. Devuelve false si el sistema lo deniega. */
+    /** Request focus when not already held; return false if Android denies it. */
     fun acquire(): Boolean {
         if (held) return true
         val req = request ?: AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)

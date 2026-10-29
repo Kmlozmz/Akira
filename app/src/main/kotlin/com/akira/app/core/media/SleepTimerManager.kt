@@ -12,19 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-/**
- * Temporizador de apagado que vive en el servicio (sobrevive a cerrar la UI).
- *
- * Opciones: 5, 10, 15, 30, 45, 60, 90 min, "al terminar la canción" y
- * "al terminar la cola". La cuenta atrás se expone como flujo para la UI.
- *
- * Al expirar: baja el volumen 10 s con [CrossfadeEngine.externalVolumeMultiplier]
- * (compuesto en el mismo punto de multiplicadores del crossfade) y pausa.
- *
- * "Al terminar la canción" suprime el crossfade configurando
- * `pauseAtEndOfItem = true` en el motor y notificándolo antes de que
- * empiece el prebuffer.
- */
+/** Service-owned sleep timer survives UI closure. Expose its countdown as a flow; expiry fades the external volume multiplier over ten seconds and pauses playback. End-of-track timers suppress crossfade before prebuffering. */
 class SleepTimerManager(
     private val scope: CoroutineScope,
     private val crossfadeEngine: CrossfadeEngine,
@@ -47,7 +35,7 @@ class SleepTimerManager(
     private val _remainingMs = MutableStateFlow(0L)
     val remainingMs: StateFlow<Long> = _remainingMs.asStateFlow()
 
-    // Tipo de temporizador activo (para la UI)
+    // Active timer type for the UI.
     private val _activeMode = MutableStateFlow(0L) // 0 = off, minutes or END_OF_SONG/END_OF_QUEUE
     val activeMode: StateFlow<Long> = _activeMode.asStateFlow()
 
@@ -66,7 +54,7 @@ class SleepTimerManager(
         when (durationMs) {
             END_OF_SONG -> {
                 crossfadeEngine.cancelCrossfade()
-                // Suprime el crossfade: el motor pausará al final de la pista actual.
+                // Suppress crossfade so the engine pauses at the current track's end.
                 crossfadeEngine.pauseAtEndOfItem = true
                 _remainingMs.value = END_OF_SONG
                 SleepTimerBus.setRemainingMs(END_OF_SONG)
@@ -116,10 +104,7 @@ class SleepTimerManager(
 
     val isActive: Boolean get() = _activeMode.value != 0L
 
-    /**
-     * Llamado desde el motor cuando una pista termina de forma natural
-     * (sin crossfade, porque se suprimió).
-     */
+    /** Called when a track ends naturally after crossfade has been suppressed. */
     fun onSongEndedNaturally() {
         if (_activeMode.value == END_OF_SONG) {
             Log.d(TAG, "End-of-song mode: pausing playback")
@@ -128,9 +113,7 @@ class SleepTimerManager(
         }
     }
 
-    /**
-     * Llamado cuando la cola se agota.
-     */
+    /** Called when the queue is exhausted. */
     fun onQueueEnded() {
         if (_activeMode.value == END_OF_QUEUE) {
             Log.d(TAG, "End-of-queue mode: pausing playback")
@@ -142,7 +125,7 @@ class SleepTimerManager(
     private fun startFadeOut() {
         fadeJob?.cancel()
         if (!getActiveDeck().playWhenReady) {
-            // Ya está pausado: nada que hacer.
+            // Playback is already paused.
             cancel()
             return
         }

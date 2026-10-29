@@ -1,6 +1,6 @@
 package com.akira.app.core.model
 
-/** Identidad local independiente de los IDs de MediaStore. */
+/** Stable local identity independent of MediaStore IDs. */
 data class SongKey(val relativePath: String, val fileName: String, val durationMs: Long) {
     val encoded: String get() = "v1|${relativePath.length}:$relativePath${fileName.length}:$fileName|$durationMs"
 

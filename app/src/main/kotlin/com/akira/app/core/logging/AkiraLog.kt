@@ -25,7 +25,7 @@ data class AkiraLogEntry(
 
 /** Bounded in-memory diagnostics. Export filters paths, URLs and credential fields. */
 object AkiraLog {
-    const val MAX_BUFFER_BYTES = 512 * 1024 // 512 KB máx.
+    const val MAX_BUFFER_BYTES = 512 * 1024 // Maximum size: 512 KB.
 
     private val entries = ArrayDeque<AkiraLogEntry>()
     private var currentBytes = 0
@@ -80,9 +80,7 @@ object AkiraLog {
     fun sanitize(text: String, includeTrackTitles: Boolean): String =
         LogPrivacyFilter.sanitize(text, includeTrackTitles)
 
-    /**
-     * Exporta el contenido del registro en memoria a un archivo de texto en cacheDir.
-     */
+    /** Export the in-memory log to a text file in cacheDir. */
     fun exportToFile(context: Context, includeTrackTitles: Boolean): File {
         val dateStr = synchronized(exportFilenameFormat) { exportFilenameFormat.format(Date()) }
         val directory = File(context.cacheDir, "exports/logs").apply { mkdirs() }
@@ -111,9 +109,7 @@ object AkiraLog {
         return file
     }
 
-    /**
-     * Registra un interceptor de excepciones no controladas para que ningún crash quede sin rastrear.
-     */
+    /** Register an uncaught-exception handler to capture crashes. */
     fun installUncaughtExceptionHandler() {
         val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->

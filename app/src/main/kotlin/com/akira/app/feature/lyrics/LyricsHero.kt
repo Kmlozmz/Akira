@@ -133,7 +133,7 @@ internal fun loadLyricsForSong(
 private fun synthesizeWordTimings(text: String, startMs: Long, durationMs: Long): List<LyricWord> =
     LyricsParser.synthesizeWordTimings(text, startMs, durationMs)
 
-/** Palabra lista para pintar: texto (con espacio final si procede) y su ventana de relleno. */
+/** Renderable word with optional trailing whitespace and its fill interval. */
 private data class LyricWordSpan(val text: String, val startMs: Long, val endMs: Long)
 
 private val LyricTextStyle = TextStyle(
@@ -143,7 +143,7 @@ private val LyricTextStyle = TextStyle(
     lineHeight = 37.sp
 )
 
-/** Estima el canto por caracteres para no extender el barrido sobre un silencio. */
+/** Estimate singing duration from character counts to avoid filling across silence. */
 private fun estimateSungDurationMs(text: String, lineDurationMs: Long): Long {
     val chars = text.count { !it.isWhitespace() }
     return if (lineDurationMs <= 6_000L) (lineDurationMs * 0.92f).toLong()
@@ -159,7 +159,7 @@ private fun buildWordSpans(line: LyricLine, nextLineTimeMs: Long?): List<LyricWo
     return timings.mapIndexed { i, w ->
         val nextStart = timings.getOrNull(i + 1)?.timeMs
         val rawEnd = nextStart ?: lineEnd.coerceAtLeast(w.timeMs + 300L)
-        // Tope: una palabra suelta antes de un silencio no se rellena durante segundos.
+        // Limit an isolated word's fill duration before a silence.
         val end = minOf(rawEnd, w.timeMs + 2_200L).coerceAtLeast(w.timeMs + 120L)
         LyricWordSpan(
             text = if (i < timings.lastIndex) w.text + " " else w.text,
@@ -169,7 +169,7 @@ private fun buildWordSpans(line: LyricLine, nextLineTimeMs: Long?): List<LyricWo
     }
 }
 
-/** Respuesta de un resorte amortiguado subamortiguado (0 → 1 con un leve rebote). */
+/** Underdamped spring response from zero to one with a small overshoot. */
 private fun springStep(t: Float, zeta: Float = 0.7f, omega: Float = 11f): Float {
     if (t <= 0f) return 0f
     val wd = omega * kotlin.math.sqrt(1f - zeta * zeta)
@@ -177,7 +177,7 @@ private fun springStep(t: Float, zeta: Float = 0.7f, omega: Float = 11f): Float 
     return 1f - decay * (kotlin.math.cos(wd * t) + (zeta * omega / wd) * kotlin.math.sin(wd * t))
 }
 
-/** La capa deja margen alrededor de la palabra para no recortar el halo del barrido. */
+/** Leave room around each word so its sweep halo is not clipped. */
 private fun Modifier.lyricSweepMask(
     startMs: Long,
     endMs: Long,
@@ -254,7 +254,7 @@ private fun LyricWordText(
     }
 }
 
-/** El flujo por palabras conserva los saltos al cambiar la línea activa. */
+/** Preserve explicit line breaks when the active lyric line changes. */
 @kotlin.OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun LyricLineRow(
@@ -317,9 +317,9 @@ private fun LyricLineRow(
     }
 }
 
-// DstIn permite desvanecer los bordes sin depender del color de fondo.
+// DstIn fades edges independently of the background color.
 private fun Modifier.lyricsEdgeFade(topFadeDp: androidx.compose.ui.unit.Dp, bottomFadeDp: androidx.compose.ui.unit.Dp): Modifier =
-    // La capa Offscreen evita que DstIn enmascare también el fondo dinámico.
+    // Use an offscreen layer so DstIn does not mask the dynamic background.
     this.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         .drawWithContent {
         drawContent()
@@ -330,7 +330,7 @@ private fun Modifier.lyricsEdgeFade(topFadeDp: androidx.compose.ui.unit.Dp, bott
         if (top <= 0f && bottom <= 0f) return@drawWithContent
         drawRect(
             brush = Brush.verticalGradient(
-                // DstIn desvanece los extremos transparentes y conserva el centro opaco.
+                // DstIn fades transparent ends while retaining the opaque center.
                 colorStops = arrayOf(
                     0f to Color.Transparent,
                     top to Color.Black,
@@ -344,7 +344,7 @@ private fun Modifier.lyricsEdgeFade(topFadeDp: androidx.compose.ui.unit.Dp, bott
         )
     }
 
-// Los silencios ocupan filas propias para conservar el primer verso durante la intro.
+// Give instrumental gaps their own rows to preserve the first verse during intros.
 internal sealed interface LyricRow {
     data class Line(val index: Int, val line: LyricLine) : LyricRow
     data class Silence(val glyph: String, val key: String, val sourceIndex: Int? = null, val startMs: Long = 0, val endMs: Long = 0) : LyricRow
@@ -447,7 +447,7 @@ internal fun LyricsHero(
     val smoothMs = if (isSynced) rememberSmoothPositionMs(effectivePositionMs, isPlaying)
         else rememberUpdatedState(effectivePositionMs)
 
-    // Un hueco menor a 9 s se trata como respiración entre versos, no como pausa instrumental.
+    // Treat gaps below nine seconds as breaths between verses rather than instrumental pauses.
     val instrumentalGapMs = 9_000L
     val lyricRows = remember(lyricLines, song.durationMs) { buildLyricRows(lyricLines, instrumentalGapMs, song.durationMs) }
 
@@ -464,7 +464,7 @@ internal fun LyricsHero(
         }
     }
 
-    // Las filas inferiores vuelven a su posición con un retraso escalonado tras el scroll.
+    // Return lower rows to position with a stagger after scrolling.
     var pushPx by remember { mutableFloatStateOf(0f) }
     var pushAnchorRow by remember { mutableIntStateOf(0) }
     var pushElapsedMs by remember { mutableLongStateOf(10_000L) }
@@ -481,7 +481,7 @@ internal fun LyricsHero(
         }
     }
 
-    // La dirección del scroll controla el transporte; el límite evita que el player robe el gesto.
+    // Use scroll direction for transport, with a threshold preventing the player from stealing the gesture.
     LaunchedEffect(listState) {
         var lastIndex = listState.firstVisibleItemIndex
         androidx.compose.runtime.snapshotFlow { listState.firstVisibleItemIndex }
@@ -515,7 +515,7 @@ internal fun LyricsHero(
         if (row < 0 || row == lastScrolledRow) return@LaunchedEffect
         val previous = lastScrolledRow
         lastScrolledRow = row
-        // Sólo se anima el avance natural (1-3 filas) y si el usuario no está arrastrando.
+        // Animate only natural advances of one to three rows while the user is not dragging.
         val animate = previous >= 0 &&
             kotlin.math.abs(row - previous) <= 3 &&
             !listState.isScrollInProgress
@@ -530,7 +530,7 @@ internal fun LyricsHero(
             val after = with(density) { lyricsTopPadding.toPx() }
             val delta = (before - after).toFloat()
             if (delta > 0f) {
-                // Si aún quedaba un empuje a medias, se suma el resto para no dar tirones.
+                // Carry any unfinished displacement into the next advance to avoid jumps.
                 pushPx = delta + pushOffsetFor(pushAnchorRow)
                 pushAnchorRow = row
                 pushElapsedMs = 0L
@@ -539,7 +539,7 @@ internal fun LyricsHero(
         }
     }
 
-    // Reloj del empuje: un frame-clock sólo mientras dura la animación.
+    // Run the frame clock only while the displacement animation is active.
     LaunchedEffect(pushId) {
         if (pushId == 0) return@LaunchedEffect
         var start = -1L
@@ -647,17 +647,15 @@ internal fun LyricsHero(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        // Difuminado en los bordes: difumina las líneas que van
-                        // desapareciendo arriba sin oscurecer la fila activa ni desplazar la lista.
+                        // Blur outgoing lines near the upper edge without dimming the active line or moving the list.
                         .onGloballyPositioned { onListTopChanged(it.positionInRoot().y) }
                         .lyricsEdgeFade(topFadeDp = 20.dp, bottomFadeDp = 132.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
-                    // El padding inferior permite subir la última estrofa hasta la fila activa.
+                    // Bottom padding allows the final verse to reach the active row.
                     contentPadding = PaddingValues(top = lyricsTopPadding, bottom = 320.dp, start = 10.dp, end = 10.dp),
                     flingBehavior = com.akira.app.core.design.motion.rememberAkiraBouncingFling()
                 ) {
-                    // Jerarquía: la línea activa manda; el resto retrocede en brillo,
-                    // desenfoque y escala (ver LyricLineRow).
+                    // Keep the active line dominant; reduce brightness, sharpness and scale on surrounding lines through LyricLineRow.
                     itemsIndexed(lyricRows, key = { _, row ->
                         when (row) {
                             is LyricRow.Line -> "l_${row.index}"

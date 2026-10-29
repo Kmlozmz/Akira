@@ -107,9 +107,7 @@ class UserPreferencesRepository(private val context: Context) {
         val BASS_BOOST = floatPreferencesKey("pref_bass_boost")
         val VIRTUALIZER = floatPreferencesKey("pref_virtualizer")
         val EQ_ENABLED = booleanPreferencesKey("pref_eq_enabled")
-        // Se guardan en 5 claves separadas en vez de un string serializado:
-        // DataStore Preferences no soporta listas de forma nativa y meterlas
-        // en un Set obligaría a codificarlas como texto.
+        // Store five gains separately because Preferences DataStore has no native list type.
         fun eqBand(index: Int) = floatPreferencesKey("pref_eq_band_$index")
         val EQ_PREAMP = floatPreferencesKey("pref_eq_preamp")
         val DYNAMIC_COLOR = booleanPreferencesKey("pref_dynamic_color")

@@ -1,186 +1,168 @@
 <p align="center">
-  <img src=".github/assets/akira-header.svg" alt="Akira — Música local y en línea" width="100%" />
+  <img src=".github/assets/akira-header.svg" alt="Akira: local and online music" width="100%" />
+</p>
+
+<p align="center">A player for the music you keep and the music you have yet to discover.</p>
+
+<p align="center">
+  <a href="https://github.com/Kmlozmz/Akira/releases"><img src="https://img.shields.io/badge/version-0.3.1-FA243C?style=flat-square" alt="Version 0.3.1" /></a>
+  <img src="https://img.shields.io/badge/Android-8.0%2B-242428?style=flat-square" alt="Android 8.0 or later" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-242428?style=flat-square" alt="GPL version 3" /></a>
+  <img src="https://img.shields.io/badge/languages-ES%20%2F%20EN-242428?style=flat-square" alt="Spanish and English" />
 </p>
 
 <p align="center">
-  Un reproductor para tu biblioteca de siempre y para lo que todavía no has descubierto.
-</p>
-
-<p align="center">
-  <a href="https://github.com/Kmlozmz/Akira/releases"><img src="https://img.shields.io/badge/versi%C3%B3n-0.3.0-FA243C?style=flat-square" alt="Versión 0.3.0" /></a>
-  <img src="https://img.shields.io/badge/Android-8.0%2B-242428?style=flat-square" alt="Android 8.0 o posterior" />
-  <a href="LICENSE"><img src="https://img.shields.io/badge/licencia-GPL--3.0-242428?style=flat-square" alt="GPL versión 3" /></a>
-  <img src="https://img.shields.io/badge/idiomas-ES%20%2F%20EN-242428?style=flat-square" alt="Español e inglés" />
-</p>
-
-<p align="center">
-  <a href="https://github.com/Kmlozmz/Akira/releases"><strong>Descargar Akira</strong></a> ·
-  <a href="#qué-ofrece">Funciones</a> ·
-  <a href="#instalación-y-actualizaciones">Actualizaciones</a> ·
-  <a href="https://github.com/Kmlozmz/Akira/issues">Informar de un problema</a>
+  <a href="https://github.com/Kmlozmz/Akira/releases"><strong>Download Akira</strong></a> ·
+  <a href="#features">Features</a> ·
+  <a href="#installation-and-updates">Updates</a> ·
+  <a href="https://github.com/Kmlozmz/Akira/issues">Report an issue</a>
 </p>
 
 ---
 
-## Qué es Akira
+## About Akira
 
-Akira es un reproductor de música de código abierto para Android, escrito en Kotlin. Reúne una biblioteca local completa, acceso a música en línea, letras sincronizadas y ajustes de sonido en una interfaz que puedes adaptar a tu gusto.
+Akira is an open-source Android music player written in Kotlin. It brings together a local library, online music, synchronized lyrics and sound settings in an interface you can customize.
 
-Puedes usarlo con los archivos que ya tienes en el teléfono, sin cuenta ni conexión. Cuando quieras descubrir música, activa el modo en línea para explorar recomendaciones, buscar canciones o escuchar una radio. La cuenta de YouTube Music es opcional y añade acceso a tu contenido personal.
+Listen to files already on your phone without an account or internet connection. Switch to online mode to browse recommendations, search for songs or start a radio. Linking a YouTube Music account is optional and provides access to your personal content.
 
-El modo en línea sigue en desarrollo; el catálogo, la conexión de cuentas y algunas recomendaciones dependen de servicios externos.
+Online mode is still in development. Catalog availability, account connections and some recommendations depend on external services.
 
-## Qué ofrece
+## Features
 
 <table>
   <tr>
-    <td width="50%" valign="top">
-      <h3>Tu biblioteca</h3>
-      <p>Canciones, álbumes, artistas, carpetas y listas. Búsqueda local, favoritos y filtros para dejar fuera audios que no quieras escuchar.</p>
-    </td>
-    <td width="50%" valign="top">
-      <h3>Descubrir música</h3>
-      <p>Recomendaciones, búsqueda en línea, radios y una ruleta para elegir tu próxima canción. Disponible también como invitado.</p>
-    </td>
+    <td width="50%" valign="top"><h3>Your library</h3><p>Songs, albums, artists, folders and playlists. Local search, favorites and filters to exclude unwanted audio.</p></td>
+    <td width="50%" valign="top"><h3>Music discovery</h3><p>Recommendations, online search, radio and a roulette to choose your next song. Guest listening is supported.</p></td>
   </tr>
   <tr>
-    <td valign="top">
-      <h3>Ajustar el sonido</h3>
-      <p>Crossfade con curvas editables, normalización de volumen, ecualizador y perfiles para distintas salidas de audio.</p>
-    </td>
-    <td valign="top">
-      <h3>Seguir las letras</h3>
-      <p>Búsqueda en varios proveedores, selección automática de letras sincronizadas y corrección manual del desfase.</p>
-    </td>
+    <td valign="top"><h3>Sound settings</h3><p>Crossfade with editable curves, volume normalization, an equalizer and profiles for different audio outputs.</p></td>
+    <td valign="top"><h3>Follow the lyrics</h3><p>Multiple providers, automatic selection of synchronized lyrics and manual timing correction.</p></td>
   </tr>
   <tr>
-    <td valign="top">
-      <h3>Elegir cómo se ve</h3>
-      <p>Temas claro y oscuro, colores de la portada, carátulas a pantalla completa y controles Liquid Glass configurables con respuesta háptica.</p>
-    </td>
-    <td valign="top">
-      <h3>Controlar la reproducción</h3>
-      <p>Cola editable, temporizador, widgets y controles desde la notificación o la pantalla de bloqueo.</p>
-    </td>
+    <td valign="top"><h3>Make it yours</h3><p>Light and dark themes, artwork colors, full-screen covers and configurable Liquid Glass controls with haptic feedback.</p></td>
+    <td valign="top"><h3>Playback controls</h3><p>An editable queue, sleep timer, widgets and controls in notifications and on the lock screen.</p></td>
   </tr>
 </table>
 
-## Local y en línea
+## Local and online listening
 
-El selector de modo cambia el contenido de Inicio, Biblioteca y Buscar. Cada modo conserva su contexto de reproducción.
+The mode selector changes the content of Home, Library and Search. Each mode retains its playback context.
 
-| | Modo local | Modo en línea |
+| | Local mode | Online mode |
 | :--- | :--- | :--- |
-| **Música** | Archivos de audio del dispositivo. | Catálogo y contenido disponible a través del proveedor. |
-| **Inicio** | Accesos y sugerencias de tu propia biblioteca. | Recomendaciones, radios y colecciones para explorar. |
-| **Cuenta** | No es necesaria. | Opcional; vincular YouTube Music permite consultar tu contenido personal. |
-| **Conexión** | La biblioteca y la reproducción funcionan sin internet. | Necesaria para cargar contenido y reproducir música. |
+| **Music** | Audio files on your device. | Catalog and content available through the provider. |
+| **Home** | Shortcuts and suggestions from your library. | Recommendations, radio and collections to explore. |
+| **Account** | Not required. | Optional; linking YouTube Music gives access to personal content. |
+| **Connection** | Library browsing and playback work offline. | Required to load and play online content. |
 
-Los favoritos guardados como invitado permanecen en el teléfono. Al vincular una cuenta, el modo en línea utiliza el contenido de esa cuenta. La reproducción en línea no convierte las canciones en archivos locales.
+Guest favorites stay on your phone. When you link an account, online mode uses that account's content. Online playback does not turn songs into local files.
 
-### Biblioteca local
+### Local library
 
-- Explora por canciones, álbumes, artistas, carpetas o listas.
-- Decide qué carpetas se incluyen y establece una duración mínima para los audios.
-- Revisa las canciones excluidas y recupera las que quieras conservar en la biblioteca.
-- Crea listas, guarda favoritos y cambia el orden de la cola.
+- Browse songs, albums, artists, folders and playlists.
+- Choose included folders and a minimum audio duration.
+- Review filtered songs and restore the ones you want to keep in the library.
+- Create playlists, save favorites and reorder the queue.
 
-Los filtros cambian lo que muestra Akira; no borran ni mueven tus archivos.
+Filters change what Akira displays; they do not delete or move your files.
 
-### Sonido y transiciones
+### Sound and transitions
 
-El crossfade permite ajustar la duración y la forma en que una canción sale y entra la siguiente. Puedes usar una curva predefinida o modificarla desde el editor.
+Crossfade lets you adjust the duration and the outgoing and incoming volume curves. Select a preset or edit a curve directly.
 
-El ecualizador incluye cinco bandas y preamplificación. Los perfiles por salida permiten guardar ajustes distintos para el altavoz y los auriculares. La normalización ofrece modos por canción o por álbum, además de conservar el volumen original.
+The equalizer provides five bands and preamplification. Output profiles store different settings for speakers and headphones. Volume normalization offers track and album modes alongside original volume.
 
-La disponibilidad de los efectos y de las transiciones depende del dispositivo, la salida de audio y el formato de las pistas.
+Effect and transition availability depends on the device, audio output and track format.
 
-### Letras y portadas
+### Lyrics and artwork
 
-Akira puede leer letras locales o consultar varios proveedores. La búsqueda automática compara las opciones disponibles y da prioridad a las letras sincronizadas. Si el tiempo no coincide, puedes corregirlo desde el reproductor.
+Akira reads local lyrics or searches multiple providers. Automatic search compares available results and prioritizes synchronized lyrics. Correct timing offsets from the player when needed.
 
-El reproductor admite portadas enmarcadas o a pantalla completa, colores obtenidos de la carátula y portadas animadas cuando están disponibles. Los controles y paneles Liquid Glass permiten ajustar su transparencia y difusión desde Apariencia. La respuesta háptica y la reducción de movimiento se configuran por separado.
+Choose framed or full-screen artwork, cover-derived colors and animated artwork when available. Configure Liquid Glass opacity and diffusion under Appearance. Haptic feedback and reduced motion have separate settings.
 
-## Instalación y actualizaciones
+## Installation and updates
 
-### Primera instalación
+### First installation
 
-1. Abre [GitHub Releases](https://github.com/Kmlozmz/Akira/releases) y elige la versión que quieras instalar.
-2. Descarga el archivo **`Akira-<versión>.apk`** de esa publicación.
-3. Abre el APK y confirma la instalación en Android. Si te lo pide, permite instalar aplicaciones desde el navegador o gestor de archivos que estés usando.
-4. Al abrir Akira, sigue la configuración inicial para añadir tu música y elegir tus preferencias.
+1. Open [GitHub Releases](https://github.com/Kmlozmz/Akira/releases) and choose a version.
+2. Download that release's **`Akira-<version>.apk`** file.
+3. Open the APK and confirm installation in Android. If prompted, allow installation from the browser or file manager you are using.
+4. Follow the initial setup to add your music and choose preferences.
 
-**Requisitos:** Android 8.0 o posterior. Las publicaciones públicas incluyen únicamente el APK de uso habitual.
+**Requirements:** Android 8.0 or later. Public releases include only the regular Release APK.
 
-### Desde la aplicación
+### Updating in the app
 
-Abre **Ajustes → Aplicación → Actualizaciones**.
+Open **Settings → Application → Updates**.
 
-| Paso | Qué sucede |
+| Step | What happens |
 | :--- | :--- |
-| **Consultar** | Akira comprueba si hay una versión compatible y muestra sus novedades. Puedes aplazar el aviso durante la sesión o pedir que vuelva al día siguiente. |
-| **Descargar** | Tú inicias la descarga. Puedes ver los MB descargados y el progreso, o cancelarla. |
-| **Verificar** | Se comprueban el tamaño, la integridad del archivo, el identificador, la versión y la firma de la aplicación. |
-| **Instalar** | Si falta el permiso de Android, Akira abre sus ajustes. Al concederlo y volver, continúa con el instalador. |
+| **Check** | Akira looks for a compatible version and displays its release notes. Postpone the prompt for the session or ask to be reminded tomorrow. |
+| **Download** | Start the download when you choose. View downloaded MB and progress, or cancel it. |
+| **Verify** | Akira checks file size, integrity, package identifier, version and signing certificate. |
+| **Install** | If permission is missing, Akira opens Android settings. Grant it and return to continue with the installer. |
 
-Android siempre te pide confirmar la instalación. Una actualización compatible conserva la biblioteca y los ajustes; no necesitas desinstalar Akira.
+Android asks you to confirm installation. A compatible update preserves your library and settings without uninstalling Akira.
 
-## Permisos y datos
+Release notes use the app's selected language, or the device language when set to System, when a translation is available. English is the fallback.
 
-Akira solicita los permisos que necesita para las funciones que utilizas:
+## Permissions and data
 
-| Permiso o servicio | Uso |
+Akira requests access needed by the features you use:
+
+| Permission or service | Purpose |
 | :--- | :--- |
-| **Archivos de audio** | Encontrar y reproducir la música guardada en el teléfono. |
-| **Notificaciones** | Mostrar controles de reproducción cuando corresponda en Android. |
-| **Instalación de aplicaciones** | Abrir una actualización descargada, si eliges instalarla desde Akira. |
-| **Servicios en línea** | Obtener música, letras, información de artistas o actualizaciones de sus respectivos proveedores. |
+| **Audio files** | Find and play music stored on your phone. |
+| **Notifications** | Display playback controls when required by Android. |
+| **App installation** | Open a downloaded update when you choose to install it from Akira. |
+| **Online services** | Retrieve music, lyrics, artist information and updates from their respective providers. |
 
-La cuenta de YouTube Music es opcional. Las consultas de actualizaciones se hacen a GitHub y no incluyen la sesión de tu cuenta de música.
+A YouTube Music account is optional. Update checks contact GitHub and do not include your music-account session.
 
-## Preguntas frecuentes
+## Frequently asked questions
 
 <details>
-<summary><strong>¿Necesito una cuenta para usar Akira?</strong></summary>
+<summary><strong>Do I need an account?</strong></summary>
 
-No. La biblioteca local funciona sin cuenta y el modo en línea puede utilizarse como invitado. Vincular YouTube Music permite acceder a contenido personal de esa cuenta.
+No. The local library works without an account, and online mode supports guests. Link YouTube Music to access your personal content.
 
 </details>
 
 <details>
-<summary><strong>¿Funciona sin internet?</strong></summary>
+<summary><strong>Does Akira work offline?</strong></summary>
 
-Sí, para la biblioteca y las canciones guardadas en el dispositivo. La música en línea, las letras remotas, la información de artistas y las actualizaciones necesitan conexión.
-
-</details>
-
-<details>
-<summary><strong>¿Por qué una canción no tiene letras o portada animada?</strong></summary>
-
-Ese material no está disponible para todas las canciones. Depende de los archivos locales, de los proveedores y de que el formato sea compatible.
+Yes, for your local library and music stored on the device. Online music, remote lyrics, artist information and updates require internet access.
 
 </details>
 
 <details>
-<summary><strong>¿Qué puede fallar en esta versión?</strong></summary>
+<summary><strong>Why is a song missing lyrics or animated artwork?</strong></summary>
 
-El modo en línea continúa en desarrollo. Puede haber cambios en la disponibilidad del catálogo, las recomendaciones o el acceso a cuentas. Los efectos de sonido, el material animado y algunas funciones del sistema también pueden comportarse de forma distinta según el teléfono.
+These are not available for every song. Availability depends on your local files, the providers and format compatibility.
 
 </details>
 
-## Informar de un problema
+<details>
+<summary><strong>What limitations should I expect?</strong></summary>
 
-Abre una [incidencia](https://github.com/Kmlozmz/Akira/issues) e incluye:
+Online mode remains in development. Catalog access, recommendations and account connections may change. Sound effects, animated content and system features can behave differently across phones.
 
-- Versión de Akira, modelo del teléfono y versión de Android.
-- Modo local o en línea; en este último caso, si ocurre con cuenta o como invitado.
-- Pasos para reproducirlo, resultado esperado y lo que ocurrió.
-- Una captura o grabación, si ayuda a entenderlo.
+</details>
 
-Antes de adjuntar archivos, revisa que no contengan contraseñas, cookies ni datos personales. Las sugerencias y correcciones también pueden compartirse mediante una incidencia o una propuesta de cambios.
+## Reporting an issue
 
-## Licencia y créditos
+Open an [issue](https://github.com/Kmlozmz/Akira/issues) and include:
 
-Akira se distribuye bajo [GNU GPL versión 3](LICENSE). Las licencias de las bibliotecas, tipografías y demás recursos de terceros están recogidas en [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) y en los avisos de la aplicación.
+- Akira version, phone model and Android version.
+- Local or online mode; for online mode, whether you are signed in or listening as a guest.
+- Steps to reproduce, the expected result and what happened.
+- A screenshot or recording when helpful.
 
-Akira es un proyecto independiente.
+Check attachments for passwords, cookies and personal information before sharing them. Suggestions and contributions are welcome through issues and pull requests.
+
+## License and credits
+
+Akira is distributed under [GNU GPL version 3](LICENSE). Third-party library, font and resource licenses are recorded in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and bundled with the app.
+
+Akira is an independent project.

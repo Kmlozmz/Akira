@@ -3,7 +3,7 @@ package com.akira.app.core.media
 import com.akira.app.core.model.Song
 import java.util.Random
 
-/** Selección local determinista por grupos, dejando aleatoriedad solo al final. */
+/** Select local groups deterministically, randomizing only the final choice. */
 object AutoplaySelector {
     fun select(
         candidates: List<Song>,

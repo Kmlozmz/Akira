@@ -29,16 +29,10 @@ import kotlinx.coroutines.launch
 import java.text.CollationKey
 import java.text.Collator
 
-/** Qué propiedad de la canción define el orden. */
+/** Song property used for sorting. */
 enum class SortField { TITLE, ARTIST, ALBUM, DATE_ADDED, DURATION }
 
-/**
- * Orden de la lista. Cada valor es (campo, dirección):
- *  - TITLE / ARTIST / ALBUM: ASC = A→Z, DESC = Z→A.
- *  - DATE_ADDED: ASC = las más antiguas primero, DESC = las más recientes primero
- *    (fecha en la que el archivo llegó al dispositivo, MediaStore.DATE_ADDED).
- *  - DURATION: ASC = más cortas primero, DESC = más largas primero.
- */
+/** Sort by field and direction: text fields use A-Z or Z-A; DATE_ADDED uses MediaStore arrival time; DURATION uses shortest or longest first. */
 enum class SortOrder(val field: SortField, val ascending: Boolean) {
     TITLE_ASC(SortField.TITLE, true),
     TITLE_DESC(SortField.TITLE, false),
@@ -58,9 +52,9 @@ enum class SortOrder(val field: SortField, val ascending: Boolean) {
         fun fromName(name: String?): SortOrder =
             entries.firstOrNull { it.name == name } ?: TITLE_ASC
 
-        /** Dirección con la que arranca cada criterio al elegirlo por primera vez. */
+        /** Initial direction for a newly selected sort criterion. */
         fun defaultFor(field: SortField): SortOrder = when (field) {
-            SortField.DATE_ADDED -> DATE_ADDED_DESC // lo último que llegó, arriba
+            SortField.DATE_ADDED -> DATE_ADDED_DESC // Newest additions first.
             else -> of(field, true)
         }
     }
@@ -174,12 +168,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     }
 }
 
-/**
- * Ordena respetando el idioma del dispositivo (acentos y mayúsculas no alteran el
- * orden alfabético: "Álbum" va junto a "Album") e ignorando símbolos iniciales
- * ("$uelta" se ordena como "uelta"). Cada criterio desempata con campos
- * secundarios para que el resultado sea estable y predecible.
- */
+/** Use device-locale collation to ignore case and accents, skip leading symbols, and use secondary fields to resolve ties consistently. */
 internal fun sortSongs(songs: List<Song>, order: SortOrder): List<Song> {
     if (songs.size < 2) return songs
 

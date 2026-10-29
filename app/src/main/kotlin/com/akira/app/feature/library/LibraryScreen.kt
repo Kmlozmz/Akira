@@ -282,7 +282,7 @@ fun LibraryScreen(
             musicService.selectSourceMode(onlineEnabled, userPrefs?.autoResume == true || openPlayerFromWidget)
         }
     }
-    // El servicio decide cuándo cambiar la canción visible durante el crossfade.
+    // The service decides when to expose the incoming track during crossfade.
     val currentSong: Song? = (serviceSong ?: localCurrentSong)?.takeIf {
         it.contentUri.startsWith("akira-youtube:") == onlineEnabled
     }
@@ -354,11 +354,11 @@ fun LibraryScreen(
     }
 
     LaunchedEffect(currentSong?.albumArtUri, currentSong?.id, dynamicColorEnabled) {
-        // Con el ajuste apagado no se toca el bitmap en absoluto.
+        // Leave the bitmap untouched when the option is disabled.
         if (!dynamicColorEnabled) return@LaunchedEffect
         val song = currentSong ?: return@LaunchedEffect
 
-        // Con portada, el decoder conserva el color anterior hasta tener la nueva paleta.
+        // Retain the previous artwork color until the new palette is available.
         if (song.albumArtUri.isNullOrBlank()) {
             artworkColors = PlayerArtworkColors(Color(song.tone.hex))
             dynamicPrimaryColor = vibrantBoost(Color(song.tone.hex), isGrayscaleFallback = Color(0xFF222432))
@@ -406,8 +406,7 @@ fun LibraryScreen(
         if (!onlineEnabled && !isInitialSongRestored && songsList.isNotEmpty()) {
             val savedSongId = prefs.lastPlayedSongId
             if (!savedSongId.isNullOrBlank() && prefs.autoResume) {
-                // Puede no existir ya (borrada del dispositivo): sólo entonces
-                // caemos a la primera, que sí es un fallback razonable.
+                // If the stored track was deleted from the device, fall back to the first available track.
                 localCurrentSong = songsList.firstOrNull { it.id == savedSongId } ?: songsList.first()
             }
             isInitialSongRestored = true
@@ -1337,7 +1336,7 @@ private fun UnifiedPlayerContainer(
                     val velocityTracker = VelocityTracker()
                     var dragDeltaPx = 0f
                     var trackedY = 0f
-                    // Este handler recibe gestos del mini player; el interno recibe los del expandido.
+                    // This handler receives mini-player gestures; the inner handler receives expanded-player gestures.
                     var ownsGesture = false
                     detectVerticalDragGestures(
                         onDragStart = {
@@ -1393,8 +1392,7 @@ private fun UnifiedPlayerContainer(
             }
 
             val travellingArtwork: @Composable () -> Unit = {
-            // La portada conserva su painter durante el viaje; ambas copias intercambian
-            // visibilidad en dibujo usando el mismo progreso, sin cargar otra imagen.
+            // Retain the artwork painter during travel; both copies exchange visibility using the same progress without loading another image.
                 val artworkRequest = rememberPlayerArtworkRequest(currentSongTarget.albumArtUri)
                 val fullStyle=fullscreenArtwork && playerConfig.screenWidthDp<=playerConfig.screenHeightDp
                 val fallback=with(density) {
@@ -1440,7 +1438,7 @@ private fun UnifiedPlayerContainer(
                 }
             }
 
-            // La portada viaja en esta capa; el mini del dock solo desvanece texto y controles.
+            // Artwork travels in this layer while mini-player text and controls fade.
             if (surfaceVisible || isDraggingSheet) {
                 androidx.compose.runtime.CompositionLocalProvider(LocalAppBackdrop provides playerBackdrop) {
                 NowPlayingExpandedScreen(
@@ -1468,8 +1466,7 @@ private fun UnifiedPlayerContainer(
                         isDraggingSheet = dragging
                     },
                     onArtworkBounds = { bounds, radius, mask ->
-                        // Congelar la medida durante el viaje; invalidarla al cambiar
-                        // el estilo de portada o la orientación para no reutilizar otra geometría.
+                        // Freeze measurements during travel; invalidate on artwork-style or orientation changes.
                         if (artworkBounds == null || playerExpansionProgress.value >= .999f) {
                             artworkBounds = bounds; artworkRadius = radius; artworkMask=mask
                         }
@@ -1500,7 +1497,7 @@ private fun UnifiedPlayerContainer(
             }
                 }
 
-            // La cabecera compacta viaja con la superficie para no quedar tapada por ella.
+            // Move the compact header with its surface so the surface does not cover it.
             val inlineMini = dockState.scroll.isInline
             val compactInk = if (isDark) Color.White else Color.Black
             val compactSlot = if (inlineMini) 32.dp else 34.dp
@@ -1703,11 +1700,7 @@ internal fun SongRowItem(
 private data class ArtistItem(val name: String, val songCount: Int, val artUri: String?, val covers: List<String>, val albumCount: Int)
     private data class FolderItem(val key: String, val name: String, val path: String, val songCount: Int, val covers: List<String>)
 
-    /**
-     * Clave estable de álbum. Se prefiere el albumId real de MediaStore; sólo si
-     * no existe se cae a álbum+artista normalizados, porque dos canciones con el
-     * mismo título de álbum y artistas distintos NO son el mismo álbum.
-     */
+    /** Prefer the MediaStore albumId. Fall back to normalized album and artist names so identically titled albums by different artists remain distinct. */
     private fun albumKeyOf(song: Song): String =
         if (song.albumId != 0L) {
             "id:${song.albumId}"
@@ -1715,7 +1708,7 @@ private data class ArtistItem(val name: String, val songCount: Int, val artUri: 
             "nm:${song.album.trim().lowercase()}|${song.artist.trim().lowercase()}"
         }
 
-    /** Clave estable de carpeta: la ruta completa del directorio, no su nombre final. */
+    /** Use the complete directory path as the stable folder key. */
     private fun folderKeyOf(song: Song): String =
         song.path.substringBeforeLast('/').ifBlank { "/" }
 
@@ -1887,7 +1880,7 @@ private fun luminanceOf(color: Color): Float =
 
 private fun isLightColor(color: Color): Boolean = luminanceOf(color) > 0.56f
 
-// Mantiene el tono y la saturación, pero baja el brillo hasta el techo indicado.
+// Preserve hue and saturation while limiting brightness.
 private fun capLuminance(color: Color, maxLuminance: Float): Color {
     val l = luminanceOf(color)
     if (l <= maxLuminance) return color
@@ -1899,7 +1892,7 @@ private fun capLuminance(color: Color, maxLuminance: Float): Color {
     )
 }
 
-// Color de contenido legible sobre el fondo dinámico (oscuro o claro).
+// Readable foreground over the dynamic light or dark background.
 fun contentColorForBackground(bg: Color): Color =
     if (isLightColor(bg)) Color(0xFF14161C) else Color.White
 

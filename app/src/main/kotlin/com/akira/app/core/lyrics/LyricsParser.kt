@@ -3,26 +3,20 @@ package com.akira.app.core.lyrics
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 
-/**
- * Representa el vocalista o rol asignado a una línea lírica en canciones solistas o a dúo.
- */
+/** Vocalist or role assigned to a solo or duet lyric line. */
 enum class Vocalist {
     PRIMARY,   // Vocalista 1 / Principal (alineado a la izquierda)
     SECONDARY, // Vocalista 2 (alineado a la derecha)
-    DUET       // Ambos / Coro / Dúo simultáneo (centrado)
+    DUET       // Both voices or simultaneous chorus, centered.
 }
 
-/**
- * Marca de tiempo y texto para una palabra o sílaba en Enhanced LRC (karaoke).
- */
+/** Timestamp and text for an Enhanced LRC word or syllable. */
 data class LyricWord(
     val timeMs: Long,
     val text: String
 )
 
-/**
- * Línea lírica sincronizada con su marca de tiempo, texto limpio, palabras y vocalista.
- */
+/** Synchronized lyric line with timestamp, clean text, words and vocalist. */
 data class LyricLine(
     val timeMs: Long,
     val text: String,
@@ -41,9 +35,7 @@ data class LoadedLyrics(
     val isSynced: Boolean get() = synced.isNotEmpty()
 }
 
-/**
- * Parser unificado de letras LRC (estándar, extendido/palabra por palabra, dúo y texto plano).
- */
+/** Parse standard LRC, enhanced word timing, duets and plain text. */
 object LyricsParser {
 
     private val LrcTimestampRegex = Regex("""\[(\d{1,3}):([0-5]\d)(?:[.:,](\d{2,3}))?]""")
@@ -54,7 +46,7 @@ object LyricsParser {
     )
     private val LrcOffsetRegex = Regex("""\s*\[offset\s*:\s*([+-]?\d+)]\s*""", RegexOption.IGNORE_CASE)
 
-    // Patrones para detección de vocalistas (v1:, [v1], (v1), etc.)
+    // Vocalist markers such as v1:, [v1] and (v1).
     private val VocalistPrimaryPrefixRegex = Regex(
         """^(?:\[v1\]|\(v1\)|\[1\]|\(1\)|v1\s*:|1\s*:)\s*""",
         RegexOption.IGNORE_CASE
@@ -86,10 +78,10 @@ object LyricsParser {
                 continue
             }
 
-            // 2. Omitir metadatos de cabecera como [ar: artista], [ti: título], etc.
+            // Skip header metadata such as artist and title tags.
             if (LrcHeaderRegex.matches(line)) continue
 
-            // 3. Extraer timestamps de línea [mm:ss.xx]
+            // Extract line timestamps in mm:ss.xx format.
             val timeMatches = LrcTimestampRegex.findAll(line).toList()
             if (timeMatches.isEmpty()) {
                 val clean = stripAnyTimestamp(line)
@@ -97,7 +89,7 @@ object LyricsParser {
                 continue
             }
 
-            // Obtener el cuerpo de texto tras el último timestamp de línea
+            // Read text after the final line timestamp.
             val body = line.substring(timeMatches.last().range.last + 1).trim()
 
             // Detectar vocalista y remover prefijos de voz
@@ -121,9 +113,7 @@ object LyricsParser {
         else LoadedLyrics(plain = plainFallback.take(400))
     }
 
-    /**
-     * Identifica si la línea corresponde a Vocalist 1, 2 o Dúo, y remueve la marca técnica.
-     */
+    /** Identify vocalist one, vocalist two or a duet and remove its technical marker. */
     fun extractVocalistAndClean(body: String): Pair<Vocalist, String> {
         var trimmed = body.trim()
 
@@ -144,7 +134,7 @@ object LyricsParser {
     }
 
     /**
-     * Parsea timestamps de Enhanced LRC con marcas de palabras tipo `<mm:ss.xx>`.
+     * Parse Enhanced LRC word timestamps in `<mm:ss.xx>` format.
      */
     fun parseWordTimings(body: String): List<LyricWord> {
         if (!LrcWordRegex.containsMatchIn(body)) return emptyList()
@@ -160,9 +150,7 @@ object LyricsParser {
         return words
     }
 
-    /**
-     * Sintetiza marcas de tiempo por palabra distribuyendo la duración en base a la longitud de cada palabra.
-     */
+    /** Estimate word timestamps by distributing the line duration according to word length. */
     fun synthesizeWordTimings(text: String, startMs: Long, durationMs: Long): List<LyricWord> {
         val words = text.trim().split(Regex("""\s+""")).filter { it.isNotBlank() }
         if (words.isEmpty()) return emptyList()
@@ -194,9 +182,7 @@ object LyricsParser {
     fun stripAnyTimestamp(text: String): String =
         text.replace(LrcWordRegex, " ").replace(LrcTimestampRegex, " ").replace(Regex("""\s+"""), " ").trim()
 
-    /**
-     * Decodifica bytes con detección automática de codificación (UTF-8 con/sin BOM, UTF-16, GBK, ISO-8859-1).
-     */
+    /** Detect UTF-8 with or without BOM, UTF-16, GBK and ISO-8859-1 encodings. */
     fun decodeLyricBytes(bytes: ByteArray): String {
         if (bytes.size >= 3 && bytes[0] == 0xEF.toByte() && bytes[1] == 0xBB.toByte() && bytes[2] == 0xBF.toByte()) {
             return String(bytes, 3, bytes.size - 3, StandardCharsets.UTF_8)

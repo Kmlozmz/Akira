@@ -3,34 +3,23 @@ package com.akira.app.core.media
 import kotlin.math.cos
 import kotlin.math.sin
 
-/**
- * Representa la dirección del cambio de volumen de una pista durante el crossfade.
- */
+/** Direction of a track's volume change during crossfade. */
 enum class CrossfadeDirection {
     OUTGOING, // Pista saliente: volumen 1.0 -> 0.0
     INCOMING  // Pista entrante: volumen 0.0 -> 1.0
 }
 
-/**
- * Formas matemáticas de atenuación / amplificación disponibles para el crossfade.
- */
+/** Available crossfade attenuation and amplification curves. */
 enum class CrossfadeShape {
-    CURRENT,          // ACTUAL: réplica exacta de la fórmula de potencia constante
-    LINEAR,           // LINEAL: atenuación / ganancia directamente proporcional
+    CURRENT,          // Legacy constant-power formula.
+    LINEAR,           // Linear attenuation and gain.
     SMOOTH,           // SUAVE: curva sigmoidal / smoothstep tipo S (3u^2 - 2u^3)
-    CONSTANT_POWER,   // POTENCIA CONSTANTE: cos(u*pi/2) y sin(u*pi/2) para mantener energía acústica
-    FAST_START,       // RÁPIDA AL INICIO: caída rápida para saliente / subida rápida para entrante (ease-out)
-    SLOW_START        // LENTA AL INICIO: caída lenta inicial para saliente / subida gradual para entrante (ease-in)
+    CONSTANT_POWER,   // Use cos(u*pi/2) and sin(u*pi/2) for constant acoustic power.
+    FAST_START,       // Fast outgoing decay and incoming rise: ease out.
+    SLOW_START        // Slow outgoing decay and incoming rise: ease in.
 }
 
-/**
- * Especificación completa de una curva de volumen.
- *
- * @param shape Forma geométrica de la curva.
- * @param curvature Grado de curvatura: 0.0f = lineal, 1.0f = forma pura (0% a 100%).
- * @param startRange Fracción de la mezcla (0.0 .. 0.9) en la que inicia la transición.
- * @param endRange Fracción de la mezcla (0.1 .. 1.0) en la que finaliza la transición.
- */
+/** Volume curve specification: shape; curvature from linear (0) to full shape (1); startRange in 0..0.9; endRange in 0.1..1. */
 data class CurveSpec(
     val shape: CrossfadeShape = CrossfadeShape.CURRENT,
     val curvature: Float = 1.0f,
@@ -45,20 +34,14 @@ data class CurveSpec(
     }
 }
 
-/**
- * Presets preconfigurados de pares de curvas para crossfade.
- */
+/** Paired crossfade curve presets. */
 data class CrossfadeCurvePreset(
     val id: String,
     val outgoingSpec: CurveSpec,
     val incomingSpec: CurveSpec
 )
 
-/**
- * Motor puro de cálculo y evaluación de curvas de ganancia para crossfade.
- * No contiene dependencias de clases del framework de Android, por lo que es
- * 100% testeable en cualquier entorno JVM.
- */
+/** Framework-independent gain-curve evaluation for JVM tests. */
 object CrossfadeCurve {
 
     const val PRESET_ACTUAL = "ACTUAL"
@@ -104,8 +87,7 @@ object CrossfadeCurve {
             incomingSpec = CurveSpec(CrossfadeShape.SLOW_START, 1.0f, 0.0f, 1.0f)
         )
     ).let { presets ->
-        // Compatibilidad de lectura: instalaciones con ACTUAL guardado usan
-        // la misma curva, pero la UI ofrece una sola opción.
+        // Keep saved ACTUAL values readable while exposing a single equivalent curve in the UI.
         presets + (PRESET_ACTUAL to presets.getValue(PRESET_CONSTANT_POWER).copy(id = PRESET_ACTUAL))
     }
 
@@ -114,17 +96,11 @@ object CrossfadeCurve {
         else -> id
     }
 
-    /**
-     * Calcula la ganancia normalizada (0.0 .. 1.0) para un instante normalizado `t` en [0.0, 1.0].
-     *
-     * @param direction SALIDA (1.0 -> 0.0) o ENTRADA (0.0 -> 1.0)
-     * @param spec Especificación geométrica de la curva
-     * @param t Fracción transcurrida del tiempo total de mezcla (0.0 .. 1.0)
-     */
+    /** Evaluate normalized gain at t in 0..1 using the direction and curve specification. */
     fun gain(direction: CrossfadeDirection, spec: CurveSpec, t: Float): Float {
         val clampedT = t.coerceIn(0f, 1f)
 
-        // Comprobación de límites de rango
+        // Check range boundaries.
         if (clampedT <= spec.startRange) {
             return if (direction == CrossfadeDirection.OUTGOING) 1.0f else 0.0f
         }
@@ -132,7 +108,7 @@ object CrossfadeCurve {
             return if (direction == CrossfadeDirection.OUTGOING) 0.0f else 1.0f
         }
 
-        // Proyección al rango normalizado [0.0, 1.0] dentro del segmento [startRange, endRange]
+        // Project time into the normalized startRange..endRange segment.
         val span = (spec.endRange - spec.startRange).coerceAtLeast(0.001f)
         val u = ((clampedT - spec.startRange) / span).coerceIn(0f, 1f)
 
@@ -179,10 +155,7 @@ object CrossfadeCurve {
         return (outGain * outGain) + (inGain * inGain)
     }
 
-    /**
-     * Evalúa si una combinación de curvas presenta anomalías de energía acústica
-     * (baja de 0.70 o supera 1.30 en algún punto de la mezcla).
-     */
+    /** Detect combined acoustic power below 0.70 or above 1.30 during the mix. */
     fun hasPowerAnomaly(outgoingSpec: CurveSpec, incomingSpec: CurveSpec, samples: Int = 100): Boolean {
         for (i in 0..samples) {
             val t = i.toFloat() / samples.toFloat()
@@ -194,9 +167,7 @@ object CrossfadeCurve {
         return false
     }
 
-    /**
-     * Determina si las especificaciones coinciden exactamente con alguno de los presets estándar.
-     */
+    /** Match the curve specifications against standard presets. */
     fun detectPreset(outgoingSpec: CurveSpec, incomingSpec: CurveSpec): String {
         for ((id, preset) in PRESETS) {
             if (preset.outgoingSpec == outgoingSpec && preset.incomingSpec == incomingSpec) {

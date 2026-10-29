@@ -7,14 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalView
 
-/**
- * Respuesta háptica centralizada.
- *
- * Usa las constantes semánticas de Android (SEGMENT_TICK, TOGGLE_ON/OFF, CONFIRM...)
- * cuando el sistema las soporta y cae a equivalentes más antiguos si no. Pasa por
- * View.performHapticFeedback, así que respeta el ajuste "vibración al tocar" del
- * usuario y funciona con los motores hápticos modernos.
- */
+/** Use Android semantic haptic constants when available and older equivalents otherwise. View.performHapticFeedback respects the user's touch-feedback setting. */
 class AkiraHaptics(private val view: View) {
     companion object { private var lastSegmentAt = Long.MIN_VALUE }
 
@@ -27,13 +20,13 @@ class AkiraHaptics(private val view: View) {
         }
     }
 
-    /** Selección discreta: elegir una opción, cambiar de pestaña. */
+    /** Discrete option or tab selection. */
     fun tick() = perform(
         if (Build.VERSION.SDK_INT >= 34) HapticFeedbackConstants.SEGMENT_TICK
         else HapticFeedbackConstants.CLOCK_TICK
     )
 
-    /** Muy suave y frecuente: pasos de un slider mientras se arrastra. */
+    /** Light repeated ticks while dragging a slider. */
     fun softTick() {
         val now = android.os.SystemClock.uptimeMillis()
         if (lastSegmentAt != Long.MIN_VALUE && now - lastSegmentAt < 40L) return
@@ -52,16 +45,16 @@ class AkiraHaptics(private val view: View) {
         }
     )
 
-    /** Acción completada: restablecer, aplicar. */
+    /** Completed reset or apply action. */
     fun confirm() = perform(
         if (Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.CONFIRM
         else HapticFeedbackConstants.KEYBOARD_TAP
     )
 
-    /** Toque ligero genérico (botones, volver). */
+    /** Light button or back feedback. */
     fun light() = perform(HapticFeedbackConstants.KEYBOARD_TAP)
 
-    /** Click estándar para botones e interacciones. */
+    /** Standard interaction click. */
     fun click() = perform(HapticFeedbackConstants.KEYBOARD_TAP)
 
     /** A single firm detent for committed transport actions, not a long buzz. */
@@ -70,10 +63,10 @@ class AkiraHaptics(private val view: View) {
         else HapticFeedbackConstants.KEYBOARD_TAP
     )
 
-    /** Toggle sin argumentos. */
+    /** Toggle feedback without a state argument. */
     fun toggle() = toggle(true)
 
-    /** Pulsación larga / énfasis. */
+    /** Long-press emphasis. */
     fun heavy() = perform(HapticFeedbackConstants.LONG_PRESS)
 }
 

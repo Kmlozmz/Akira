@@ -29,7 +29,7 @@ class CrossfadeEngine(
     private var activeOutgoingSpec: CurveSpec = CrossfadeCurve.DEFAULT_OUTGOING_SPEC
     private var activeIncomingSpec: CurveSpec = CrossfadeCurve.DEFAULT_INCOMING_SPEC
 
-    // Multiplicador externo para composición (normalización, temporizador de apagado, etc.)
+    // External multiplier for normalization, sleep-timer fades and other gain composition.
     var externalVolumeMultiplier: Float = 1.0f
         set(value) {
             field = value.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: 1f
@@ -168,7 +168,7 @@ class CrossfadeEngine(
             } else if(player===activePlayer && state!=State.IDLE)cancelCrossfade()
         }
 
-        // Replicar playWhenReady evita pausar la entrante durante el buffering de la saliente.
+        // Mirror playWhenReady so outgoing buffering does not pause the incoming deck.
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             Log.d(TAG, "deck=${deckName(player)} playWhenReady=$playWhenReady reason=$reason " +
                 "active=${player === activePlayer} state=$state handingOver=$isHandingOver")
@@ -230,7 +230,7 @@ class CrossfadeEngine(
 
         when (state) {
             State.IDLE -> {
-                // El temporizador necesita el final natural de la pista, sin mezcla anticipada.
+                // The timer needs the natural track ending without an early crossfade.
                 if (pauseAtEndOfItem) return
 
                 if (pauseAtEndOfQueue) {
@@ -273,7 +273,7 @@ class CrossfadeEngine(
                     incomingStartPositionMs=inactivePlayer.currentPosition.coerceAtLeast(0L)
                     crossfadePausedAt = null
                     pausedCrossfadeDuration = 0L
-                    // Los cambios de preferencias no deben alterar una mezcla ya iniciada.
+                    // Preference changes must not alter a mix already in progress.
                     activeOutgoingSpec = outgoingCurveSpec
                     activeIncomingSpec = incomingCurveSpec
                     if (targetTrackIndex == C.INDEX_UNSET) {
@@ -285,7 +285,7 @@ class CrossfadeEngine(
                     state = State.CROSSFADING
                     inactivePlayer.play()
                     AkiraLog.i(TAG, "Crossfade active phase started: duration=${activeDurationMs}ms, outShape=${activeOutgoingSpec.shape.name}, inShape=${activeIncomingSpec.shape.name}")
-                    // La UI puede mostrar la entrante antes del intercambio de decks.
+                    // The UI may show the incoming track before deck handover.
                     inactivePlayer.currentMediaItem?.let { onIncomingTrackReady(it) }
                 }
             }
@@ -338,7 +338,7 @@ class CrossfadeEngine(
 
             applyDeckVolumes(0f, 1f)
 
-            // La sesión debe observar la entrante antes de vaciar la saliente para no anunciar IDLE.
+            // Expose the incoming deck before clearing the outgoing deck to avoid publishing IDLE.
             activePlayer = incoming
             inactivePlayer = outgoing
             restoreEndGuards()
@@ -365,7 +365,7 @@ class CrossfadeEngine(
         val currentIdx = player.currentMediaItemIndex
         if (currentIdx == C.INDEX_UNSET) return C.INDEX_UNSET
 
-        // El adaptador consulta Timeline para respetar el orden aleatorio.
+        // The adapter queries Timeline to preserve shuffle order.
         val nextWindow = player.nextWindowIndex(currentIdx)
         if (nextWindow != C.INDEX_UNSET) return nextWindow
 

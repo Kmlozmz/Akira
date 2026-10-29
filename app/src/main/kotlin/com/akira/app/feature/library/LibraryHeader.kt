@@ -68,9 +68,7 @@ import java.text.NumberFormat
 
 import com.akira.app.core.i18n.LocalStrings
 
-/**
- * Cabecera de la biblioteca: título, buscador y pestañas.
- */
+/** Library header containing the title, search field and tabs. */
 @Composable
 internal fun LibraryHeader(
     songCount: Int,
@@ -99,7 +97,7 @@ internal fun LibraryHeader(
             field={SearchField(searchQuery,onSearchChange,strings.searchHint,Modifier.fillMaxWidth())})
         Spacer(Modifier.height(18.dp))
 
-        // ── Pestañas ─────────────────────────────────────────────────────────
+        // Library tabs.
         if(showCategories) {
         val tabs = listOf(
             "Tracks" to strings.tabTracks,
@@ -123,7 +121,7 @@ private fun HeaderIconButton(
     description: String,
     onClick: () -> Unit
 ) {
-    // Área táctil de 44dp, icono de 22dp, sin fondo: el icono es el único protagonista.
+    // A 44 dp touch target around a 22 dp foreground icon.
     Box(
         modifier = Modifier
             .size(44.dp)
@@ -190,7 +188,7 @@ private fun LibraryTab(
         targetValue = if (selected) androidx.compose.material3.MaterialTheme.colorScheme.onSurface else androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.58f),
         label = "tab_color"
     )
-    // Punto indicador: crece desde el centro con un muelle suave.
+    // Grow the indicator dot from its center using a soft spring.
     val indicator by animateFloatAsState(
         targetValue = if (selected) 1f else 0f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),

@@ -215,7 +215,7 @@ private fun CurveControls(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Rango de mezcla (Inicio y Fin con separación mínima de 10%)
+        // Mix range with at least ten percent separation between start and end.
         val startPercent = (spec.startRange * 100f).roundToInt()
         val endPercent = (spec.endRange * 100f).roundToInt()
         val startSteps = remember { (0..90 step 1).toList() }
@@ -274,7 +274,7 @@ private fun CrossfadeCurveChart(
         val width = size.width
         val height = size.height
 
-        // Ejes y cuadrícula base (0%, 25%, 50%, 75%, 100%)
+        // Base axes and grid at 0, 25, 50, 75 and 100 percent.
         val gridColor = plotInk.copy(alpha = 0.08f)
         for (i in 0..4) {
             val y = height * (i / 4f)
@@ -293,8 +293,8 @@ private fun CrossfadeCurveChart(
             )
         }
 
-        // Línea punteada de 1.0 (nivel nominal de potencia)
-        val yNominal = height * 0.5f // Si mapeamos potencia de 0.0 a 2.0, 1.0 está en el centro
+        // Dotted nominal-power line at 1.0.
+        val yNominal = height * 0.5f // Map power 0..2 so 1.0 sits at the center.
         if (showPower) drawLine(
             color = plotInk.copy(alpha = 0.18f),
             start = Offset(0f, yNominal),
@@ -336,8 +336,7 @@ private fun CrossfadeCurveChart(
         if (showPower) drawLine(plotInk.copy(alpha = .6f), Offset(markerX,0f), Offset(markerX,height), strokeWidth = 1.5f)
         if (showPower) drawCircle(curveColors.outgoing, 5.dp.toPx(), Offset(markerX, height*(1f-CrossfadeCurve.gain(CrossfadeDirection.OUTGOING,outgoingSpec,preview))))
         if (showPower) drawCircle(curveColors.incoming, 5.dp.toPx(), Offset(markerX, height*(1f-CrossfadeCurve.gain(CrossfadeDirection.INCOMING,incomingSpec,preview))))
-        // Dibujar curvas
-        // 1. Potencia total (línea punteada blanca/amarilla)
+        // Draw the curves and the dotted total-power line.
         if (showPower) drawPath(
             path = powerPath,
             color = curveColors.power,

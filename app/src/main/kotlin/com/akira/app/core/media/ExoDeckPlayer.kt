@@ -5,13 +5,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 
-/**
- * Adapta un [ExoPlayer] real a [DeckPlayer].
- *
- * Es una delegación pura, sin lógica: la única parte no trivial es
- * [nextWindowIndex], que contiene la consulta a `currentTimeline` que el
- * motor hacía directamente y que es lo que impedía probar sin Media3.
- */
+/** Adapt ExoPlayer to DeckPlayer, including the Timeline query needed to resolve nextWindowIndex. */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class ExoDeckPlayer(private val player: ExoPlayer) : DeckPlayer {
     override var playbackParameters: androidx.media3.common.PlaybackParameters
@@ -83,6 +77,6 @@ class ExoDeckPlayer(private val player: ExoPlayer) : DeckPlayer {
     override fun addListener(listener: Player.Listener) = player.addListener(listener)
     override fun removeListener(listener: Player.Listener) = player.removeListener(listener)
 
-    /** Expone el ExoPlayer para los usos que no pasan por el motor. */
+    /** Expose ExoPlayer for operations outside the transition engine. */
     fun unwrap(): ExoPlayer = player
 }

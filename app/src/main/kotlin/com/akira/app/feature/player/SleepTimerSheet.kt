@@ -106,7 +106,7 @@ fun SleepTimerSheet(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Indicador de temporizador activo / cuenta atrás
+            // Active sleep-timer countdown.
             if (activeMode != 0L) {
                 Box(
                     modifier = Modifier
@@ -209,7 +209,7 @@ fun SleepTimerSheet(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Opciones especiales: Al terminar la canción / Al terminar la cola
+            // End-of-track and end-of-queue timer options.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)

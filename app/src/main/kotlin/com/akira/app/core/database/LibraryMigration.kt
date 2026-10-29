@@ -3,7 +3,7 @@ package com.akira.app.core.database
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-// Una única versión nueva. Se conservan las tablas anteriores y sus datos.
+// Preserve existing tables and data during the schema upgrade.
 val MIGRATION_2_3_SQL = listOf(
     "CREATE TABLE IF NOT EXISTS play_stats (songKey TEXT NOT NULL PRIMARY KEY, playCount INTEGER NOT NULL, firstPlayedAt INTEGER NOT NULL, lastPlayedAt INTEGER NOT NULL)",
     "CREATE TABLE IF NOT EXISTS playlist_items (playlistId TEXT NOT NULL, position INTEGER NOT NULL, songKey TEXT NOT NULL, addedAt INTEGER NOT NULL, PRIMARY KEY(playlistId, position), FOREIGN KEY(playlistId) REFERENCES playlists(id) ON DELETE CASCADE)",

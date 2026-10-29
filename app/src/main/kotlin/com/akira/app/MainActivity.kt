@@ -196,10 +196,7 @@ open class MainActivity : ComponentActivity() {
 
         com.akira.app.core.online.OnlineRepository.get(this).prefetchHome()
         setContent {
-            // Las preferencias se leen ANTES del tema: themeMode se guarda en
-            // DataStore pero hasta ahora no lo consultaba nadie, así que el
-            // tema estaba fijo. Con la lectura aquí arriba se puede pasar al
-            // tema sin sacar el repositorio de la lambda del tema.
+            // Read preferences before composing the theme so stored theme changes reach the root.
             val context = LocalContext.current
             val prefsRepo = remember { UserPreferencesRepository(context) }
             val loadedPrefs by prefsRepo.userPreferences.collectAsStateWithLifecycle(
@@ -259,10 +256,7 @@ open class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Open audio files supplied by another application.
-                    // El intent de arranque y el de onNewIntent se tratan igual:
-                    // si la app ya estaba abierta y el usuario elige otro
-                    // archivo, se reproduce ese sin perder la sesion.
+                    // Handle launch and onNewIntent audio URIs through the same playback path without replacing the session.
                     var externalSong by remember { mutableStateOf<Song?>(null) }
                     var externalError by remember { mutableStateOf<Boolean>(false) }
                     LaunchedEffect(externalError) {
@@ -304,16 +298,12 @@ LaunchedEffect(loadedPrefs) {
                     }
                 }
 
-                // Si el archivo llego antes de terminar el onboarding, se
-                // descarta al terminar: no tiene sentido saltar el setup.
-                // (La navegación la hace LibraryScreen al recibir externalSong.)
+                // Do not bypass onboarding for an external file. LibraryScreen handles navigation once setup is complete.
 
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        // Sigue al tema: en modo Oscuro el fondo no es negro
-                        // puro. Antes estaba fijado a Color.Black y el ajuste
-                        // de tema no tenía ninguna efecto visible.
+                        // Use the resolved theme background, including the elevated dark palette.
                         .background(if (widgetLaunchMotion?.finished == false) Color.Transparent else MaterialTheme.colorScheme.background)
                         .captionBarPadding()
                 ) {

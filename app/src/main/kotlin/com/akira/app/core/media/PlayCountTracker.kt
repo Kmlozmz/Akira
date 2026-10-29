@@ -1,6 +1,6 @@
 package com.akira.app.core.media
 
-/** Solo cuenta avance escuchado; saltos y pausas no suman tiempo. */
+/** Count listened playback progress; seeks and pauses do not add listening time. */
 class PlayCountTracker(private val durationMs: Long) {
     private var heardMs = 0L
     private var lastPosition: Long? = null

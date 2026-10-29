@@ -11,7 +11,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <!-- Necesario para android.media.audiofx.Equalizer/BassBoost/Virtualizer -->
+    <!-- Required by android.media.audiofx.Equalizer/BassBoost/Virtualizer. -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <application
@@ -46,17 +46,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!--
-                "Abrir con..." para audio. Se declara sobre la MISMA actividad
-                principal a proposito: el flujo de abrir un archivo no necesita
-                una pantalla aparte, solo una entrada mas al grafo de navegacion,
-                y duplicar la actividad obligaria a duplicar tambien su estado.
-
-                Los dos esquemas (content y file) hacen falta porque cada gestor
-                de archivos usa uno: los de documentos posteriores a Nougat
-                entregan content://, mientras que los antiguos y algunos
-                exploradores dan file://.
-            -->
+            <!-- Handle external audio in the main activity to retain one navigation and playback state. Support both content and file URIs supplied by document providers and file managers. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

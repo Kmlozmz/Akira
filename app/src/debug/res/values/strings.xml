@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!--
-        Solo para la variante debug. El applicationId lleva sufijo .debug y el
-        nombre visible lo dice, para no confundir el APK de pruebas con el de
-        distribución cuando conviven en el mismo teléfono.
-    -->
+    <!-- Debug uses a separate application ID and visible name so it can coexist with Release. -->
     <string name="app_name" translatable="false">Akira Debug</string>
 </resources>

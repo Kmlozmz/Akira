@@ -18,7 +18,7 @@ data class GainTags(val trackDb: Float? = null, val albumDb: Float? = null) {
     }
 }
 
-/** Encabezados ID3 TXXX y comentarios Vorbis/Opus, con límites de tamaño. */
+/** Read size-bounded ID3 TXXX frames and Vorbis/Opus comments. */
 object GainTagParser {
     fun parse(data: ByteArray): GainTags = runCatching {
         val tags = mutableMapOf<String, String>()

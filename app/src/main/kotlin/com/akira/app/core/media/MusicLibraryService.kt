@@ -64,28 +64,23 @@ class MusicLibraryService : MediaLibraryService() {
     private lateinit var crossfadeEngine: CrossfadeEngine
     private lateinit var sleepTimerManager: SleepTimerManager
 
-    // Foco de audio Ãºnico para los dos decks (ver PlaybackFocus).
+    // One audio-focus owner for both decks; see PlaybackFocus.
     private lateinit var playbackFocus: PlaybackFocus
     // ReanudaciÃ³n pendiente por pÃ©rdida de foco TRANSITORIA (llamada, otra app).
     private var resumeAfterTransientLoss = false
-    // Marca que la pausa actual la provocÃ³ una pÃ©rdida de foco, no el usuario.
-    // Distingue "pausado porque me han quitado el foco" de "pausado a propÃ³sito":
-    // sÃ³lo en el primer caso se puede reanudar solo al volver el foco.
+    // Track focus-induced pauses separately from user pauses; only a transient focus loss permits automatic resume.
     private var pausedByFocusLoss = false
 
-    // Un manager POR DECK: audiofx ata los efectos al audioSessionId, y cada
-    // ExoPlayer tiene el suyo. Si se compartiera, el crossfade dejarÃ­a una de
-    // las dos pistas sonando sin EQ.
+    // Keep one AudioFX manager per deck because effects bind to that deck's audioSessionId.
     private var eqManagerA = AudioFxEqualizerManager(UserPreferencesRepository.EQ_BAND_FREQUENCIES)
     private var eqManagerB = AudioFxEqualizerManager(UserPreferencesRepository.EQ_BAND_FREQUENCIES)
 
-    // Ãšltimo estado de EQ conocido. Se guarda para poder reaplicarlo cuando un
-    // deck pasa a STATE_READY y ya tiene sessionId real.
+    // Retain EQ configuration for decks reaching STATE_READY with a valid session ID.
     @Volatile private var currentEqualizerPrefs: com.akira.app.core.datastore.UserPreferences? = null
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private lateinit var prefsRepo: UserPreferencesRepository
-    // Ãšltimos modos conocidos (para sincronizar el deck entrante en cada handover)
+    // Retain playback modes to synchronize the incoming deck during handover.
     @Volatile private var lastKnownShuffle = false
     @Volatile private var lastKnownRepeat = Player.REPEAT_MODE_OFF
     private var pausedByBecomingNoisy = false
@@ -108,8 +103,7 @@ class MusicLibraryService : MediaLibraryService() {
         playbackFocus = PlaybackFocus(
             context = this,
             onLost = { willResume ->
-                // Se captura playWhenReady ANTES de pausar: si no, la propia
-                // pausa pondrÃ­a el flag a false y nunca se marcarÃ­a para reanudar.
+                // Capture playWhenReady before pausing, because pause clears it.
                 val wasPlaying = activeDeck.playWhenReady
                 resumeAfterTransientLoss = willResume && wasPlaying
                 pausedByFocusLoss = wasPlaying
@@ -118,8 +112,7 @@ class MusicLibraryService : MediaLibraryService() {
             onGained = {
                 if (resumeAfterTransientLoss) {
                     resumeAfterTransientLoss = false
-                    // Si el usuario ya lo reanudÃ³ a mano mientras esperaba, no
-                    // hay que volver a llamar a play().
+                    // Do not call play again if the user has already resumed playback.
                     if (!activeDeck.playWhenReady) activeDeck.play()
                 }
             }
@@ -168,10 +161,7 @@ class MusicLibraryService : MediaLibraryService() {
         routeRouter.addCallback(android.media.MediaRouter.ROUTE_TYPE_LIVE_AUDIO, routeCallback)
 
 
-        // El motor solo ve DeckPlayer (interfaz estrecha y testeable); el
-        // servicio conserva los ExoPlayer reales y los desempaqueta en el
-        // callback. Los wrappers se crean una sola vez para no romper la
-        // identidad (el motor compara decks por referencia).
+        // The engine uses DeckPlayer wrappers while the service owns the real ExoPlayers. Reuse wrappers to preserve reference identity.
         val deckWrapperA = ExoDeckPlayer(deckA)
         val deckWrapperB = ExoDeckPlayer(deckB)
         crossfadeEngine = CrossfadeEngine(
@@ -180,9 +170,7 @@ class MusicLibraryService : MediaLibraryService() {
                 val exo = newActive as? ExoDeckPlayer
                 if (exo != null) {
                     val player = exo.unwrap()
-                    // Sincroniza shuffle/repeat al deck entrante ANTES de exponerlo a la sesiÃ³n:
-                // el deck inactivo conserva sus valores por defecto y sin esto la UI
-                // parpadeaba (true -> false -> true) en cada handover.
+                    // Synchronize shuffle and repeat before exposing the incoming deck to the session, avoiding transient default modes in the UI.
                 player.shuffleModeEnabled = lastKnownShuffle
                 player.repeatMode = lastKnownRepeat
                 activeDeck = player
@@ -299,9 +287,7 @@ class MusicLibraryService : MediaLibraryService() {
                     if (deckA.shuffleModeEnabled != prefs.shuffle) deckA.shuffleModeEnabled = prefs.shuffle
                     if (deckB.shuffleModeEnabled != prefs.shuffle) deckB.shuffleModeEnabled = prefs.shuffle
                 }
-                // Se guarda el snapshot y se reintenta sobre cada deck: un deck que aÃºn no
-                // ha arrancado tiene sessionId 0 y se aplicarÃ¡ en cuanto pase
-                // a STATE_READY.
+                // Retain the configuration and retry when an uninitialized deck obtains a valid audio session.
                 currentEqualizerPrefs = prefs
                 publishWidgets()
                 updateNormalization(deckA)
@@ -529,12 +515,7 @@ class MusicLibraryService : MediaLibraryService() {
             if (::activeDeck.isInitialized && player === activeDeck) publishWidgets()
         }
 
-        /**
-         * El audioSessionId sÃ³lo existe una vez que el decoder ha arrancado. Si
-         * sÃ³lo reaplicÃ¡ramos el EQ al cambiar de preferencias, en el arranque
-         * se aplicarÃ­a sobre sessionId 0 y el ajuste no se oirÃ­a hasta el
-         * siguiente cambio.
-         */
+        /** Apply EQ when the decoder creates its audioSessionId, not only when preferences change. */
         override fun onPlaybackStateChanged(playbackState: Int) {
             if (player == activeDeck) publishWidgets()
             if (playbackState == Player.STATE_READY) {
@@ -542,11 +523,7 @@ class MusicLibraryService : MediaLibraryService() {
             }
         }
 
-        /**
-         * El foco sigue al deck ACTIVO: se pide cuando empieza a sonar y se suelta al
-         * pausar. El deck entrante del crossfade no toca el foco, asÃ­ que el handover
-         * ya no provoca abandonar/pedir foco con los dos decks sonando.
-         */
+        /** Request focus when the active deck starts playing and release it on pause. The incoming crossfade deck does not independently acquire focus. */
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             Log.d("AkiraPlayback", "service deck=${if (player === deckA) "A" else "B"} " +
                 "playWhenReady=$playWhenReady reason=$reason active=${player === activeDeck}")
@@ -561,9 +538,7 @@ class MusicLibraryService : MediaLibraryService() {
                 deckB.setPauseAtEndOfMediaItems(false)
             }
             if (playWhenReady) {
-                // La acciÃ³n manual del usuario cancela cualquier reanudaciÃ³n
-                // automÃ¡tica pendiente: si Ã©l toca play, la prÃ³xima pÃ©rdida de
-                // foco no debe decidir por Ã©l cuÃ¡ndo volver a sonar.
+                // A manual playback action cancels any pending automatic resume after focus loss.
                 resumeAfterTransientLoss = false
                 pausedByFocusLoss = false
                 pausedByBecomingNoisy = false
@@ -581,9 +556,7 @@ class MusicLibraryService : MediaLibraryService() {
                     bluetoothPausedAt = null
                     pausedByBecomingNoisy = false
                 }
-                // Si la pausa la provocÃ³ la propia pÃ©rdida de foco, el foco se
-                // conserva para poder recibir el GAIN que la revierte. En
-                // cualquier otro caso (pausa del usuario) se suelta.
+                // Retain focus after a focus-induced pause to receive GAIN; release it for user-initiated pauses.
                 val keepFocus = pausedByFocusLoss && resumeAfterTransientLoss
                 pausedByFocusLoss = false
                 if (!keepFocus) {

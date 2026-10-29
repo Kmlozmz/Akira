@@ -29,9 +29,9 @@ val hasReleaseKeystore = (keystoreProps.getProperty("storeFile") ?: "")
 
 if (!hasReleaseKeystore) {
     logger.warn(
-        "Akira: no se encuentra una clave de release válida " +
-            "(keystore.properties + .jks). El buildType release se firmará con la " +
-            "clave de DEBUG y NO será publicable en Google Play."
+        "Akira: no valid release signing key was found " +
+            "(keystore.properties + .jks). The release build will use the " +
+            "DEBUG key and cannot be published to Google Play."
     )
 }
 
@@ -60,7 +60,7 @@ android {
                 keyAlias = keystoreProps.getProperty("keyAlias")
                 keyPassword = keystoreProps.getProperty("keyPassword")
             } else {
-                // Degradación segura: misma clave que debug.
+                // Use the debug key when no release key is configured.
                 storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
                 storePassword = "android"
                 keyAlias = "androiddebugkey"

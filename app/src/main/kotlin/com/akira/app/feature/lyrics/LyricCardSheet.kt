@@ -122,7 +122,7 @@ internal fun LyricCardSheet(song: Song, candidates: List<String>, onDismiss: () 
                     if (watermark) text(strings.appName,72f,size.height/unit-60,24f)
                 }
             }
-            } // vista previa conserva proporción y alto máximo
+            } // Preserve preview aspect ratio and maximum height.
             Row { Checkbox(watermark, { watermark = it }); Text(strings.library.watermark, Modifier.padding(top = 12.dp)) }
             Button(enabled = !exporting, onClick = {
                 scope.launch {

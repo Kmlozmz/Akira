@@ -215,7 +215,7 @@ class MediaStoreScanner(private val context: Context) {
             true,
             observer
         )
-        trySend(Unit) // Emisión inicial
+        trySend(Unit) // Emit the initial scan signal.
         awaitClose {
             context.contentResolver.unregisterContentObserver(observer)
         }
