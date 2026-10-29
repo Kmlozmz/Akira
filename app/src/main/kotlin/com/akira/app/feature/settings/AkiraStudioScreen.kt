@@ -62,7 +62,9 @@ internal val LocalStudioNavigation = staticCompositionLocalOf<StudioNavigationSt
         val scrollCollapse by rememberPageCollapse(scroll)
         val collapse = headerProgress?.value ?: scrollCollapse
         val headerBackdrop = rememberLayerBackdrop()
-        val glass = com.akira.app.core.design.glass.isGlassSupported()
+        val pageColor = MaterialTheme.colorScheme.background
+        val controlsBackdrop = com.akira.app.core.design.backdrop.backdrops.rememberCanvasBackdrop { drawRect(pageColor) }
+        val glass = com.akira.app.core.design.glass.LocalLiquidGlassEnabled.current && com.akira.app.core.design.glass.isGlassSupported()
         CompositionLocalProvider(LocalPageHeaderBackdrop provides headerBackdrop,
             androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onBackground,
             com.akira.app.core.design.glass.LocalAppBackdrop provides headerBackdrop,
@@ -72,7 +74,8 @@ internal val LocalStudioNavigation = staticCompositionLocalOf<StudioNavigationSt
             Column(Modifier.widthIn(max=720.dp).fillMaxSize().align(Alignment.TopCenter)
                 .then(if (glass) Modifier.layerBackdrop(headerBackdrop) else Modifier)
                 .background(MaterialTheme.colorScheme.background)) {
-                CompositionLocalProvider(LocalPageScrollState provides scroll) { content() }
+                CompositionLocalProvider(LocalPageScrollState provides scroll,
+                    com.akira.app.core.design.glass.LocalAppBackdrop provides controlsBackdrop) { content() }
             }
             PagePageHeader(title,onBack,collapse,Modifier.widthIn(max=720.dp).align(Alignment.TopCenter),trailing=trailing)
             com.akira.app.core.design.components.AkiraNoticeHost(Modifier.align(Alignment.BottomCenter).padding(bottom=8.dp),priority=2)

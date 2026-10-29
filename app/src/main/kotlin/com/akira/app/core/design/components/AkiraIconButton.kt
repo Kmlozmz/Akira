@@ -39,7 +39,7 @@ fun AkiraIconButton(
     contentDescription: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    tint: Color = Color.White,
+    tint: Color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
     glyphSize: Dp = 22.dp,
     showBackground: Boolean = true,
     popOnTrue: Boolean = false,
@@ -53,12 +53,15 @@ fun AkiraIconButton(
     val isMore=icon==com.akira.app.core.design.icon.AkiraIcons.MoreHoriz
     menuSource.visualInsetPx=with(androidx.compose.ui.platform.LocalDensity.current){if(showBackground)((48.dp-surfaceSize)/2).toPx() else 0f}
     val haptics = rememberAkiraHaptics()
+    val neutral = tint == Color.White || tint == androidx.compose.material3.MaterialTheme.colorScheme.onSurface || tint == Color.Black
+    val ink = if (showBackground && glassSurface && neutral) com.akira.app.core.design.glass.rememberGlassInk(tint) else null
+    val glyphTint = ink?.color ?: tint
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val response=rememberAkiraPressResponse(pressed)
     androidx.compose.runtime.DisposableEffect(menuSource,response,isMore) {
-        if(isMore) { menuSource.contactProvider=response.amount;menuSource.contactStrain=response.strain }
-        onDispose { if(isMore) { menuSource.contactProvider=null;menuSource.contactStrain=null } }
+        if(isMore && menuSourceOverride==null) { menuSource.contactProvider=response.amount;menuSource.contactStrain=response.strain }
+        onDispose { if(isMore && menuSourceOverride==null) { menuSource.contactProvider=null;menuSource.contactStrain=null } }
     }
     val reduced=com.akira.app.core.design.components.LocalContentMotionReduced.current
     val inheritedDeformation=com.akira.app.core.design.glass.LocalGlassDeformation.current
@@ -82,7 +85,7 @@ fun AkiraIconButton(
     }
 
     Box(
-        modifier = modifier
+        modifier = modifier.then(ink?.modifier ?: Modifier)
             .then(if(isMore && menuSourceOverride==null)menuSource.modifier else Modifier)
             .size(48.dp)
             .then(response.modifier)
@@ -109,7 +112,7 @@ fun AkiraIconButton(
         AkiraAnimatedGlyph(
             icon = glyphOverride ?: icon,
             label = contentDescription ?: if(isMore)com.akira.app.core.i18n.akiraStrings().options else null,
-            tint = tint,
+            tint = glyphTint,
             modifier = Modifier.size(glyphSize).graphicsLayer { scaleX=1f+pop.value;scaleY=scaleX }
         )
         }

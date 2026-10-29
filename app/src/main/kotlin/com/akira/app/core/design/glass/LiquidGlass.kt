@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.luminance
@@ -151,11 +152,14 @@ internal fun Modifier.renderLiquidGlass(shape: CornerBasedShape, backdrop: Backd
     exportedBackdrop: LayerBackdrop? = null, presence: () -> Float = FullGlass,
     material: () -> Float = FullGlass, clearLens: Boolean = false, shadowStrength: Float = 1f,
     readableContent: Boolean = false): Modifier {
-    if (!isGlassSupported()) return background(MaterialTheme.colorScheme.surfaceContainer, shape)
-    val glass = LocalLiquidGlassEnabled.current
+    val reading = readableContent || LocalGlassReadableSurface.current
+    val glass = LocalLiquidGlassEnabled.current && isGlassSupported()
+    if (!glass) return then(if (shadowStrength > 0f) Modifier.shadow(8.dp * shadowStrength.coerceIn(0f,1f), shape,
+        clip=false, ambientColor=Color.Black.copy(alpha=.10f), spotColor=Color.Black.copy(alpha=.14f)) else Modifier)
+        .clip(shape).background(if (reading) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainer)
     val opacity = LocalLiquidGlassOpacity.current
     val diffusion = LocalLiquidGlassDiffusion.current
-    val diffuse = !clearLens
+    val diffuse = !clearLens && (!LocalGlassIsDock.current || LocalDockBackgroundDiffusion.current)
     val redraw = LocalGlassRedrawSignal.current
     val density = LocalDensity.current
     val scale = if(glass)AkiraGlassMaterialProfile.ResolutionScale else FALLBACK_RESOLUTION_SCALE
@@ -174,18 +178,17 @@ internal fun Modifier.renderLiquidGlass(shape: CornerBasedShape, backdrop: Backd
         shape = { shape },
         effects = {
             val diffusionRadius = if (glass && diffuse) diffusion().coerceIn(0f,24f) *
-                (if(readableContent)1f else .25f) * density.density * scale * material() else 0f
+                (if(reading)1f else .25f) * density.density * scale * material() else 0f
             // Filter the source once, then refract that same continuous image.
             // A separately masked sharp rim makes the capsule look laminated.
-            if (glass && diffuse) padding = maxOf(diffusionRadius * 2f, 26f * density.density * scale)
-            if (!glass) blur(48f * scale)
+            if (!clearLens) padding = maxOf(diffusionRadius * 2f, 26f * density.density * scale)
             if (diffusionRadius > 0f) blur(diffusionRadius)
             if (glass && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 refractionLens(density.density * scale,
                     deformation = material() * AkiraGlassMaterialProfile.LensDeformation,
                     presence = presence())
             }
-            if (glass) glassReadability(lightInk, presence(), readableContent,
+            if (glass) glassReadability(lightInk, presence(), reading,
                 if (lightInk && !clearLens) AkiraGlassMaterialProfile.DarkSurfaceFloor * material() * presence() else 0f)
         },
         highlight = if (glass) ({
@@ -196,9 +199,6 @@ internal fun Modifier.renderLiquidGlass(shape: CornerBasedShape, backdrop: Backd
             val alpha = material() * AkiraGlassMaterialProfile.rim(presence())
             if(alpha > 0f && shadowStrength > 0f)AkiraGlassMaterialProfile.ContactShadow.copy(alpha=alpha*shadowStrength.coerceIn(0f,1f)) else null
         }) else null,
-        onDrawBehind = {
-            if(!glass)drawOutline(shape.createOutline(size, layoutDirection, this), surfaceTintColor)
-        },
         onDrawSurface = {
             redraw()
             val tint = if(glass)opacity().coerceIn(0f,1f)*material().coerceIn(0f,1f) else .65f
@@ -207,4 +207,14 @@ internal fun Modifier.renderLiquidGlass(shape: CornerBasedShape, backdrop: Backd
         exportedBackdrop = exportedBackdrop,
         backdropScale = scale,
     )
+}
+
+class SurfaceInk(val color: Color, val modifier: Modifier = Modifier) {
+    val soft: Color get() = color.copy(alpha = .68f)
+}
+
+@Suppress("UNUSED_PARAMETER")
+@Composable fun rememberGlassInk(fallback: Color = glassContentColor()): SurfaceInk {
+    val color = glassContentColor()
+    return androidx.compose.runtime.remember(color) { SurfaceInk(color) }
 }

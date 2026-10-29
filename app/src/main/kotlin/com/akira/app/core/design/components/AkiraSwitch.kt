@@ -20,9 +20,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.*
+import androidx.compose.ui.input.key.*
+import androidx.compose.ui.semantics.*
 
-/** Original compact Material switch, with native drag/accessibility and one
- * semantic haptic on each state change. Row owners may supply their own feedback. */
+/** Shared switch with one state-change haptic and a 48 dp touch target. */
 @Composable
 fun AkiraSwitch(
     checked: Boolean,
@@ -31,63 +35,37 @@ fun AkiraSwitch(
     enabled: Boolean = true,
     haptic: ((Boolean) -> Unit)? = null
 ) {
-    val thumbColor by animateColorAsState(
-        targetValue = when {
-            !enabled -> Color(0xFF38384A)
-            checked -> androidx.compose.material3.MaterialTheme.colorScheme.surface
-            else -> androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
-        },
-        animationSpec = tween(160),
-        label = "akira_switch_thumb"
-    )
-    val iconTint by animateColorAsState(
-        targetValue = if (checked) androidx.compose.material3.MaterialTheme.colorScheme.primary else androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer,
-        animationSpec = tween(160),
-        label = "akira_switch_icon"
-    )
-    val defaultHaptics = com.akira.app.core.design.util.rememberAkiraHaptics()
-
-    Switch(
-        checked = checked,
-        onCheckedChange = { value ->
-            if (haptic != null) {
-                haptic.invoke(value)
-            } else {
-                defaultHaptics.toggle(value)
-            }
-            onCheckedChange(value)
-        },
-        enabled = enabled,
-        modifier = modifier,
-        colors = SwitchDefaults.colors(
-            checkedThumbColor = thumbColor,
-            checkedTrackColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-            uncheckedThumbColor = thumbColor,
-            uncheckedTrackColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerHighest,
-            uncheckedBorderColor = Color.Transparent,
-            checkedBorderColor = Color.Transparent,
-            disabledCheckedThumbColor = Color(0xFF38384A),
-            disabledCheckedTrackColor = Color(0xFF22222A),
-            disabledUncheckedThumbColor = Color(0xFF38384A),
-            disabledUncheckedTrackColor = Color(0xFF16161C),
-            disabledUncheckedBorderColor = Color.Transparent,
-            disabledCheckedBorderColor = Color.Transparent
-        ),
-        thumbContent = {
-            Box(
-                modifier = Modifier.size(20.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (checked) Icons.Rounded.Check else Icons.Rounded.Close,
-                    contentDescription = null,
-                    tint = iconTint,
-                    modifier = Modifier
-                        .size(14.dp)
-                        .clip(CircleShape)
-                        .background(Color.Transparent)
-                )
-            }
-        }
+    val haptics = com.akira.app.core.design.util.rememberAkiraHaptics()
+    val currentChecked by androidx.compose.runtime.rememberUpdatedState(checked)
+    val currentChange by androidx.compose.runtime.rememberUpdatedState(onCheckedChange)
+    fun change(value: Boolean) {
+        if (!enabled || value == currentChecked) return
+        if (haptic != null) haptic(value) else haptics.toggle(value)
+        currentChange(value)
+    }
+    if (!com.akira.app.core.design.glass.LocalLiquidGlassEnabled.current || !com.akira.app.core.design.glass.isGlassSupported() || LocalContentMotionReduced.current) {
+        Switch(checked = checked, onCheckedChange = ::change, modifier = modifier, enabled = enabled,
+            thumbContent = { Icon(if (checked) Icons.Rounded.Check else Icons.Rounded.Close, null, Modifier.size(16.dp)) },
+            colors = SwitchDefaults.colors(
+                checkedTrackColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                uncheckedTrackColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerHighest,
+                checkedBorderColor = Color.Transparent, uncheckedBorderColor = Color.Transparent))
+        return
+    }
+    com.akira.app.core.design.controls.components.LiquidToggle(
+        selected = { currentChecked }, onSelect = ::change,
+        backdrop = com.akira.app.core.design.glass.LocalAppBackdrop.current,
+        modifier = modifier.size(64.dp, 48.dp)
+            .graphicsLayer { alpha = if (enabled) 1f else .38f }
+            .then(if (enabled) Modifier else Modifier.pointerInput(Unit) {
+                awaitPointerEventScope { while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() } }
+            })
+            .semantics { if (!enabled) disabled() }
+            .onKeyEvent { event ->
+                if (enabled && event.type == KeyEventType.KeyUp &&
+                    (event.key == Key.Spacebar || event.key == Key.Enter || event.key == Key.DirectionCenter)) {
+                    change(!currentChecked); true
+                } else false
+            }.focusable(enabled)
     )
 }

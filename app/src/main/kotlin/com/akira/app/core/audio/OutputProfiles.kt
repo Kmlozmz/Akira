@@ -37,21 +37,26 @@ object OutputRoutes {
     }
 }
 
-data class EqOutputProfile(val id: String, val name: String, val bands: List<Float>, val bass: Float, val space: Float)
+data class EqOutputProfile(val id: String, val name: String, val bands: List<Float>, val bass: Float,
+    val space: Float, val preamp: Float = 1f)
 object OutputProfiles {
     fun decode(json: String): List<EqOutputProfile> = runCatching {
         val array = JSONArray(json)
-        (0 until array.length()).mapNotNull { index ->
+        (0 until array.length()).mapNotNull { index -> runCatching {
             val item = array.getJSONObject(index)
             val gains = item.getJSONArray("bands")
-            if (gains.length() != 5) null else EqOutputProfile(item.getString("id"),item.getString("name"),
+            if (gains.length() != 5 || item.getString("id").isBlank() || item.getString("name").isBlank()) null else EqOutputProfile(item.getString("id"),item.getString("name"),
                 List(5) { gains.getDouble(it).toFloat().coerceIn(-12f,12f) },
-                item.getDouble("bass").toFloat().coerceIn(0f,1f),item.getDouble("space").toFloat().coerceIn(0f,1f))
-        }
+                item.getDouble("bass").toFloat().coerceIn(0f,1f),item.getDouble("space").toFloat().coerceIn(0f,1f),
+                item.optDouble("preamp",1.0).toFloat().takeIf { it.isFinite() }?.coerceIn(.25f,1f) ?: 1f)
+        }.getOrNull() }.distinctBy {it.id}
     }.getOrDefault(emptyList())
     fun encode(profiles: List<EqOutputProfile>): String = JSONArray().also { array ->
-        profiles.forEach { profile -> array.put(JSONObject().put("id",profile.id).put("name",profile.name)
-            .put("bands",JSONArray(profile.bands)).put("bass",profile.bass).put("space",profile.space)) }
+        profiles.forEach { profile ->
+            val sound=EqualizerConfiguration(profile.bands,profile.bass,profile.space,profile.preamp).normalized()
+            array.put(JSONObject().put("id",profile.id).put("name",profile.name)
+                .put("bands",JSONArray(sound.bands)).put("bass",sound.bass).put("space",sound.space).put("preamp",sound.preamp))
+        }
     }.toString()
     fun assignments(json: String): Map<String,String> = runCatching {
         val value = JSONObject(json)

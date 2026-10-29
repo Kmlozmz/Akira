@@ -18,7 +18,7 @@ object AkiraColors {
 
     // Contrast & Typography
     val OnSurface = Color(0xFFEDEDED)
-    val OnSurfaceVariant = Color(0xFFA1A1AA)
+    val OnSurfaceVariant = Color(0xFFC2C3CB)
     val Outline = Color(0xFF27272A)
     val OutlineVariant = Color(0xFF3F3F46)
 
@@ -103,7 +103,9 @@ val DarkColorScheme = darkColorScheme(
     surfaceContainerHighest = AkiraColors.SurfaceHighest,
     outline = AkiraColors.Outline,
     outlineVariant = AkiraColors.OutlineVariant,
-    error = AkiraColors.Error,
+    inverseSurface = Color(0xFFF2F2F5), inverseOnSurface = Color(0xFF25262D), inversePrimary = Color(0xFF202127),
+    surfaceTint = Color.Transparent,
+    error = AkiraColors.Error, onError = Color(0xFF5F110B),
     errorContainer = AkiraColors.ErrorContainer,
     onErrorContainer = AkiraColors.OnErrorContainer
 )
@@ -130,13 +132,20 @@ val ElevatedDarkColorScheme = DarkColorScheme.copy(
 
 val LightColorScheme = androidx.compose.material3.lightColorScheme(
     primary = Color(0xFF202127), onPrimary = Color.White,
+    primaryContainer = Color(0xFFE7E7EC), onPrimaryContainer = Color(0xFF191B21),
+    tertiary = Color(0xFFC91432), onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFFFE1E6), onTertiaryContainer = Color(0xFF790B21),
+    inverseSurface = Color(0xFF292A30), inverseOnSurface = Color(0xFFF5F5F7), inversePrimary = Color(0xFFF2F2F5),
+    surfaceTint = Color.Transparent,
+    error = Color(0xFFBA1A1A), onError = Color.White,
+    errorContainer = Color(0xFFFFDAD6), onErrorContainer = Color(0xFF410002),
     background = Color.White, onBackground = Color(0xFF191B21),
     surface = Color.White, onSurface = Color(0xFF191B21),
-    surfaceVariant = Color(0xFFE8EAF0), onSurfaceVariant = Color(0xFF5D606C),
+    surfaceVariant = Color(0xFFE8EAF0), onSurfaceVariant = Color(0xFF51545F),
     surfaceContainerLowest = Color.White, surfaceContainerLow = Color(0xFFF0F1F5),
     surfaceContainer = Color(0xFFECEEF3), surfaceContainerHigh = Color(0xFFE4E7EF),
     surfaceContainerHighest = Color(0xFFDDE0E9),
     outline = Color(0xFF898D99), outlineVariant = Color(0xFFD3D6DF),
-    secondary = Color(0xFF526079), onSecondary = Color.White,
-    secondaryContainer = Color(0xFFE1E8F5), onSecondaryContainer = Color(0xFF283247)
+    secondary = Color(0xFF555862), onSecondary = Color.White,
+    secondaryContainer = Color(0xFFE7E7EC), onSecondaryContainer = Color(0xFF303139)
 )

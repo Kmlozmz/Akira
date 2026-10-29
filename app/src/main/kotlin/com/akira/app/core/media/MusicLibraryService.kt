@@ -27,6 +27,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.akira.app.MainActivity
 import com.akira.app.R
 import com.akira.app.core.audio.AudioFxEqualizerManager
+import com.akira.app.core.audio.effectiveEqualizer
 import com.akira.app.core.media.MediaItemMapper.toMediaItem
 import com.akira.app.core.media.MediaItemMapper.queueIdentity
 import com.akira.app.core.media.MediaItemMapper.toSong
@@ -185,6 +186,7 @@ class MusicLibraryService : MediaLibraryService() {
                 player.shuffleModeEnabled = lastKnownShuffle
                 player.repeatMode = lastKnownRepeat
                 activeDeck = player
+                com.akira.app.core.audio.AudioFxAvailability.select(player.audioSessionId)
                 mediaLibrarySession?.setPlayer(sessionPlayer(player))
                 publishWidgets()
                 player.currentMediaItem?.mediaId?.let { id ->
@@ -322,7 +324,7 @@ class MusicLibraryService : MediaLibraryService() {
         val song = autoplayLibrary.firstOrNull { it.id == item.mediaId } ?: item.toSong()
         val mode = currentEqualizerPrefs?.normalizationMode ?: "OFF"
         val prefs = currentEqualizerPrefs
-        val headroom = if (prefs?.eqEnabled == true) prefs.eqPreamp.coerceIn(.25f, 1f) else 1f
+        val headroom = prefs?.effectiveEqualizer(com.akira.app.core.audio.OutputRoutes.current.value)?.headroom ?: 1f
         val key = "${item.mediaId}|${song.path}|${song.dateModifiedSec}|$mode|$headroom"
         if (normalizationKeys[player] == key) return
         normalizationKeys[player] = key
@@ -464,6 +466,14 @@ class MusicLibraryService : MediaLibraryService() {
         activeDeck = deckA
         deckA.addAnalyticsListener(AudioDiagnostics("A"))
         deckB.addAnalyticsListener(AudioDiagnostics("B"))
+        listOf(deckA, deckB).forEach { deck ->
+            deck.addAnalyticsListener(object : androidx.media3.exoplayer.analytics.AnalyticsListener {
+                override fun onAudioSessionIdChanged(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime,
+                    audioSessionId: Int) {
+                    applyEqualizer(deck)
+                }
+            })
+        }
         sessionDeckA=QueueTransactionPlayer(deckA)
         sessionDeckB=QueueTransactionPlayer(deckB)
 
@@ -603,15 +613,12 @@ class MusicLibraryService : MediaLibraryService() {
     private fun applyEqualizer(player: ExoPlayer) {
         val prefs = serviceScope.let { currentEqualizerPrefs } ?: return
         val sessionId = runCatching { player.audioSessionId }.getOrDefault(0)
-        if (sessionId == 0) return
-        val profiles = com.akira.app.core.audio.OutputProfiles.decode(prefs.eqProfilesJson)
-        val output = com.akira.app.core.audio.OutputRoutes.current.value
-        val assigned = com.akira.app.core.audio.OutputProfiles.assignments(prefs.eqAssignmentsJson)[output.encoded]
-        val profile = profiles.firstOrNull { it.id == assigned }
-        val bands = profile?.bands ?: prefs.eqBandGains
-        val gains = bands.toFloatArray()
+        if (::activeDeck.isInitialized && player === activeDeck)
+            com.akira.app.core.audio.AudioFxAvailability.select(sessionId)
+        val effective = prefs.effectiveEqualizer(com.akira.app.core.audio.OutputRoutes.current.value)
         val manager = if (player === deckA) eqManagerA else eqManagerB
-        manager.apply(sessionId, prefs.eqEnabled, gains, profile?.bass ?: prefs.bassBoost, profile?.space ?: prefs.virtualizer)
+        manager.apply(sessionId, effective.enabled, effective.configuration.bands.toFloatArray(),
+            effective.configuration.bass, effective.configuration.space)
     }
 
     private fun refreshOutputProfile() {
@@ -622,6 +629,8 @@ class MusicLibraryService : MediaLibraryService() {
             selectedBluetoothName = bluetoothName, useDefaultRoute = bluetoothName == null)
         val after = com.akira.app.core.audio.OutputRoutes.current.value
         if (before != after) {
+            updateNormalization(deckA)
+            updateNormalization(deckB)
             applyEqualizer(deckA)
             applyEqualizer(deckB)
             val prefs = currentEqualizerPrefs ?: return

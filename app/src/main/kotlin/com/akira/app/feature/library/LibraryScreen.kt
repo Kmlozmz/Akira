@@ -223,6 +223,7 @@ fun LibraryScreen(
     val searchSession = rememberSearchSession()
     var previousDestination by rememberSaveable { mutableStateOf(HomeDestination.HOME) }
     var homeScrollRequest by remember { mutableStateOf(0) }
+    val homeFeedSources=com.akira.app.feature.home.rememberHomeFeedSources()
     val homeStateHolder=androidx.compose.runtime.saveable.rememberSaveableStateHolder()
     fun openSettings(startWithSound: Boolean = false) {
         settingsStartWithSound = startWithSound
@@ -668,25 +669,20 @@ fun LibraryScreen(
 
     val glassBackdrop = rememberAkiraGlassBackdrop()
     val dockBackdrop = rememberLayerBackdrop(graphicsLayer = glassBackdrop.layer)
+    val sampleGlass = userPrefs?.liquidGlassEnabled == true && com.akira.app.core.design.glass.isGlassSupported()
     val appNoticeColors=MaterialTheme.colorScheme
-    val storedGlassDiffusion = androidx.compose.runtime.rememberUpdatedState(userPrefs?.liquidGlassDiffusion ?: com.akira.app.core.design.glass.AkiraGlassDefaults.Diffusion)
-    val glassDiffusion = remember { { com.akira.app.core.design.glass.GlassDiffusionPreview.value ?: storedGlassDiffusion.value } }
-    val storedGlassOpacity = androidx.compose.runtime.rememberUpdatedState(userPrefs?.liquidGlassOpacity ?: com.akira.app.core.design.glass.AkiraGlassDefaults.Opacity)
-    val glassOpacity = remember { { com.akira.app.core.design.glass.GlassOpacityPreview.value ?: storedGlassOpacity.value } }
+    com.akira.app.core.design.glass.ProvideGlassPreferences(userPrefs ?: com.akira.app.core.datastore.UserPreferences()) {
     androidx.compose.runtime.CompositionLocalProvider(
         LocalSearchSession provides searchSession,
         com.akira.app.core.design.components.LocalAkiraNoticeColors provides appNoticeColors,
         com.akira.app.core.design.components.LocalAkiraMenuAnchors provides remember { com.akira.app.core.design.components.AkiraMenuAnchors() },
         LocalDetailSessions provides detailSessions,
-        LocalContentMotionReduced provides homeMotionReduced,
+        LocalContentMotionReduced provides (homeMotionReduced || com.akira.app.core.design.motion.InteractionPreferences.reducedMotion),
         com.akira.app.core.design.components.LocalSongSwipeActions provides com.akira.app.core.design.components.SongSwipeCallbacks({ enqueueFromSwipe(it, true) }, { enqueueFromSwipe(it, false) }),
         com.akira.app.feature.settings.LocalStudioNavigation provides studioNavigation,
         com.akira.app.core.design.components.LocalContentObscured provides (isPlayerExpanded || showSettings),
         LocalAkiraGlassBackdrop provides glassBackdrop,
         LocalAppBackdrop provides dockBackdrop,
-        com.akira.app.core.design.glass.LocalLiquidGlassEnabled provides (userPrefs?.liquidGlassEnabled ?: false),
-        com.akira.app.core.design.glass.LocalLiquidGlassOpacity provides glassOpacity,
-        com.akira.app.core.design.glass.LocalLiquidGlassDiffusion provides glassDiffusion,
         com.akira.app.core.design.components.LocalAkiraAccent provides androidx.compose.ui.graphics.lerp(effectivePrimary, androidx.compose.material3.MaterialTheme.colorScheme.onSurface, .5f)
     ) {
     // Immersive details own their palette. Home must keep the app palette even
@@ -757,7 +753,8 @@ fun LibraryScreen(
                 }
             }
             androidx.compose.runtime.SideEffect { dockState.scroll.enabled = miniVisible && !keyboardVisible && destination != HomeDestination.SEARCH }
-            Box(Modifier.fillMaxSize().nestedScroll(dockState.scroll).layerBackdrop(dockBackdrop)
+            Box(Modifier.fillMaxSize().nestedScroll(dockState.scroll)
+                .then(if (sampleGlass) Modifier.layerBackdrop(dockBackdrop) else Modifier)
                 .graphicsLayer {translationX=-size.width/3f*studioNavigation.rootReveal}
                 .onGloballyPositioned { glassBackdrop.coordinates = it }) {
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
@@ -802,7 +799,7 @@ fun LibraryScreen(
                         else musicService.playSong(song,wholeLibrary.shuffled())
                     },
                     onMore={songForOptions=it},onSettings={openSettings()},onRetry=libraryViewModel::retryLoad,
-                    scrollToTopRequest=homeScrollRequest,playerSheetProgress={playerExpansionProgress.value})
+                    scrollToTopRequest=homeScrollRequest,playerSheetProgress={playerExpansionProgress.value}, sources=homeFeedSources)
                 }
             } else if (screen == HomeDestination.SEARCH && selectedAlbumFilter == null && selectedArtistFilter == null) {
                 LocalSearchPage(wholeLibrary, currentSong, isPlaying,
@@ -1226,7 +1223,8 @@ fun LibraryScreen(
 }
 
 }
-} // Shared presentation host
+}
+    } // Shared presentation host
 } // Immersive detail theme; application preference is untouched.
 
 @Composable

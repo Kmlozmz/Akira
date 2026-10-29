@@ -16,8 +16,10 @@ import androidx.compose.ui.platform.LocalView
  * usuario y funciona con los motores hápticos modernos.
  */
 class AkiraHaptics(private val view: View) {
+    companion object { private var lastSegmentAt = Long.MIN_VALUE }
 
     private fun perform(constant: Int) {
+        if (!com.akira.app.core.design.motion.InteractionPreferences.hapticsEnabled) return
         try {
             view.performHapticFeedback(constant)
         } catch (_: Exception) {
@@ -32,10 +34,13 @@ class AkiraHaptics(private val view: View) {
     )
 
     /** Muy suave y frecuente: pasos de un slider mientras se arrastra. */
-    fun softTick() = perform(
-        if (Build.VERSION.SDK_INT >= 34) HapticFeedbackConstants.SEGMENT_FREQUENT_TICK
-        else HapticFeedbackConstants.CLOCK_TICK
-    )
+    fun softTick() {
+        val now = android.os.SystemClock.uptimeMillis()
+        if (lastSegmentAt != Long.MIN_VALUE && now - lastSegmentAt < 40L) return
+        lastSegmentAt = now
+        perform(if (Build.VERSION.SDK_INT >= 34) HapticFeedbackConstants.SEGMENT_FREQUENT_TICK
+            else HapticFeedbackConstants.CLOCK_TICK)
+    }
 
     /** Interruptores. */
     fun toggle(on: Boolean) = perform(

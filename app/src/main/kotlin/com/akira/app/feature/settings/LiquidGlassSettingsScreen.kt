@@ -46,8 +46,8 @@ internal fun LiquidGlassSettingsScreen(prefs: UserPreferences,repo: UserPreferen
                 Column(Modifier.weight(1f).padding(end=16.dp)) {
                     Text("Liquid Glass",style=MaterialTheme.typography.titleMedium)
                     Text(com.akira.app.core.design.components.localizedText(
-                        "Refraction and highlights on floating controls and panels. Off keeps a simple blur.",
-                        "Refracción y reflejos en controles y paneles flotantes. Desactivado conserva un difuminado sencillo."),
+                        "Refraction and highlights on floating controls and panels. Turn off for solid controls.",
+                        "Refracción y reflejos en controles y paneles flotantes. Desactívalo para usar controles sólidos."),
                         style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 com.akira.app.core.design.components.AkiraSwitch(modifier=Modifier.semantics { contentDescription="Liquid Glass" },checked=prefs.liquidGlassEnabled,onCheckedChange={enabled->scope.launch{repo.setLiquidGlassEnabled(enabled)}},
@@ -127,6 +127,18 @@ internal fun LiquidGlassSettingsScreen(prefs: UserPreferences,repo: UserPreferen
                     "Softens the background of the dock, controls and panels without adding tint. The selection lens stays clear.",
                     "Suaviza el fondo del dock, los controles y los paneles sin añadir tinte. La lente de selección permanece nítida."),
                     style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(16.dp))
+                val dockLabel = com.akira.app.core.design.components.localizedText("Apply diffusion to dock", "Aplicar difuminado al dock")
+                Row(Modifier.fillMaxWidth().heightIn(min=48.dp),verticalAlignment=Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f).padding(end=16.dp)) {
+                        Text(dockLabel,style=MaterialTheme.typography.bodyLarge)
+                        Text(com.akira.app.core.design.components.localizedText("Use the diffusion slider on the dock and mini player. Refraction stays on.", "Aplica el difuminado al dock y al mini reproductor. La refracción sigue activa."),
+                            style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    com.akira.app.core.design.components.AkiraSwitch(prefs.dockLiquidGlassEnabled,
+                        { enabled -> scope.launch { repo.setDockLiquidGlassEnabled(enabled) } },
+                        modifier=Modifier.semantics { contentDescription=dockLabel })
+                }
             }
             }
             }
@@ -137,11 +149,12 @@ internal fun LiquidGlassSettingsScreen(prefs: UserPreferences,repo: UserPreferen
     val reset: () -> Unit = { haptics.confirm(); scope.launch {
         repo.setLiquidGlassOpacity(com.akira.app.core.design.glass.AkiraGlassDefaults.Opacity)
         repo.setLiquidGlassDiffusion(com.akira.app.core.design.glass.AkiraGlassDefaults.Diffusion)
-    }; Unit }
+        repo.setDockLiquidGlassEnabled(true)
+    } }
     val label = com.akira.app.core.design.components.localizedText("Restore glass defaults", "Restablecer el cristal")
     if (tonalReset) FilledTonalButton(reset, Modifier.fillMaxWidth().padding(top = 14.dp).heightIn(min = 52.dp),
         shape = RoundedCornerShape(18.dp)) { Text(label) }
-    else OutlinedButton(reset, Modifier.fillMaxWidth().padding(top = 14.dp).heightIn(min = 50.dp),
+    else FilledTonalButton(reset, Modifier.fillMaxWidth().padding(top = 14.dp).heightIn(min = 50.dp),
         shape = RoundedCornerShape(18.dp)) { Text(label) }
     }
 }
@@ -149,25 +162,37 @@ internal fun LiquidGlassSettingsScreen(prefs: UserPreferences,repo: UserPreferen
 /** Real shared glass over local artwork: the slider can be judged in place. */
 @Composable
 internal fun GlassOpacityPreviewCard(song: Song?) {
+    val label=com.akira.app.core.design.components.localizedText("Glass preview", "Vista previa del cristal")
     val backdrop=rememberLayerBackdrop()
     val shape=RoundedCornerShape(18.dp)
     val bottom = 66.dp
-    Box(Modifier.fillMaxWidth().height(210.dp).clip(shape)) {
+    Box(Modifier.fillMaxWidth().height(210.dp).semantics { contentDescription=label }.clip(shape)) {
         Box(Modifier.fillMaxSize().layerBackdrop(backdrop)
             .background(MaterialTheme.colorScheme.primaryContainer)) {
+            if (song?.albumArtUri == null) {
+                androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                    val colors = listOf(androidx.compose.ui.graphics.Color(0xFFFA243C), androidx.compose.ui.graphics.Color(0xFF25394B), androidx.compose.ui.graphics.Color(0xFF96706B))
+                    val band = size.width / 6f
+                    repeat(6) { index -> drawRect(colors[index % colors.size], topLeft = androidx.compose.ui.geometry.Offset(index * band, 0f), size = androidx.compose.ui.geometry.Size(band + 1f, size.height)) }
+                }
+            }
             coil.compose.AsyncImage(song?.albumArtUri,null,Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
         }
+        CompositionLocalProvider(com.akira.app.core.design.glass.LocalGlassIsDock provides false) {
         Row(Modifier.align(Alignment.BottomCenter).padding(start=10.dp,end=10.dp,bottom=bottom.coerceAtLeast(0.dp)).fillMaxWidth()
             .liquidGlass(RoundedCornerShape(50),backdrop).padding(horizontal=16.dp,vertical=12.dp),
             verticalAlignment=Alignment.CenterVertically) {
-            Text(song?.title ?: "Liquid Glass",Modifier.weight(1f),maxLines=1,
+            Text(com.akira.app.core.design.components.localizedText("Glass controls", "Controles de cristal"),Modifier.weight(1f),maxLines=1,
                 color=com.akira.app.core.design.glass.glassContentColor(),
                 style=MaterialTheme.typography.titleSmall)
             Icon(AkiraIcons.Play,null,Modifier.size(22.dp),tint=com.akira.app.core.design.glass.glassContentColor())
         }
+        }
+        CompositionLocalProvider(com.akira.app.core.design.glass.LocalGlassIsDock provides true) {
         Row(Modifier.align(Alignment.BottomCenter).padding(10.dp).fillMaxWidth().liquidGlass(RoundedCornerShape(50),backdrop).padding(horizontal=18.dp,vertical=12.dp),horizontalArrangement=Arrangement.SpaceBetween) {
             listOf(com.akira.app.R.drawable.ic_navigation_home_filled,com.akira.app.R.drawable.ic_navigation_library_filled,
                 com.akira.app.R.drawable.ic_navigation_search_outline).forEach {res->Icon(androidx.compose.ui.res.painterResource(res),null,Modifier.size(23.dp),tint=com.akira.app.core.design.glass.glassContentColor())}
+        }
         }
     }
 }

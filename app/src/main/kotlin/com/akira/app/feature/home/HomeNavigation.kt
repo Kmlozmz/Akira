@@ -97,7 +97,8 @@ fun HomeNavigation(
 ) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val reduced = com.akira.app.core.design.components.LocalContentMotionReduced.current
-    val contentColor = glassContentColor()
+    val ink = com.akira.app.core.design.glass.rememberGlassInk()
+    val contentColor = ink.color
     val selectedContentColor = if(contentColor == Color.Black) Color(0xFFFF2D55) else Color(0xFFFF375F)
     val haptics = rememberHaptics()
     val currentSelect by rememberUpdatedState(onSelect)
@@ -139,7 +140,7 @@ fun HomeNavigation(
     }
     FloatingTabBar(
         selectedTabKey = selected,
-        navigationModifier = Modifier.graphicsLayer { alpha = dockNavigationReveal(playerProgress()) },
+        navigationModifier = Modifier.then(ink.modifier).graphicsLayer { alpha = dockNavigationReveal(playerProgress()) },
         scrollConnection = state.scroll,
         modifier = modifier.fillMaxWidth(),
         tabBarContentModifier = surface,

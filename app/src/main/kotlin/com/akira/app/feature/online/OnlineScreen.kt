@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.*
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -415,7 +416,7 @@ import kotlinx.coroutines.flow.first
                 if(query.isNotBlank()) OnlineSearchKinds(searchKind) { searchKind = it }
             }
         }
-        if (homeRoot) HomeTopBar(heroProgress, onSettings, homeGlass, { if (obscured) 1f else 0f }, heroHeight)
+        if (homeRoot) HomeTopBar(heroProgress, homeGlass, { if (obscured) 1f else 0f }, heroHeight)
         else if (libraryRoot) LibraryFloatingBar(onlineKindLabel(effectiveLibraryKind), headerProgress, backdrop,
             onBack = { libraryCategoryVisible = false }, onFirst = { librarySortMenu = true }, onMore = { libraryMenu = true })
         else CompositionLocalProvider(LocalPageHeaderBackdrop provides backdrop) {
@@ -434,10 +435,39 @@ import kotlinx.coroutines.flow.first
 }
 
 @Composable internal fun OnlineAccountSheet(onDismiss: () -> Unit) {
-    AkiraModalSheet(onDismissRequest = onDismiss, title = "YouTube Music") {
-        Column(Modifier.weight(1f, fill = false).verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 20.dp)) {
-            OnlineModeControl()
-            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text(localizedText("Done", "Listo")) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val repository = remember(context) { com.akira.app.core.online.OnlineRepository.get(context) }
+    val enabled by repository.enabled.collectAsStateWithLifecycle()
+    val account by repository.account.collectAsStateWithLifecycle()
+    AkiraModalSheet(onDismissRequest = onDismiss, style = com.akira.app.core.design.components.AkiraPanelStyle.Popover) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            com.akira.app.core.design.components.AkiraAccountAvatar(account, Modifier.size(44.dp))
+            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                Text(if (account.connected) account.name else localizedText("Guest", "Invitado"),
+                    style = MaterialTheme.typography.titleMedium)
+                Text(localizedText("Listening mode", "Modo de escucha"), style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        listOf(false, true).forEach { online ->
+            val selected = enabled == online
+            Row(Modifier.padding(horizontal = 12.dp, vertical = 3.dp).fillMaxWidth()
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+                .background(if (selected) MaterialTheme.colorScheme.surfaceContainerHighest else androidx.compose.ui.graphics.Color.Transparent)
+                .clickable { repository.setEnabled(online); onDismiss() }.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Icon(if (online) Icons.Rounded.Public else Icons.Rounded.MusicNote, null, Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurface)
+                Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                    Text(if (online) localizedText("Online", "En línea") else localizedText("On this phone", "En este teléfono"),
+                        style = MaterialTheme.typography.titleMedium)
+                    Text(if (online) localizedText("Recommendations and search", "Recomendaciones y búsqueda")
+                        else localizedText("Your saved music", "Tu música local"),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (selected) Icon(Icons.Rounded.Check, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+            }
         }
     }
 }

@@ -66,8 +66,11 @@ fun CrossfadeCurveScreen(
     }
     var preview by remember { mutableFloatStateOf(.5f) }
     var advanced by rememberSaveable { mutableStateOf(false) }
+    var editingDirection by rememberSaveable { mutableStateOf("outgoing") }
     var lastDuration by rememberSaveable { mutableIntStateOf(crossfadeSeconds.takeIf { it > 0 } ?: lastCrossfadeSeconds) }
     LaunchedEffect(crossfadeSeconds) { if (crossfadeSeconds > 0) lastDuration = crossfadeSeconds }
+    val enabled=crossfadeSeconds>0
+    val displayedDuration=if(enabled)crossfadeSeconds else lastDuration
     fun updateSpecs(newOut: CurveSpec, newIn: CurveSpec, newPreset: String? = null) {
         currentOutSpec = newOut
         currentInSpec = newIn
@@ -82,74 +85,67 @@ fun CrossfadeCurveScreen(
         AudioPresetOption(CrossfadeCurve.PRESET_LINEAR, com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Direct), com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.LinearBlend)),
         AudioPresetOption(CrossfadeCurve.PRESET_FAST_START_SLOW_END, com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Energetic), com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.FastInGradualOut))
     )
-    AkiraStudioScreen(strings.transitionsTitle, onBack = {
+    val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 520
+    val fixedHeader = remember(compact) { mutableFloatStateOf(if(compact)1f else 0f) }
+    val enableLabel=com.akira.app.core.design.components.localizedText("Enable crossfade","Activar crossfade")
+    AkiraStudioScreen(strings.transitionCrossfade, onBack = {
         onSaveCurveConfig(selectedPreset, currentOutSpec, currentInSpec)
         onDismiss()
+    }, headerProgress=fixedHeader,trailing={
+        com.akira.app.core.design.components.AkiraSwitch(enabled,{use->
+            haptics.tick();onDurationChange(if(use)lastDuration else 0)
+        },modifier=Modifier.semantics {contentDescription=enableLabel})
     }) {
-        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(com.akira.app.core.design.navigation.LocalPageScrollState.current ?: rememberScrollState(), flingBehavior = com.akira.app.core.design.motion.rememberAkiraBouncingFling()).padding(top=118.dp).padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            com.akira.app.core.design.components.AkiraSegmentedControl(
-                listOf("GAPLESS" to strings.transitionGapless, "CROSSFADE" to strings.transitionCrossfade),
-                if (crossfadeSeconds == 0) "GAPLESS" else "CROSSFADE", { mode ->
-                    haptics.tick()
-                    onDurationChange(com.akira.app.core.media.TransitionMode.durationFor(mode, lastDuration))
-                }, androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer)
-            if (crossfadeSeconds == 0) Text(strings.transitionGaplessDescription,
-                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .7f), style = MaterialTheme.typography.bodyLarge)
-            else {
-            AudioPresetPicker(options, selectedPreset) { id ->
-                CrossfadeCurve.PRESETS[id]?.let { haptics.tick(); updateSpecs(it.outgoingSpec, it.incomingSpec, id) }
-            }
-            CrossfadeCurveChart(currentOutSpec, currentInSpec, preview, advanced,
-                Modifier.fillMaxWidth().height(220.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(strings.outgoingCurve, color = curveColors.outgoing, style = MaterialTheme.typography.bodyMedium)
-                Text(strings.incomingCurve, color = curveColors.incoming, style = MaterialTheme.typography.bodyMedium)
-            }
-            var duration by remember(crossfadeSeconds) { mutableFloatStateOf(crossfadeSeconds.toFloat()) }
-            Column {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Duration), color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .7f))
-                    Text(com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.SS3, duration.roundToInt()), color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+        AkiraAudioTheme {
+            Column(Modifier.fillMaxSize().padding(top=if(compact)72.dp else 118.dp)
+                .audioControlsEnabled(enabled,com.akira.app.core.design.components.localizedText("Enable crossfade to edit the transition","Activa crossfade para editar la transición"))) {
+                Column(Modifier.fillMaxWidth().padding(horizontal=24.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                        AudioPreviewSurface {
+                            if(!compact) Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+                                Text(strings.outgoingCurve,color=audioAccent(),style=MaterialTheme.typography.labelLarge)
+                                Text(strings.incomingCurve,color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.labelLarge)
+                            }
+                            CrossfadeCurveChart(currentOutSpec,currentInSpec,preview,advanced,
+                                Modifier.fillMaxWidth().height(if(compact)80.dp else 140.dp))
+                            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+                                Text(strings.secondsFormat.format(0),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(strings.secondsFormat.format(displayedDuration),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        com.akira.app.core.design.components.AkiraSegmentedControl(
+                            listOf("basic" to strings.ui(com.akira.app.core.i18n.AkiraUiText.Presets),"advanced" to strings.ui(com.akira.app.core.i18n.AkiraUiText.Advanced)),
+                            if(advanced)"advanced" else "basic",{advanced=it=="advanced"})
                 }
-                AudioSlider(duration, { duration = it }, 1f..30f, com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.CrossfadeDuration),
-                    Modifier.fillMaxWidth(), steps = 28, onFinished = { haptics.tick(); onDurationChange(duration.roundToInt()) })
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(strings.secondsFormat.format(1), color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .5f), style = MaterialTheme.typography.bodyMedium)
-                    Text(com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Value30S), color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .5f), style = MaterialTheme.typography.bodyMedium)
+                Column(Modifier.weight(1f).fillMaxWidth()
+                    .verticalScroll(com.akira.app.core.design.navigation.LocalPageScrollState.current ?: rememberScrollState())
+                    .padding(vertical=20.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+                        AudioPresetRail(options,selectedPreset) {id->
+                            CrossfadeCurve.PRESETS[id]?.let {haptics.tick();updateSpecs(it.outgoingSpec,it.incomingSpec,id)}
+                        }
+                        Column(Modifier.padding(horizontal=24.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                            AudioParameter(strings.ui(com.akira.app.core.i18n.AkiraUiText.Duration),displayedDuration.toFloat(),1f..30f,1f,
+                                {strings.secondsFormat.format(it.roundToInt())},{onDurationChange(it.roundToInt())})
+                            if(advanced) {
+                                AudioParameter(strings.ui(com.akira.app.core.i18n.AkiraUiText.MixPosition),preview,0f..1f,.01f,
+                                    {strings.secondsFormat.format((it*displayedDuration).roundToInt())},{preview=it})
+                                if(CrossfadeCurve.hasPowerAnomaly(currentOutSpec,currentInSpec))
+                                    Text(strings.powerAnomalyWarning,color=curveColors.power,style=MaterialTheme.typography.bodyMedium)
+                                com.akira.app.core.design.components.AkiraSegmentedControl(listOf("outgoing" to strings.outgoingCurve,"incoming" to strings.incomingCurve),
+                                    editingDirection,{editingDirection=it})
+                                key(editingDirection) {
+                                    if(editingDirection=="outgoing")CurveControls(currentOutSpec,CrossfadeDirection.OUTGOING,displayedDuration,haptics) {updateSpecs(it,currentInSpec)}
+                                    else CurveControls(currentInSpec,CrossfadeDirection.INCOMING,displayedDuration,haptics) {updateSpecs(currentOutSpec,it)}
+                                }
+                            } else Text(options.firstOrNull {it.id==selectedPreset}?.detail ?: strings.ui(com.akira.app.core.i18n.AkiraUiText.Custom),
+                                style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                }
+                Box(Modifier.fillMaxWidth().padding(horizontal=24.dp,vertical=12.dp)) {
+                    AudioActionButtons(strings.library.reset,strings.testCrossfade,onReset={
+                        CrossfadeCurve.PRESETS[CrossfadeCurve.PRESET_CONSTANT_POWER]?.let {updateSpecs(it.outgoingSpec,it.incomingSpec,it.id)}
+                    },onAction={onSaveCurveConfig(selectedPreset,currentOutSpec,currentInSpec);onTestCrossfade()},actionEnabled=true)
                 }
             }
-            com.akira.app.core.design.components.AkiraSegmentedControl(
-                listOf("basic" to com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Presets), "advanced" to com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Advanced)),
-                if (advanced) "advanced" else "basic", { advanced = it == "advanced" }, androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer)
-            if (advanced) {
-                Column {
-                    AudioSlider(preview, { preview = it }, 0f..1f, com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.MixPosition), Modifier.fillMaxWidth())
-                    val outGain = CrossfadeCurve.gain(CrossfadeDirection.OUTGOING, currentOutSpec, preview)
-                    val inGain = CrossfadeCurve.gain(CrossfadeDirection.INCOMING, currentInSpec, preview)
-                    Text(com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Value2fSS0fS0f).format(preview * crossfadeSeconds,
-                        strings.outgoingCurve, outGain * 100, strings.incomingCurve, inGain * 100),
-                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .7f), style = MaterialTheme.typography.bodyMedium)
-                }
-                if (CrossfadeCurve.hasPowerAnomaly(currentOutSpec, currentInSpec)) {
-                    Text(strings.powerAnomalyWarning, color = curveColors.power, style = MaterialTheme.typography.bodyMedium)
-                }
-                Text(strings.outgoingCurve, color = curveColors.outgoing, style = MaterialTheme.typography.titleMedium)
-                CurveControls(currentOutSpec, CrossfadeDirection.OUTGOING, crossfadeSeconds, haptics) { updateSpecs(it, currentInSpec) }
-                Text(strings.incomingCurve, color = curveColors.incoming, style = MaterialTheme.typography.titleMedium)
-                CurveControls(currentInSpec, CrossfadeDirection.INCOMING, crossfadeSeconds, haptics) { updateSpecs(currentOutSpec, it) }
-            }
-            Text(com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.BalancedKeepsPowerSteadyTry38),
-                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .65f), style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(16.dp))
-            }
-        }
-        if (crossfadeSeconds > 0) Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp)) {
-            AudioActionButtons(strings.library.reset, strings.testCrossfade, onReset = {
-                CrossfadeCurve.PRESETS[CrossfadeCurve.PRESET_CONSTANT_POWER]?.let { updateSpecs(it.outgoingSpec, it.incomingSpec, it.id) }
-            }, onAction = {
-                onSaveCurveConfig(selectedPreset, currentOutSpec, currentInSpec); onTestCrossfade()
-            }, actionEnabled = crossfadeSeconds > 0)
         }
     }
 }
@@ -164,7 +160,6 @@ private fun CurveControls(
 ) {
     val strings = LocalStrings.current
     var choosingShape by remember { mutableStateOf(false) }
-    val source=com.akira.app.core.design.components.rememberAkiraMenuSource(icon=Icons.Rounded.KeyboardArrowDown)
 
     Column(
         modifier = Modifier
@@ -181,12 +176,12 @@ private fun CurveControls(
         val selectedShape = if (spec.shape == CrossfadeShape.CURRENT) CrossfadeShape.CONSTANT_POWER else spec.shape
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(strings.curveShape, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .7f), modifier = Modifier.weight(1f))
-            TextButton(onClick = { source.open { choosingShape = true } },modifier=Modifier.then(source.modifier)) {
+            TextButton(onClick = { choosingShape = true }) {
                 Text(shapes.firstOrNull { it.first == selectedShape }?.second.orEmpty(), color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
                 Icon(Icons.Rounded.KeyboardArrowDown, null, tint = androidx.compose.material3.MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
             }
         }
-        if (choosingShape) com.akira.app.core.design.components.AkiraModalSheet(onDismissRequest = { choosingShape = false }) {
+        if (choosingShape) com.akira.app.core.design.components.AkiraModalSheet({ choosingShape = false }) {
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState(), flingBehavior = com.akira.app.core.design.motion.rememberAkiraBouncingFling()).padding(horizontal = 24.dp)) {
                 Text(strings.curveShape, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(bottom = 16.dp))
@@ -270,7 +265,7 @@ private fun CrossfadeCurveChart(
     val strings = LocalStrings.current
 
     val plotInk = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
-    val curveColors = audioCurvePalette(MaterialTheme.colorScheme.background)
+    val curveColors = AudioCurvePalette(audioAccent(),MaterialTheme.colorScheme.onSurface.copy(alpha=.65f),audioCurvePalette(MaterialTheme.colorScheme.background).power)
     Canvas(
         modifier = modifier
             .padding(14.dp)

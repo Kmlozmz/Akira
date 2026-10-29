@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 val LocalAkiraAccent = staticCompositionLocalOf { Color(0xFFB8C8D4) }
 
 /** Selectors, editors and confirmations share the menu's window and optical surface. */
-enum class AkiraPanelStyle { Standard, Compact, Update, AudioOutput, Page, Details }
+enum class AkiraPanelStyle { Standard, Compact, Popover, Update, AudioOutput, Page, Details }
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun AkiraModalSheet(onDismissRequest: () -> Unit, contentColor: Color = MaterialTheme.colorScheme.onSurface,
@@ -40,6 +40,7 @@ fun AkiraModalSheet(onDismissRequest: () -> Unit, contentColor: Color = Material
     }
     AkiraPresentation(when(style) {
         AkiraPanelStyle.AudioOutput->AkiraPresentationKind.AudioOutput
+        AkiraPanelStyle.Popover->AkiraPresentationKind.Popover
         AkiraPanelStyle.Compact->AkiraPresentationKind.CompactPanel
         AkiraPanelStyle.Update->AkiraPresentationKind.Update
         else->AkiraPresentationKind.Panel

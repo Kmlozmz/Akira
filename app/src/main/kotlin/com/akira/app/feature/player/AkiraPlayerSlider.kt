@@ -8,6 +8,7 @@ import com.akira.app.feature.queue.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.interaction.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
@@ -39,7 +40,29 @@ internal fun AkiraPlayerSlider(value: Float, onValueChange: (Float)->Unit, label
     onFinished: ()->Unit = {}, tint: Color = Color.White, volume: Boolean = false,
     onActiveChanged: (Boolean)->Unit = {},
     restingThickness: Dp = 6.dp, externalActive: Boolean = false, enabled: Boolean = true,
-    steps: Int = 0) {
+    steps: Int = 0, animatedThumb: Boolean = false) {
+    val haptics = com.akira.app.core.design.util.rememberAkiraHaptics()
+    val gate = remember(valueRange.start, valueRange.endInclusive, steps) {
+        com.akira.app.core.design.util.SliderHapticGate(valueRange.start, valueRange.endInclusive, if (steps > 0) steps + 1 else 50)
+    }
+    SideEffect { gate.sync(value) }
+    val change: (Float) -> Unit = { next ->
+        if (enabled) {
+            if (gate.changed(next, android.os.SystemClock.uptimeMillis())) haptics.softTick()
+            onValueChange(next)
+        }
+    }
+    if (enabled && com.akira.app.core.design.glass.LocalLiquidGlassEnabled.current && com.akira.app.core.design.glass.isGlassSupported() && !LocalContentMotionReduced.current) {
+        val updatedValue by rememberUpdatedState(value)
+        com.akira.app.core.design.controls.components.LiquidSlider(
+            value = { updatedValue }, onValueChange = change,
+            valueRange = valueRange, visibilityThreshold = ((valueRange.endInclusive - valueRange.start) / 1000f).coerceAtLeast(.0001f),
+            backdrop = com.akira.app.core.design.glass.LocalAppBackdrop.current,
+            modifier = modifier.heightIn(min = 48.dp).semantics { contentDescription = label },
+            steps = steps, onFinished = onFinished, onActiveChanged = onActiveChanged, accent = tint
+        )
+        return
+    }
     val interactions=remember { MutableInteractionSource() }
     val dragged by interactions.collectIsDraggedAsState()
     val pressed by interactions.collectIsPressedAsState()
@@ -60,7 +83,7 @@ internal fun AkiraPlayerSlider(value: Float, onValueChange: (Float)->Unit, label
     val rtl=LocalLayoutDirection.current==LayoutDirection.Rtl
     val colors=SliderDefaults.colors(activeTrackColor=tint.copy(alpha=if(active)1f else .72f),
         inactiveTrackColor=tint.copy(alpha=.22f))
-    Slider(value.coerceIn(valueRange.start,valueRange.endInclusive),onValueChange,
+    Slider(value.coerceIn(valueRange.start,valueRange.endInclusive),change,
         modifier=modifier.semantics { contentDescription=label }
             .pointerInput(Unit) {
                 // Observe without consuming: Material Slider retains seeking,
@@ -82,7 +105,7 @@ internal fun AkiraPlayerSlider(value: Float, onValueChange: (Float)->Unit, label
                 translationX=pull
             },
         valueRange=valueRange,onValueChangeFinished=onFinished,interactionSource=interactions,enabled=enabled,steps=steps,
-        colors=colors,thumb={},track={ sliderState ->
+        colors=colors,thumb={ if(animatedThumb) Box(Modifier.size(28.dp,20.dp).background(if(enabled)tint else tint.copy(alpha=.38f), androidx.compose.foundation.shape.CircleShape)) },track={ sliderState ->
             Canvas(Modifier.fillMaxWidth().height(thickness)) {
                 val outline=Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(Rect(Offset.Zero,size),CornerRadius(size.height/2))) }
                 val fraction=((sliderState.value-valueRange.start)/(valueRange.endInclusive-valueRange.start).coerceAtLeast(.001f)).coerceIn(0f,1f)

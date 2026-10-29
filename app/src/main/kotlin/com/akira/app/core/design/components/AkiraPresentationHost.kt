@@ -28,7 +28,6 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.*
-import androidx.compose.ui.window.*
 import com.akira.app.core.design.icon.AkiraIcons
 import com.akira.app.core.design.glass.LocalAppBackdrop
 import com.akira.app.core.design.glass.LocalLiquidGlassEnabled
@@ -40,13 +39,9 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlin.math.*
-import com.akira.app.core.design.motion.ElasticGlassShape
-import com.akira.app.core.design.motion.ElasticBoundsSpec
 import com.akira.app.core.design.motion.presentationBoundsSpec
 import com.akira.app.core.design.motion.presentationProgress
 import com.akira.app.core.design.motion.presentationContentTransform
-import com.akira.app.core.design.motion.PresentationContentOptics
-import com.akira.app.core.design.motion.ElasticContentWarp
 import com.akira.app.core.design.glass.GlassContrast
 import com.akira.app.core.design.glass.glassContentColor
 import com.akira.app.core.design.glass.isGlassSupported
@@ -59,11 +54,11 @@ private val RectConverter = TwoWayConverter<Rect, AnimationVector4D>(
 )
 
 internal fun presentationSourcePresence(progress: Float): Float {
-    val fraction = (progress / com.akira.app.core.design.motion.GlassMotionProfile.SourceHandoffEnd).coerceIn(0f, 1f)
+    val fraction = (progress / com.akira.app.core.design.motion.PresentationMotionProfile.SourceHandoffEnd).coerceIn(0f, 1f)
     return fraction * fraction * (3f - 2f * fraction)
 }
 
-internal enum class AkiraPresentationKind { Menu, Panel, CompactPanel, Update, AudioOutput, AudioQuality }
+internal enum class AkiraPresentationKind { Menu, Popover, Panel, CompactPanel, Update, AudioOutput, AudioQuality }
 internal class AkiraPresentationEntry(
     val kind: AkiraPresentationKind,
     val anchor: Rect?,
@@ -135,7 +130,7 @@ internal val LocalAkiraPresentationEntry = staticCompositionLocalOf<AkiraPresent
  * itself. Inline controls retain their own local backdrop to avoid recursion. */
 internal val LocalAkiraOverlayBackdrop = staticCompositionLocalOf<Backdrop?> { null }
 
-/** One window and one optical surface for a chain of menus, selectors and editors.
+/** One window and one continuous surface for a chain of menus, selectors and editors.
  * This host is a sibling of page/backdrop capture, never part of its own sample. */
 @Composable
 fun AkiraPresentationHost(content: @Composable () -> Unit) {
@@ -148,65 +143,36 @@ fun AkiraPresentationHost(content: @Composable () -> Unit) {
         state.release()
     } }
     val scene = rememberLayerBackdrop()
-    val sourceView = LocalView.current
-    val sourceRevision = remember { mutableLongStateOf(0L) }
-    val redraw = remember { { sourceRevision.longValue } }
     val presenting = state.entries.isNotEmpty() || pages.entries.isNotEmpty()
-    DisposableEffect(sourceView, presenting) {
-        val observer = sourceView.viewTreeObserver
-        val listener = android.view.ViewTreeObserver.OnDrawListener { sourceRevision.longValue++ }
-        if (presenting) observer.addOnDrawListener(listener)
-        onDispose { if (presenting && observer.isAlive) observer.removeOnDrawListener(listener) }
-    }
+    val sampleScene = presenting && LocalLiquidGlassEnabled.current && isGlassSupported()
     CompositionLocalProvider(LocalAkiraPresentationState provides state, LocalAkiraPageSheetState provides pages) {
       Box(Modifier.fillMaxSize().drawBehind {
           if (pages.presence > 0f) drawRect(Color.Black)
       }) {
         // Capture the transformed, live scene, excluding every dialog surface.
-        Box(Modifier.fillMaxSize().then(if (pages.entries.isNotEmpty()) Modifier.layerBackdrop(scene) else Modifier)) {
+        Box(Modifier.fillMaxSize()
+            .then(if (presenting) Modifier.clearAndSetSemantics {} else Modifier)
+            .then(if (sampleScene) Modifier.layerBackdrop(scene) else Modifier)) {
             Box(Modifier.fillMaxSize().pageSheetScene(pages)) { content() }
         }
-        // A hidden Dialog still owns a Compose text-input/window session on
-        // some IMEs. Dispose it after the return animation, so Search belongs
-        // exclusively to the activity again. Keep it for nested presentations.
-        if (presenting) AkiraPresentationWindow(state, pages, scene, redraw)
+        if (presenting) AkiraPresentationLayer(state, pages, scene)
       }
     }
 }
 
-/** Reuse one native window while a presentation chain is open. */
+/** Overlays sample their sibling scene without a second window or captured copy of themselves. */
 @Composable
-private fun AkiraPresentationWindow(state: AkiraPresentationState, pages: AkiraPageSheetState,
-    scene: Backdrop, redraw: () -> Long) {
-    val active = state.entries.isNotEmpty() || pages.entries.isNotEmpty()
-    Dialog(onDismissRequest = {
+private fun AkiraPresentationLayer(state: AkiraPresentationState, pages: AkiraPageSheetState, scene: Backdrop) {
+    androidx.activity.compose.BackHandler {
         if (state.entries.isNotEmpty()) {
             if (state.closing == null) state.closing = state.entries.lastOrNull { !it.removed }
         } else pages.close()
-    }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false,
-        dismissOnClickOutside=true)) {
-        com.akira.app.core.design.rendering.PreferInteractiveFrameRate()
-        val view = LocalView.current
-        val flags = android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-            android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-        SideEffect {
-            val window = (view.parent as? DialogWindowProvider)?.window
-            window?.setDimAmount(0f)
-            // Compose owns the complete surface morph. The platform Dialog
-            // fade otherwise retains an old buffer over the restored capsule.
-            window?.setWindowAnimations(0)
-            if (active) window?.clearFlags(flags) else window?.addFlags(flags)
-            view.importantForAccessibility = if (active) android.view.View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
-                else android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
-        }
-        // Follow activity draws across windows without keeping an idle frame clock alive.
-        CompositionLocalProvider(com.akira.app.core.design.glass.LocalGlassRedrawSignal provides redraw) {
-            Box(Modifier.fillMaxSize()) {
-                if (pages.entries.isNotEmpty()) AkiraPageSheetOverlay(pages, scene)
-                if (state.entries.isNotEmpty()) AkiraPresentationOverlay(state)
-                else AkiraNoticeHost(Modifier.align(Alignment.BottomCenter).navigationBarsPadding(), priority = 3)
-            }
-        }
+    }
+    com.akira.app.core.design.rendering.PreferInteractiveFrameRate()
+    Box(Modifier.fillMaxSize()) {
+        if (pages.entries.isNotEmpty()) AkiraPageSheetOverlay(pages, scene)
+        if (state.entries.isNotEmpty()) AkiraPresentationOverlay(state, scene)
+        else AkiraNoticeHost(Modifier.align(Alignment.BottomCenter).navigationBarsPadding(), priority = 3)
     }
 }
 
@@ -257,7 +223,7 @@ internal fun AkiraPresentation(
 }
 
 @Composable
-private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
+private fun AkiraPresentationOverlay(state: AkiraPresentationState, scene: Backdrop) {
     val active = state.entries.isNotEmpty()
     val idleEntry = remember { AkiraPresentationEntry(AkiraPresentationKind.Menu, null, null, false, {}, {}) }
     idleEntry.glass = LocalLiquidGlassEnabled.current
@@ -305,6 +271,9 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
     }
     var preparedGeneration by remember { mutableLongStateOf(-1L) }
     var returnedGeneration by remember { mutableLongStateOf(-1L) }
+    var expandedGeneration by remember { mutableLongStateOf(-1L) }
+    fun opticalProgress(): Float = if (!returning &&
+        (expandedGeneration == state.generation || progressEntry !== first)) 1f else sourceProgress()
     fun close() {
         if (state.closing == null && top != null) state.closing = top
     }
@@ -348,17 +317,18 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
             geometry.snapTo(end); corner.snapTo(radius); smoothing.snapTo(if (desired != null) 1f else 0f)
             materialization.snapTo(if(desired!=null)1f else 0f)
         } else coroutineScope {
-            val travel = if(first.kind==AkiraPresentationKind.AudioOutput)
-                ElasticBoundsSpec(desired!=null, true) else presentationBoundsSpec(desired!=null,
+            val travel = presentationBoundsSpec(desired!=null,
                     liveOrigin!=null && (departingSource || desired==null))
             launch { geometry.animateTo(end, travel,
                 initialVelocity = if (dragged != 0f) Rect(0f, releaseVelocity, 0f, releaseVelocity) else geometry.velocity) }
-            launch { corner.animateTo(radius, spring(.82f, 850f)) }
-            launch { smoothing.animateTo(if (desired != null) 1f else 0f, spring(.86f, 850f)) }
+            launch { corner.animateTo(radius, com.akira.app.core.design.motion.AkiraMotion.settle()) }
+            launch { smoothing.animateTo(if (desired != null) 1f else 0f, com.akira.app.core.design.motion.AkiraMotion.settle()) }
             launch { materialization.animateTo(if(desired!=null)1f else 0f,
                 tween(if(dissolving)180 else 110)) }
+
         }
         if(desired==null)returnedGeneration=state.generation
+        else expandedGeneration=state.generation
         if (closing != null && !closing.removed) closing.dismiss()
         state.release()
     }
@@ -381,54 +351,27 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                     close()
                 })
-            val strain: () -> androidx.compose.ui.geometry.Offset = {
-                val p=sourceProgress()
-                val target=progressEntry.bounds
-                val origin=state.rootAnchor?.translate(-windowOrigin.x,-windowOrigin.y)
-                if(reduced || first.kind==AkiraPresentationKind.AudioOutput || target==null || origin==null)
-                    androidx.compose.ui.geometry.Offset.Zero
-                else {
-                    val span=(target.center-origin.center).getDistance().coerceAtLeast(1f)
-                    val direction=(origin.center-target.center)/span
-                    val contact=if(returning).26f*exp(-((p-.12f)/.10f).pow(2)) else 0f
-                    direction*(.20f*4f*p*(1f-p)+contact)
-                }
-            }
-            val shape = remember(corner, smoothing, density, first, reduced) {
-                ElasticGlassShape({
-                    val p=sourceProgress()
-                    val rounded=((p-.64f)/.36f).coerceIn(0f,1f)
-                    val settle=rounded*rounded*(3f-2f*rounded)
-                    val round=min(geometry.value.width,geometry.value.height)/2f
-                    val resting=with(density) { when(progressEntry.kind) {
-                        AkiraPresentationKind.AudioOutput -> 34.dp
-                        AkiraPresentationKind.Update, AkiraPresentationKind.AudioQuality -> 32.dp
-                        AkiraPresentationKind.Panel -> 28.dp
-                        else -> 22.dp
-                    }.toPx() }
-                    if(first.kind==AkiraPresentationKind.AudioOutput)corner.value
-                    else round+(resting.coerceAtMost(round)-round)*settle
-                }, { if(first.kind==AkiraPresentationKind.AudioOutput)smoothing.value else sourceProgress() }, strain, density)
+            val shape = remember(corner, smoothing, density) {
+                com.akira.app.core.design.motion.PresentationShape({ corner.value }, { smoothing.value }, density)
             }
             val copies = state.entries.toList()
             val returningEntry = state.returningEntry
             val bodies = copies.map { entry ->
                 remember(entry, desired, reduced, returningEntry) {
                     @Composable {
-                        val optics=remember { PresentationContentOptics() }
+
                         val visible = animateFloatAsState(if (state.showsBody(entry)) 1f else 0f,
                             if (reduced) snap() else tween(140), label = "presentationContent")
                         Box(Modifier.graphicsLayer {
                             val final = entry.bounds
-                            val p=sourceProgress()
+                            val p=opticalProgress()
                             val pose=presentationContentTransform(geometry.value.size,
                                 final?.size ?: geometry.value.size,p)
-                            val reveal=((p-.10f)/.55f).coerceIn(0f,1f)
+                            val reveal=((p-.06f)/.34f).coerceIn(0f,1f)
                             transformOrigin=androidx.compose.ui.graphics.TransformOrigin(0f,0f)
                             scaleX=pose.scale;scaleY=pose.scale
                             translationX=pose.offset.x;translationY=pose.offset.y
-                            renderEffect=if(reduced)null else optics.effect(geometry.value.size,pose,
-                                shape.topStart.toPx(geometry.value.size,density),p,density.density)
+                            renderEffect = null
                             // The parent fades the returning surface and its contents together.
                             val presence=reveal*reveal*(3f-2f*reveal)
                             alpha = visible.value * presence
@@ -445,16 +388,15 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
             }
             val sourceGlyph = remember(first, geometry, active, shape, reduced) {
                 @Composable {
-                    val warp=remember { ElasticContentWarp() }
+
                     val icon = if(active && source?.hasOwnSurface==true) source.icon else null
                     val body=if(active && source?.hasOwnSurface==true)source.surfaceContent else null
                     if(body!=null) Box(Modifier.graphicsLayer {
                         val origin=state.rootAnchor ?: return@graphicsLayer
                         val p=(sourceProgress()/.45f).coerceIn(0f,1f)
                         alpha=1f-p*p*(3f-2f*p)
-                        scaleX=1f+.06f*sin(PI.toFloat()*p)
-                        scaleY=scaleX
-                        renderEffect=if(reduced)null else warp.effect(origin.size,shape.strain())
+                        scaleX=1f; scaleY=1f
+                        renderEffect = null
                     }) {body()}
                     else if (icon != null) Icon(icon, null,
                         Modifier.size(22.dp).graphicsLayer {
@@ -478,12 +420,13 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
                     } else scheme
                 }
                 MaterialTheme(colorScheme=readableScheme) {
-                CompositionLocalProvider(LocalAppBackdrop provides (backdropEntry.backdrop ?: LocalAppBackdrop.current),
+                CompositionLocalProvider(LocalAppBackdrop provides scene,
+                    com.akira.app.core.design.glass.LocalGlassReadableSurface provides true,
                     LocalContentColor provides MaterialTheme.colorScheme.onSurface,
                     LocalLiquidGlassEnabled provides backdropEntry.glass,
                     LocalContentMotionReduced provides reduced,
                     androidx.compose.foundation.LocalOverscrollFactory provides null,
-                    LocalGlassDeformation provides { shape.strain().getDistance().coerceIn(0f,1f) }) {
+                    LocalGlassDeformation provides { 0f }) {
                     val materialRole=if(first.kind==AkiraPresentationKind.AudioOutput)AkiraMaterialRole.AudioOutput else AkiraMaterialRole.Panel
                     SubcomposeLayout(Modifier.graphicsLayer {
                         // A bare glyph or a member of a shared capsule has no
@@ -495,7 +438,11 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
                         val rect = geometry.value.translate(0f, top?.dragOffset ?: 0f)
                         IntOffset(rect.left.roundToInt(), rect.top.roundToInt())
                     }
-                        .akiraMaterial(shape, materialRole).clip(shape)) { constraints ->
+                        .akiraMaterial(shape, materialRole).graphicsLayer {
+                            this.shape = shape
+                            renderEffect = null
+                            clip = true
+                        }) { constraints ->
                         val rect = geometry.value.translate(0f, top?.dragOffset ?: 0f)
                         val placeables = copies.mapIndexed { index, entry ->
                             val output = entry.kind == AkiraPresentationKind.AudioOutput
@@ -506,6 +453,7 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
                             }
                             val preferredWidth = with(density) {
                                 when (entry.kind) {
+                                    AkiraPresentationKind.Popover -> 320.dp
                                     AkiraPresentationKind.Menu -> 260.dp
                                     AkiraPresentationKind.AudioOutput -> 340.dp
                                     AkiraPresentationKind.AudioQuality -> 328.dp
@@ -518,13 +466,13 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState) {
                             val maxHeight = (safe.height - if(output)with(density){64.dp.toPx()} else 0f).roundToInt().coerceAtLeast(1)
                             val child = subcompose(entry, bodies[index]).single()
                                 .measure(Constraints(minWidth = maxWidth, maxWidth = maxWidth, maxHeight = maxHeight))
-                            val position = if (entry.kind == AkiraPresentationKind.Menu) {
+                            val position = if (entry.kind == AkiraPresentationKind.Menu || entry.kind == AkiraPresentationKind.Popover) {
                                 // Size and place every menu as a direct opening
                                 // from the original button. A tall parent's top
                                 // edge would leave a short submenu far above it.
                                 var origin = entry
                                 while(origin.parent?.kind == AkiraPresentationKind.Menu) origin = origin.parent!!
-                                val anchor = origin.source?.bounds() ?: origin.anchor
+                                val anchor = origin.anchor ?: origin.source?.bounds()
                                 val a = anchor?.translate(-windowOrigin.x - safe.left, -windowOrigin.y - safe.top)
                                 anchoredMenuPosition(a, Size(safe.width, safe.height), Size(child.width.toFloat(), child.height.toFloat()),
                                     0f, with(density) { 8.dp.toPx() }, origin.preferAbove, layoutDirection,

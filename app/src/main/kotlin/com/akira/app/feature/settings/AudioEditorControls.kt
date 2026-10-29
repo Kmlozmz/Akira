@@ -35,7 +35,7 @@ import com.akira.app.core.i18n.LocalStrings
 internal data class AudioPresetOption(val id: String, val title: String, val detail: String)
 
 @Composable
-internal fun AudioPresetPicker(options: List<AudioPresetOption>, selected: String, onSelect: (String) -> Unit) {
+internal fun AudioPresetPicker(options: List<AudioPresetOption>, selected: String, compact: Boolean=false, onSelect: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val source=com.akira.app.core.design.components.rememberAkiraMenuSource(hideOnOpen=false,trailingControl=true,icon=Icons.Rounded.KeyboardArrowDown)
     val index = options.indexOfFirst { it.id == selected }
@@ -44,16 +44,16 @@ internal fun AudioPresetPicker(options: List<AudioPresetOption>, selected: Strin
         IconButton(onClick = { onSelect(options[(if (index < 0) 0 else index + options.size - 1) % options.size].id) }) {
             Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.PreviousPreset), tint = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
         }
-        Column(Modifier.weight(1f).then(source.modifier).noRippleClickable { source.open { open = true } }.padding(vertical = 12.dp),
+        Column(Modifier.weight(1f).then(source.modifier).noRippleClickable { source.open { open = true } }.padding(vertical = if(compact)4.dp else 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             AnimatedContent(current, label = "audio_preset_name") { displayed ->
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(displayed?.title ?: com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Custom), fontSize = 27.sp,
+                        Text(displayed?.title ?: com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Custom), fontSize = if(compact)20.sp else 27.sp,
                             fontWeight = FontWeight.SemiBold, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
                         Icon(Icons.Rounded.KeyboardArrowDown, null, tint = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .6f), modifier = Modifier.size(20.dp))
                     }
-                    Text(displayed?.detail ?: com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.YourSoundSettings),
+                    if(!compact) Text(displayed?.detail ?: com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.YourSoundSettings),
                         style = MaterialTheme.typography.bodyMedium, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .6f))
                 }
             }
@@ -85,15 +85,11 @@ internal fun AudioPresetPicker(options: List<AudioPresetOption>, selected: Strin
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun AudioSlider(value: Float, onValueChange: (Float) -> Unit, range: ClosedFloatingPointRange<Float>,
-    label: String, modifier: Modifier = Modifier, steps: Int = 0, onFinished: () -> Unit = {}, enabled: Boolean = true) {
-    val colors = SliderDefaults.colors(thumbColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface, activeTrackColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
-        inactiveTrackColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .16f))
-    Slider(value = value.coerceIn(range.start, range.endInclusive), onValueChange = onValueChange,
-        valueRange = range, steps = steps, onValueChangeFinished = onFinished, enabled = enabled,
-        modifier = modifier.heightIn(min = 44.dp).semantics { contentDescription = label }, colors = colors,
-        thumb = { Box(Modifier.size(16.dp).clip(CircleShape).background(androidx.compose.material3.MaterialTheme.colorScheme.onSurface)) },
-        track = { state -> SliderDefaults.Track(sliderState = state, modifier = Modifier.height(4.dp), colors = colors,
-            thumbTrackGapSize = 0.dp, trackInsideCornerSize = 2.dp, drawStopIndicator = null, drawTick = { _, _ -> }) })
+    label: String, modifier: Modifier = Modifier, steps: Int = 0, onFinished: () -> Unit = {}, enabled: Boolean = true,
+    tint: Color = MaterialTheme.colorScheme.onSurface) {
+    com.akira.app.feature.player.AkiraPlayerSlider(value,onValueChange,label,modifier.heightIn(min=48.dp),
+        valueRange=range,onFinished=onFinished,enabled=enabled,steps=steps,tint=tint,
+        restingThickness=7.dp,animatedThumb=true)
 }
 
 
@@ -101,17 +97,9 @@ internal fun AudioSlider(value: Float, onValueChange: (Float) -> Unit, range: Cl
 @Composable
 internal fun ExpressiveAudioSlider(value: Float, onValueChange: (Float) -> Unit, range: ClosedFloatingPointRange<Float>,
     label: String, modifier: Modifier = Modifier, steps: Int = 0, onFinished: () -> Unit = {}, enabled: Boolean = true) {
-    val haptics=com.akira.app.core.design.util.rememberAkiraHaptics()
-    fun detent(v: Float)=kotlin.math.round((v-range.start)/(range.endInclusive-range.start).coerceAtLeast(.001f)*(if(steps>0)steps+1 else 20)).toInt()
-    var lastTick by remember {mutableIntStateOf(detent(value))}
-    LaunchedEffect(value) {lastTick=detent(value)}
-    com.akira.app.feature.player.AkiraPlayerSlider(value,{next ->
-        val tick=detent(next)
-        if(tick!=lastTick) {lastTick=tick;haptics.softTick()}
-        onValueChange(next)
-    },label,modifier.heightIn(min=48.dp),valueRange=range,onFinished=onFinished,
-        tint=MaterialTheme.colorScheme.onSurface.copy(alpha=if(enabled)1f else .35f),
-        restingThickness=8.dp,enabled=enabled,steps=steps)
+    com.akira.app.feature.player.AkiraPlayerSlider(value,onValueChange,label,modifier.heightIn(min=48.dp),
+        valueRange=range,onFinished=onFinished,tint=MaterialTheme.colorScheme.onSurface,
+        restingThickness=8.dp,enabled=enabled,steps=steps,animatedThumb=true)
 }
 
 @Composable
@@ -120,14 +108,21 @@ internal fun AudioValueControl(label: String, stored: Float, range: ClosedFloati
     var value by remember { mutableFloatStateOf(stored) }
     var dragging by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
+    var lastCommit by remember { mutableLongStateOf(0L) }
+    val commit by rememberUpdatedState(onCommit)
     val source=com.akira.app.core.design.components.rememberAkiraMenuSource(icon=null)
     LaunchedEffect(stored) { if (!dragging) value = stored }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, Modifier.width(62.dp), color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .75f), fontSize = 13.sp)
-        AudioSlider(value, { value = it; dragging = true }, range, label, Modifier.weight(1f), onFinished = {
+        AudioSlider(value, {
+            value=(kotlin.math.round(it/step)*step).coerceIn(range.start,range.endInclusive)
+            dragging=true
+            val now=android.os.SystemClock.uptimeMillis()
+            if(now-lastCommit>=60L) {lastCommit=now;commit(value)}
+        }, range, label, Modifier.weight(1f), onFinished = {
             dragging = false
             val result = (kotlin.math.round(value / step) * step).coerceIn(range.start, range.endInclusive)
-            value = result; onCommit(result)
+            value = result; commit(result)
         }, enabled = enabled)
         TextButton(onClick = { source.open { editing = true } }, enabled = enabled, modifier = Modifier.then(source.modifier).width(72.dp),
             contentPadding = PaddingValues(horizontal = 4.dp)) {

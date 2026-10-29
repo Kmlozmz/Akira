@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Presentation geometry adapted from Page bb28993, ui/component/PopupSheet.kt.
-// Akira keeps its live shared Glass material and its existing anchored menu engine.
+// Akira shares its panel surfaces and anchored menu motion.
 package com.akira.app.core.design.components
 
 import androidx.compose.animation.core.animate

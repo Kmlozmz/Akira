@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 
 internal object GlassContrast {
-    const val DarkLuminance = .075f
+    const val DarkLuminance = .085f
     const val LightLuminance = .55f
     const val SecondaryAlpha = .8f
 

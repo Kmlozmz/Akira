@@ -319,6 +319,12 @@ private class DrawBackdropNode(
         }
     }
 
+    private val drawDirectBackdrop: DrawScope.() -> Unit = {
+        onDrawBackdrop {
+            with(backdrop) { drawBackdrop(effectScope, layoutCoordinates, layerBlock) }
+        }
+    }
+
     private val drawBackdropLayer: DrawScope.() -> Unit = {
         val layer = graphicsLayer
         if (layer != null) {
@@ -377,9 +383,10 @@ private class DrawBackdropNode(
             updateEffects()
         }
 
+        val filtered = effectScope.renderEffect != null || backdropScale != 1f
         withSurfaceClip {
             onDrawBehind?.invoke(this)
-            drawBackdropLayer()
+            if (filtered) drawBackdropLayer() else drawDirectBackdrop()
             onDrawSurface?.invoke(this)
         }
         drawContent()
@@ -389,7 +396,7 @@ private class DrawBackdropNode(
             recordLayer(this@DrawBackdropNode, layer) {
                 withSurfaceClip {
                     onDrawBehind?.invoke(this)
-                    drawRecordedBackdrop()
+                    if (filtered) drawRecordedBackdrop() else drawDirectBackdrop()
                     onDrawSurface?.invoke(this)
                     onDrawFront?.invoke(this)
                 }

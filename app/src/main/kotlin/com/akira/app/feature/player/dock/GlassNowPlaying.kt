@@ -48,6 +48,8 @@ internal fun GlassNowPlaying(
     pull: MiniPlayerPull?,
     modifier: Modifier = Modifier,
 ) {
+    val ink = rememberGlassInk(contentColor)
+    val resolvedContentColor = ink.color
     val reduced = LocalContentMotionReduced.current
     val swipeScope=rememberCoroutineScope()
     val swipe=remember {MiniPlayerSwipe(swipeScope,song)}
@@ -57,14 +59,12 @@ internal fun GlassNowPlaying(
     var nextPulse by remember {mutableIntStateOf(0)}
     val haptics = rememberHaptics()
     val pressSource = remember { MutableInteractionSource() }
-    val isPressed by pressSource.collectIsPressedAsState()
-    val response=com.akira.app.core.design.components.rememberAkiraPressResponse(isPressed,.4f)
-    val foldStrain=LocalGlassStrain.current
     val foldDeformation=LocalGlassDeformation.current
+    val response=com.akira.app.core.design.components.rememberAkiraPressResponse(false, .4f)
     val density=androidx.compose.ui.platform.LocalDensity.current
-    val surfaceShape=remember(response,foldStrain,density) {
-        com.akira.app.core.design.motion.ElasticGlassShape(
-            { Float.MAX_VALUE },{ 0f },{ foldStrain()+response.strain() },density)
+    val surfaceShape=remember(response,density) {
+        com.akira.app.core.design.motion.ElasticGlassShape({Float.MAX_VALUE},{0f},
+            { androidx.compose.ui.geometry.Offset.Zero },density)
     }
 
     val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
@@ -86,7 +86,6 @@ internal fun GlassNowPlaying(
         // in, and a pull started in the strip above or below it went nowhere —
         // on a bar only 45dp tall to begin with.
         modifier = Modifier
-            // Outside the press scale, which it lifts along with everything else.
             .miniPlayerGestures(
                 pull = pull,
                 onNext = {
@@ -101,8 +100,7 @@ internal fun GlassNowPlaying(
                 onBlocked = onBlockedControl,
                 swipe = swipe,
             )
-            .then(response.modifier)
-            .then(modifier).liquidGlass(surfaceShape).clip(surfaceShape)
+            .then(response.modifier).then(modifier).then(ink.modifier).liquidGlass(surfaceShape).clip(surfaceShape)
             .onGloballyPositioned { onMiniPositioned(it) }
             .clickable(
                 interactionSource = pressSource,
@@ -110,6 +108,7 @@ internal fun GlassNowPlaying(
                 onClick = onExpand,
             ),
     ) {
+        CompositionLocalProvider(com.akira.app.core.design.components.LocalGlassPressHandled provides true) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -138,7 +137,7 @@ internal fun GlassNowPlaying(
                     ) {
                         if (!visibleSong.albumArtUri.isNullOrBlank()) AsyncImage(com.akira.app.feature.player.rememberPlayerArtworkRequest(visibleSong.albumArtUri), null,
                             contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                        else Icon(Icons.Rounded.MusicNote, null, tint = contentColor.copy(alpha = .65f), modifier = Modifier.size(20.dp))
+                        else Icon(Icons.Rounded.MusicNote, null, tint = resolvedContentColor.copy(alpha = .65f), modifier = Modifier.size(20.dp))
                     }
                     Spacer(Modifier.width((10f - 2f * compact).dp))
                     // A playing song keeps both lines in the one-row dock. Only their
@@ -146,12 +145,12 @@ internal fun GlassNowPlaying(
                     Box(Modifier.weight(1f).height((30f * fontScale).dp), contentAlignment = Alignment.CenterStart) {
                         Text(visibleSong.title, style = MaterialTheme.typography.titleMedium.copy(
                             fontSize = 14.sp, lineHeight = 16.sp, fontFamily = FontFamily.SansSerif,
-                            fontWeight = FontWeight.SemiBold), color = contentColor,
+                            fontWeight = FontWeight.SemiBold), color = resolvedContentColor,
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.fillMaxWidth().graphicsLayer { translationY = (-7f * fontScale).dp.toPx() })
                         Text(visibleSong.artist, style = MaterialTheme.typography.bodyMedium.copy(
                             fontSize = 12.sp, lineHeight = 14.sp, fontFamily = FontFamily.SansSerif),
-                            color = contentColor.copy(alpha = .7f), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            color = resolvedContentColor.copy(alpha = .88f), maxLines = 1, overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.fillMaxWidth().graphicsLayer {
                                 translationY = (8f * fontScale).dp.toPx()
                             })
@@ -161,7 +160,7 @@ internal fun GlassNowPlaying(
             if (isLoading) {
                 Box(Modifier.size(glyphSlot), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
-                        color = contentColor,
+                        color = resolvedContentColor,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size((22f - 4f * compact).dp),
                     )
@@ -177,7 +176,7 @@ internal fun GlassNowPlaying(
                     com.akira.app.core.design.components.AkiraAnimatedGlyph(
                         icon = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                         label = localizedText(if (isPlaying) "Pause" else "Play", if (isPlaying) "Pausar" else "Reproducir"),
-                        tint = contentColor,
+                        tint = resolvedContentColor,
                         modifier = Modifier.size(glyphSize),
                     )
                 }
@@ -200,7 +199,7 @@ internal fun GlassNowPlaying(
                         .then(if (expanded < .5f) Modifier.clearAndSetSemantics {} else Modifier),
                 ) {
                     MiniPlayerNextGlyph(
-                        tint = contentColor.copy(alpha = if (controlsLocked) 0.3f else 1f),
+                        tint = resolvedContentColor.copy(alpha = if (controlsLocked) 0.3f else 1f),
                         trigger = nextPulse,
                     )
                 }
@@ -208,6 +207,8 @@ internal fun GlassNowPlaying(
         }
     }
     }
+}
+
 }
 
 @Composable

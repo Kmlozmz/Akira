@@ -154,4 +154,4 @@ source defaults. Full license:
 
 ## Source organization
 
-Presentation adapters are organized under feature/home, feature/collection, feature/player and core/design. Backdrop sources are in core/design/backdrop; RefractionLens.kt and ContinuousMenuShape.kt provide the optical surface and outline. BouncingScrollPhysics.kt contains the adapted scroll equations. Source filenames and packages have changed; the attribution and license terms above continue to apply.
+Presentation adapters are organized under feature/home, feature/collection, feature/player and core/design. Backdrop sources are in app/src/main/kotlin/com/akira/app/core/design/backdrop. RefractionLens.kt retains the adapted optical surface; its Apache-2.0 license is included in licenses/backdrop/LICENSE-APACHE-2.0. BouncingScrollPhysics.kt contains the adapted scroll equations. Source filenames and packages have changed; the attribution and license terms above continue to apply.

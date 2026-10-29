@@ -132,7 +132,7 @@ internal fun UpdatesHost(allowAutomaticPrompt: Boolean, model: UpdatesViewModel 
         permissionNeeded -> InstallationNotice.Permission
         else -> null
     }) }
-    if (state.dialogVisible && !state.pageVisible && update != null) UpdateAvailableDialog(state, update, model)
+    if (state.dialogVisible && update != null) UpdateAvailableDialog(state, update, model)
 }
 
 @Composable
@@ -147,17 +147,16 @@ internal fun UpdateAvailableDialog(state: UpdatesState, update: AppUpdate, model
 internal fun UpdateAvailablePanel(state: UpdatesState, update: AppUpdate, onDownload: () -> Unit,
     onInstall: () -> Unit, onCancel: () -> Unit, onLater: () -> Unit,
     onRemindTomorrow: () -> Unit, onDismiss: () -> Unit) {
+    AkiraAudioTheme {
     val ink = MaterialTheme.colorScheme.onSurface
     val secondary = ink.copy(alpha = .76f)
-    val accent = if (ink.luminance() < .5f) lerp(AkiraBrand.accent, Color.Black, .16f) else AkiraBrand.accent
+    val accent = if(MaterialTheme.colorScheme.background.luminance()>.5f) Color(0xFFD41432) else AkiraBrand.accent
     val active = state.downloading || state.verifying || state.preparingInstaller
     val title = localizedText("Update available", "Actualización disponible")
-    AkiraModalSheet(onDismissRequest = onDismiss,
-        title = title, style = AkiraPanelStyle.Update) {
+    AudioDialog(onDismiss) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
         val scrollAll = maxHeight < 540.dp || LocalDensity.current.fontScale > 1.3f
         Column(Modifier.fillMaxWidth().then(if (scrollAll) Modifier.verticalScroll(rememberScrollState()) else Modifier)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = .70f), RoundedCornerShape(32.dp))
             .padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 Box(Modifier.size(50.dp).background(ink.copy(alpha = .055f), RoundedCornerShape(16.dp)),
@@ -239,7 +238,7 @@ internal fun UpdateAvailablePanel(state: UpdatesState, update: AppUpdate, onDown
                     Button(onClick = { if (state.downloaded == null) onDownload() else onInstall() },
                         enabled = !state.preparingInstaller && !state.checking,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = AkiraBrand.accent, contentColor = Color.Black)) {
+                        colors = ButtonDefaults.buttonColors()) {
                         Icon(Icons.Rounded.Download, null, Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(if (state.downloaded == null) localizedText("Download & install", "Descargar e instalar")
@@ -263,6 +262,7 @@ internal fun UpdateAvailablePanel(state: UpdatesState, update: AppUpdate, onDown
         }
         }
     }
+}
 }
 
 @Composable

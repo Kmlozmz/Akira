@@ -27,6 +27,7 @@ build/
 /logs/
 /shots/
 /scratch/
+/rea-inotes/
 __pycache__/
 *.py[cod]
 

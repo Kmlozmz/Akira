@@ -43,7 +43,10 @@ import com.akira.app.core.design.components.localizedText
     val online by repository.enabled.collectAsStateWithLifecycle()
     val haptics = rememberAkiraHaptics()
     val label = if (online || alwaysShowProfile) localizedText("Account and settings", "Cuenta y ajustes") else localizedText("Settings", "Ajustes")
-    Box(modifier.size(44.dp).clip(CircleShape).clickable { haptics.light(); onClick() }
+    val source = rememberAkiraMenuSource(hasOwnSurface = true, icon = null)
+    SideEffect { source.surfaceContent = { AkiraAccountAvatar(account, Modifier.size(44.dp)) } }
+    Box(modifier.size(48.dp).then(source.modifier).then(source.containerModifier).clip(CircleShape)
+        .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) { haptics.light(); source.open(onClick) }
         .semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
         if (online || alwaysShowProfile) AkiraAccountAvatar(account, Modifier.size(if (alwaysShowProfile) 44.dp else 36.dp))
         else Box(Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh),

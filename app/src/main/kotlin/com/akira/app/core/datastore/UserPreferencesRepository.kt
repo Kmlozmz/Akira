@@ -1,6 +1,9 @@
 package com.akira.app.core.datastore
 
 import com.akira.app.core.design.glass.AkiraGlassDefaults
+import com.akira.app.core.audio.EqualizerConfiguration
+import com.akira.app.core.audio.OutputKey
+import com.akira.app.core.audio.OutputProfiles
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -27,8 +30,8 @@ data class UserPreferences(
     val lastPlayedSongId: String? = null,
     val lastPositionMs: Long = 0L,
     val equalizerPreset: String = "BALANCED",
-    val bassBoost: Float = 0.5f,
-    val virtualizer: Float = 0.5f,
+    val bassBoost: Float = 0f,
+    val virtualizer: Float = 0f,
     // Band gains use dB (-12..+12); preamp is a linear multiplier.
     val eqEnabled: Boolean = false,
     val eqBandGains: List<Float> = List(5) { 0f },
@@ -172,8 +175,8 @@ class UserPreferencesRepository(private val context: Context) {
             lastPlayedSongId = prefs[Keys.LAST_SONG_ID],
             lastPositionMs = prefs[Keys.LAST_POSITION_MS] ?: 0L,
             equalizerPreset = prefs[Keys.EQUALIZER_PRESET] ?: "BALANCED",
-            bassBoost = prefs[Keys.BASS_BOOST] ?: 0.5f,
-            virtualizer = prefs[Keys.VIRTUALIZER] ?: 0.5f,
+            bassBoost = prefs[Keys.BASS_BOOST] ?: 0f,
+            virtualizer = prefs[Keys.VIRTUALIZER] ?: 0f,
             eqEnabled = prefs[Keys.EQ_ENABLED] ?: false,
             eqBandGains = List(EQ_BAND_COUNT) { prefs[Keys.eqBand(it)] ?: 0f },
             eqPreamp = prefs[Keys.EQ_PREAMP] ?: 1.0f,
@@ -268,6 +271,16 @@ class UserPreferencesRepository(private val context: Context) {
         context.dataStore.edit { it[Keys.EQ_PROFILES] = profiles; it[Keys.EQ_ASSIGNMENTS] = assignments }
     }
 
+    suspend fun updateOutputProfiles(edit: (List<com.akira.app.core.audio.EqOutputProfile>, Map<String,String>) ->
+        Pair<List<com.akira.app.core.audio.EqOutputProfile>, Map<String,String>>) {
+        context.dataStore.edit { values ->
+            val (profiles, mappings) = edit(OutputProfiles.decode(values[Keys.EQ_PROFILES] ?: "[]"),
+                OutputProfiles.assignments(values[Keys.EQ_ASSIGNMENTS] ?: "{}"))
+            values[Keys.EQ_PROFILES] = OutputProfiles.encode(profiles)
+            values[Keys.EQ_ASSIGNMENTS] = org.json.JSONObject(mappings).toString()
+        }
+    }
+
     suspend fun setBluetoothResume(enabled: Boolean, minutes: Int) {
         context.dataStore.edit { it[Keys.BT_RESUME] = enabled; it[Keys.BT_WINDOW] = minutes.coerceIn(1,60) }
     }
@@ -327,6 +340,32 @@ class UserPreferencesRepository(private val context: Context) {
 
     suspend fun setEqEnabled(enabled: Boolean) {
         context.dataStore.edit { it[Keys.EQ_ENABLED] = enabled }
+    }
+
+    /** Edit the configuration the selected output actually plays, using the latest stored values. */
+    suspend fun editActiveEqualizer(output: OutputKey, preset: String = "CUSTOM",
+        edit: (EqualizerConfiguration) -> EqualizerConfiguration) {
+        context.dataStore.edit { values ->
+            val profiles = OutputProfiles.decode(values[Keys.EQ_PROFILES] ?: "[]")
+            val mappings = OutputProfiles.assignments(values[Keys.EQ_ASSIGNMENTS] ?: "{}")
+            val profile = profiles.firstOrNull { it.id == mappings[output.encoded] }
+            val before = profile?.let { EqualizerConfiguration(it.bands, it.bass, it.space, it.preamp) }
+                ?: EqualizerConfiguration(List(EQ_BAND_COUNT) { values[Keys.eqBand(it)] ?: 0f },
+                    values[Keys.BASS_BOOST] ?: 0f, values[Keys.VIRTUALIZER] ?: 0f, values[Keys.EQ_PREAMP] ?: 1f)
+            val after = edit(before.normalized()).normalized()
+            if (profile != null) {
+                values[Keys.EQ_PROFILES] = OutputProfiles.encode(profiles.map {
+                    if (it.id == profile.id) it.copy(bands = after.bands, bass = after.bass,
+                        space = after.space, preamp = after.preamp) else it
+                })
+            } else {
+                values[Keys.EQUALIZER_PRESET] = preset
+                after.bands.forEachIndexed { index, gain -> values[Keys.eqBand(index)] = gain }
+                values[Keys.BASS_BOOST] = after.bass
+                values[Keys.VIRTUALIZER] = after.space
+                values[Keys.EQ_PREAMP] = after.preamp
+            }
+        }
     }
 
     suspend fun setEqBandGain(index: Int, gainDb: Float) {

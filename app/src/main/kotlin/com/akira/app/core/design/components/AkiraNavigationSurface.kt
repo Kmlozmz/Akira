@@ -21,7 +21,7 @@ internal object AkiraNavigationMetrics {
     val GroupGap = 12.dp
 }
 
-/** Navigation remains distinct from a white page even with clear glass selected. */
+/** A small elevation separates navigation from a page of the same color. */
 @Composable internal fun Modifier.akiraNavigationSurface(shape: CornerBasedShape, backdrop: Backdrop? = null): Modifier {
     val light = MaterialTheme.colorScheme.background.luminance() > .5f
     return this

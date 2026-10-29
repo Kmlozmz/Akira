@@ -2,6 +2,7 @@ package com.akira.app.feature.settings
 
 import kotlinx.coroutines.flow.first
 import com.akira.app.core.audio.EqOutputProfile
+import com.akira.app.core.audio.effectiveEqualizer
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.animation.core.animateFloatAsState
@@ -24,6 +25,13 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Headphones
+import androidx.compose.material.icons.rounded.KeyboardArrowRight
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.akira.app.core.design.components.localizedText
+import com.akira.app.core.design.components.rememberAkiraMenuSource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.akira.app.core.audio.OutputProfiles
 import com.akira.app.core.audio.OutputRoutes
@@ -43,19 +51,17 @@ internal fun EqualizerScreen(prefs: UserPreferences, haptics: AkiraHaptics, onBa
     onEnabled: (Boolean) -> Unit, onPreset: (EqPresetDef) -> Unit, onBand: (Int, Float) -> Unit,
     onBass: (Float) -> Unit, onSpace: (Float) -> Unit, onPreamp: (Float) -> Unit, onReset: () -> Unit) {
     val strings = com.akira.app.core.i18n.LocalStrings.current
-    var editingProfile by remember { mutableStateOf<EqOutputProfile?>(null) }
-    var advanced by rememberSaveable { mutableStateOf(false) }
-    var showProfiles by rememberSaveable { mutableStateOf(false) }
     val output by OutputRoutes.current.collectAsStateWithLifecycle()
-    val fxSupport by com.akira.app.core.audio.AudioFxAvailability.current.collectAsStateWithLifecycle()
-    val assigned = OutputProfiles.assignments(prefs.eqAssignmentsJson)
-    val profile = OutputProfiles.decode(prefs.eqProfilesJson).firstOrNull { it.id == assigned[output.encoded] }
-    val context = LocalContext.current
-    val repo = remember(context) { UserPreferencesRepository(context) }
-    val scope = rememberCoroutineScope()
+    val support by com.akira.app.core.audio.AudioFxAvailability.current.collectAsStateWithLifecycle()
+    val effective = remember(prefs, output) { prefs.effectiveEqualizer(output) }
+    val configuration = effective.configuration
+    var showProfiles by rememberSaveable { mutableStateOf(false) }
+    var tab by rememberSaveable { mutableStateOf("bands") }
+    val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 520
+    val fixedHeader = remember(compact) { mutableFloatStateOf(if(compact)1f else 0f) }
     val matching = EqPresets.firstOrNull { preset ->
-        preset.gains.indices.all { kotlin.math.abs(preset.gains[it] - prefs.eqBandGains.getOrElse(it) { 0f }) < .001f } &&
-            kotlin.math.abs(preset.bass - prefs.bassBoost) < .001f && kotlin.math.abs(preset.space - prefs.virtualizer) < .001f
+        preset.gains.indices.all { kotlin.math.abs(preset.gains[it]-configuration.bands[it])<.001f } &&
+            kotlin.math.abs(preset.bass-configuration.bass)<.001f && kotlin.math.abs(preset.space-configuration.space)<.001f
     }
     val options = EqPresets.map { preset ->
         val (title, detail) = when(preset.name) {
@@ -68,89 +74,91 @@ internal fun EqualizerScreen(prefs: UserPreferences, haptics: AkiraHaptics, onBa
         }
         AudioPresetOption(preset.name, title, detail)
     }
-    editingProfile?.let { original ->
-        EqProfileEditor(original, onDismiss = { editingProfile = null }, onSave = { updated ->
-            scope.launch {
-                val latest = repo.userPreferences.first()
-                val profiles = OutputProfiles.decode(latest.eqProfilesJson)
-                repo.setOutputProfiles(OutputProfiles.encode(profiles.map { if (it.id == original.id) updated else it }), latest.eqAssignmentsJson)
-                editingProfile = null
+
+    val enableLabel = strings.ui(com.akira.app.core.i18n.AkiraUiText.EnableEqualizer)
+    val profileSource = rememberAkiraMenuSource(icon = Icons.Rounded.Headphones)
+    AkiraStudioScreen(strings.ui(com.akira.app.core.i18n.AkiraUiText.Equalizer),
+        onBack={if(showProfiles)showProfiles=false else onBack()}, headerProgress=fixedHeader,
+        trailing={AkiraSwitch(prefs.eqEnabled,onEnabled,modifier=Modifier.semantics {contentDescription=enableLabel})}) {
+        Column(Modifier.fillMaxSize().padding(top=if(compact)72.dp else 118.dp)
+            .audioControlsEnabled(prefs.eqEnabled,localizedText("Enable the equalizer to adjust the sound","Activa el ecualizador para ajustar el sonido"))) {
+            Column(Modifier.fillMaxWidth().padding(horizontal=24.dp), verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                AudioPreviewSurface {
+                    if(!compact) Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                        Text(options.firstOrNull {it.id==matching?.name}?.title ?: strings.ui(com.akira.app.core.i18n.AkiraUiText.Custom),
+                            Modifier.weight(1f),style=MaterialTheme.typography.titleLarge)
+                        Text(if(prefs.eqEnabled)localizedText("On","Activado") else localizedText("Off","Apagado"),
+                            style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    EqResponseGraph(configuration.bands,audioAccent(),Modifier.fillMaxWidth().height(if(compact)80.dp else 140.dp))
+                }
+                TextButton(onClick={profileSource.open {showProfiles=true}},modifier=profileSource.modifier.fillMaxWidth(),
+                    contentPadding=PaddingValues(horizontal=4.dp,vertical=8.dp)) {
+                    Icon(Icons.Rounded.Headphones,null,Modifier.size(20.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(10.dp))
+                    Text(if(effective.profile!=null)strings.activeOutputProfile.format(effective.profile.name)
+                        else strings.library.globalProfile,Modifier.weight(1f),style=MaterialTheme.typography.bodyMedium,
+                        color=MaterialTheme.colorScheme.onSurface,maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    Icon(Icons.Rounded.KeyboardArrowRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                AkiraSegmentedControl(listOf("bands" to com.akira.app.core.design.components.localizedText("Bands","Bandas"),
+                    "effects" to com.akira.app.core.design.components.localizedText("Effects","Efectos")),tab,{tab=it})
             }
-        })
-    }
-    val enableLabel = com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.EnableEqualizer)
-    val requestBack: () -> Unit = {
-        when {
-            editingProfile != null -> editingProfile = null
-            showProfiles -> showProfiles = false
-            else -> onBack()
-        }
-    }
-    AkiraStudioScreen(com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Equalizer), requestBack,
-        trailing = { AkiraSwitch(prefs.eqEnabled, onCheckedChange = onEnabled, enabled = fxSupport.equalizer != false,
-            modifier = Modifier.semantics { contentDescription = enableLabel }) }) {
-        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(com.akira.app.core.design.navigation.LocalPageScrollState.current ?: rememberScrollState(), flingBehavior = com.akira.app.core.design.motion.rememberAkiraBouncingFling()).padding(top=118.dp).padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            AudioPresetPicker(options, matching?.name.orEmpty()) { id ->
-                EqPresets.firstOrNull { it.name == id }?.let { haptics.tick(); onPreset(it) }
-            }
-            EqResponseGraph(prefs.eqBandGains, androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
-            AkiraSegmentedControl(listOf("basic" to com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Presets), "advanced" to com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Advanced)),
-                if (advanced) "advanced" else "basic", { advanced = it == "advanced" }, androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer)
-            if (profile != null) {
-                Text(strings.activeOutputProfile.format(profile.name),
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .8f), style = MaterialTheme.typography.bodyMedium)
-                AudioActionButtons(strings.editProfile, strings.useGlobalSettings,
-                    onReset = { editingProfile = profile }, onAction = { scope.launch {
-                        val latest = repo.userPreferences.first()
-                        val mappings = OutputProfiles.assignments(latest.eqAssignmentsJson)
-                        repo.setOutputProfiles(latest.eqProfilesJson, JSONObject(mappings - output.encoded).toString())
-                    } })
-            }
-            if (advanced) {
-                Column {
-                    repeat(5) { index ->
-                        AudioValueControl(com.akira.app.core.i18n.LocalStrings.current.eqBandLabel(index), prefs.eqBandGains.getOrElse(index) { 0f },
-                            -12f..12f, .5f, { strings.ui(com.akira.app.core.i18n.AkiraUiText.GainFormat, it) }, { onBand(index, it) }, enabled = fxSupport.equalizer != false)
+            Column(Modifier.weight(1f).fillMaxWidth()
+                .verticalScroll(com.akira.app.core.design.navigation.LocalPageScrollState.current ?: rememberScrollState())
+                .padding(vertical=16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                AudioPresetRail(options,matching?.name.orEmpty()) {id->
+                    EqPresets.firstOrNull {it.name==id}?.let {haptics.tick();onPreset(it)}
+                }
+                Column(Modifier.fillMaxWidth().padding(horizontal=24.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                    Text(if(tab=="bands")localizedText("Frequency bands","Bandas de frecuencia") else localizedText("Sound effects","Efectos de sonido"),
+                        Modifier.weight(1f),style=MaterialTheme.typography.titleMedium)
+                    TextButton(onReset) {Text(strings.library.reset,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+                }
+                if(!prefs.eqEnabled) Text(com.akira.app.core.design.components.localizedText(
+                    "The equalizer is off. Your changes are saved for when you enable it.",
+                    "El ecualizador está apagado. Los cambios se guardan para cuando lo actives."),
+                    style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                key(output.encoded,effective.profile?.id,tab) {
+                    if(tab=="bands") {
+                        configuration.bands.forEachIndexed {index,gain->
+                            AudioParameter(strings.eqBandLabel(index),gain,-12f..12f,.5f,
+                                {strings.ui(com.akira.app.core.i18n.AkiraUiText.GainFormat,it)},{onBand(index,it)},inline=true)
+                        }
+                    } else {
+                        AudioParameter(strings.ui(com.akira.app.core.i18n.AkiraUiText.Preamp),
+                            (20f*log10(configuration.preamp)).coerceIn(-12f,0f),-12f..0f,.5f,
+                            {strings.ui(com.akira.app.core.i18n.AkiraUiText.GainFormat,it)},{onPreamp(10f.pow(it/20f))})
+                        AudioParameter(strings.library.bass,configuration.bass,0f..1f,.01f,
+                            {"${(it*100).roundToInt()}%"},onBass,inputScale=100f,enabled=support.bass!=false)
+                        AudioParameter(strings.library.space,configuration.space,0f..1f,.01f,
+                            {"${(it*100).roundToInt()}%"},onSpace,inputScale=100f,enabled=support.space!=false)
+                        TextButton({onPreamp(10f.pow(-configuration.bands.max().coerceAtLeast(0f)/20f).coerceAtLeast(.25f))}) {
+                            Text(strings.ui(com.akira.app.core.i18n.AkiraUiText.AutoSetHeadroom),color=MaterialTheme.colorScheme.onSurface)
+                        }
+                        Text(strings.ui(com.akira.app.core.i18n.AkiraUiText.StartWithFlatWhenBoostingBandsUse),
+                            style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                HorizontalDivider(color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .08f))
-                Text(com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.LevelAndEffects), color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium)
-                AudioValueControl(com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Preamp), (20f * log10(prefs.eqPreamp.coerceIn(.25f, 1f))).coerceIn(-12f, 0f),
-                    -12f..0f, .5f, { strings.ui(com.akira.app.core.i18n.AkiraUiText.GainFormat, it) }, { onPreamp(10f.pow(it / 20f)) })
-                AudioValueControl(com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Bass), prefs.bassBoost, 0f..1f, .01f,
-                    { "${(it * 100).roundToInt()}%" }, onBass, inputScale = 100f, enabled = fxSupport.bass != false)
-                AudioValueControl(com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Space2), prefs.virtualizer, 0f..1f, .01f,
-                    { "${(it * 100).roundToInt()}%" }, onSpace, inputScale = 100f, enabled = fxSupport.space != false)
-                TextButton(onClick = { onPreamp(10f.pow(-(prefs.eqBandGains.maxOrNull() ?: 0f).coerceAtLeast(0f) / 20f).coerceAtLeast(.25f)) }) {
-                    Text(com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.AutoSetHeadroom), color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
+                val problem=when {
+                    support.equalizer==false -> com.akira.app.core.design.components.localizedText("Equalization is unavailable on this output.","La ecualización no está disponible en esta salida.")
+                    prefs.eqEnabled && support.controlled==false -> com.akira.app.core.design.components.localizedText("Another app controls this audio effect.","Otra aplicación controla este efecto de audio.")
+                    prefs.eqEnabled && support.applied==false -> com.akira.app.core.design.components.localizedText("Turn the equalizer off and on to retry the audio effect.","Apaga y enciende el ecualizador para reintentar el efecto.")
+                    else -> null
                 }
-            } else {
-                Text(com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.UseTheArrowsToSwitchPresetsOr),
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .55f), style = MaterialTheme.typography.bodyMedium)
+                if(problem!=null)Text(problem,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
-            val unavailable = listOfNotNull(
-                if (fxSupport.equalizer == false) com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Equalizer) else null,
-                if (fxSupport.bass == false) com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Bass) else null,
-                if (fxSupport.space == false) com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Space2) else null)
-            if (unavailable.isNotEmpty()) Text(unavailable.joinToString(", ") + " · " +
-                com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.NotSupportedOnThisOutput),
-                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .65f), style = MaterialTheme.typography.bodyMedium)
-            Text(com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.StartWithFlatWhenBoostingBandsUse),
-                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .65f), style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(16.dp))
         }
-        Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp)) {
-            AudioActionButtons(com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.Reset), com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.OutputProfiles), onReset, { showProfiles = true })
-            if (showProfiles) OutputProfilesSheet { showProfiles = false }
-        }
+        if(showProfiles)OutputProfilesSheet {showProfiles=false}
     }
 }
 
 @Composable
-private fun EqResponseGraph(gains: List<Float>, accent: Color) {
+internal fun EqResponseGraph(gains: List<Float>, accent: Color, modifier: Modifier) {
     val displayedGains = (0..4).map { index ->
-        animateFloatAsState(gains.getOrElse(index) { 0f }, tween(220), label = "eq_band_$index").value
+        animateFloatAsState(gains.getOrElse(index) { 0f }, tween(140), label = "eq_band_$index")
     }
     val measurer = rememberTextMeasurer()
     val labelStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 11.sp, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .7f))
@@ -162,7 +170,7 @@ private fun EqResponseGraph(gains: List<Float>, accent: Color) {
             com.akira.app.core.i18n.LocalStrings.current.ui(com.akira.app.core.i18n.AkiraUiText.GainDetailFormat, label, gains.getOrElse(index) { 0f })
         }.joinToString(", ")
     val plotInk = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
-    Canvas(Modifier.fillMaxWidth().height(196.dp).semantics { contentDescription = description }) {
+    Canvas(modifier.semantics { contentDescription = description }) {
         val left = 36.dp.toPx()
         val right = size.width - 20.dp.toPx()
         val top = 12.dp.toPx()
@@ -177,7 +185,7 @@ private fun EqResponseGraph(gains: List<Float>, accent: Color) {
         }
         val points = (0..4).map { index ->
             val x = left + width * index / 4f
-            val y = zero - displayedGains[index].coerceIn(-12f, 12f) / 12f * height / 2f
+            val y = zero - displayedGains[index].value.coerceIn(-12f, 12f) / 12f * height / 2f
             drawLine(plotInk.copy(alpha = .08f), Offset(x, top), Offset(x, bottom))
             val label = frequencyLabels[index]
             drawText(label, topLeft = Offset((x - label.size.width / 2f).coerceIn(0f,

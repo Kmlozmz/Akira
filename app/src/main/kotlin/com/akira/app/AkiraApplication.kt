@@ -16,6 +16,7 @@ class AkiraApplication : Application(), coil.ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
+        com.akira.app.core.design.motion.InteractionPreferences.load(this)
         com.akira.app.core.logging.AkiraLog.installUncaughtExceptionHandler()
         com.akira.app.core.logging.AkiraLog.i("Application", "Akira application initialized")
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main).launch {

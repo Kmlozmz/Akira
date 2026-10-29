@@ -58,7 +58,7 @@ private val HeaderCollapseDistance = 68.dp
     val density = androidx.compose.ui.platform.LocalDensity.current
     val travel = with(density) { HeaderCollapseDistance.toPx() }
     return remember(scrollState, travel) { derivedStateOf {
-        (scrollState.value / travel).coerceIn(0f, 1f)
+        pageCollapseProgress(scrollState.value, scrollState.maxValue, travel)
     } }
 }
 
@@ -67,22 +67,32 @@ private val HeaderCollapseDistance = 68.dp
     val travel = with(density) { HeaderCollapseDistance.toPx() }
     return remember(listState, travel) { derivedStateOf {
         if (listState.firstVisibleItemIndex > 0) 1f
-        else (listState.firstVisibleItemScrollOffset / travel).coerceIn(0f, 1f)
+        else {
+            val layout = listState.layoutInfo
+            val items = layout.visibleItemsInfo
+            // A short page may reach its end before the normal title travel.
+            val range = if (items.size == layout.totalItemsCount && items.isNotEmpty()) {
+                (items.sumOf { it.size } + layout.mainAxisItemSpacing * (items.size - 1) +
+                    layout.beforeContentPadding + layout.afterContentPadding - layout.viewportSize.height).coerceAtLeast(0)
+            } else null
+            pageCollapseProgress(listState.firstVisibleItemScrollOffset, range, travel)
+        }
     } }
 }
 
 @Composable fun PageBackButton(onBack: () -> Unit, modifier: Modifier = Modifier,
     collapseProgress: Float = 1f) {
     val haptics = rememberAkiraHaptics()
+    val ink = com.akira.app.core.design.glass.rememberGlassInk(MaterialTheme.colorScheme.onSurface)
     val pageColor = MaterialTheme.colorScheme.background
     val fallback = rememberCanvasBackdrop { drawRect(pageColor) }
     val backdrop = LocalPageHeaderBackdrop.current ?: fallback
-    Box(modifier.size(AkiraNavigationMetrics.Target), contentAlignment = Alignment.Center) {
+    Box(modifier.then(ink.modifier).size(AkiraNavigationMetrics.Target), contentAlignment = Alignment.Center) {
         Box(Modifier.size(AkiraNavigationMetrics.BackSurface).akiraNavigationSurface(CircleShape, backdrop))
         Box(Modifier.matchParentSize().clip(CircleShape).clickable { haptics.light(); onBack() },
             contentAlignment = Alignment.Center) {
             Icon(painterResource(R.drawable.ic_navigation_back), localizedText("Back", "Atrás"),
-                Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurface)
+                Modifier.size(18.dp), tint = ink.color)
         }
     }
 }

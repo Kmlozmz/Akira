@@ -45,7 +45,7 @@ internal fun UpdatesScreen(onBack: () -> Unit, model: UpdatesViewModel = viewMod
         Column(Modifier.fillMaxWidth()
             .verticalScroll(LocalPageScrollState.current ?: rememberScrollState(),
                 flingBehavior = rememberAkiraBouncingFling())
-            .padding(horizontal = 28.dp).padding(top = 138.dp, bottom = 36.dp),
+            .padding(horizontal = 20.dp).padding(top = 138.dp, bottom = 36.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
             Box(Modifier.size(92.dp).background(AkiraBrand.accent.copy(alpha = .12f), RoundedCornerShape(26.dp)),
                 contentAlignment = Alignment.Center) {
@@ -88,18 +88,28 @@ internal fun UpdatesScreen(onBack: () -> Unit, model: UpdatesViewModel = viewMod
                 }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center, lineHeight = 21.sp)
                 Spacer(Modifier.height(22.dp))
-                Button(onClick = { model.check() },
-                    enabled = state.canCheckForUpdates && !BuildConfig.DEBUG,
+                Button(onClick = {
+                    if (state.primaryAction == UpdatePrimaryAction.Check) model.check()
+                    else {
+                        model.openDetails()
+                        if (state.primaryAction == UpdatePrimaryAction.Install) model.requestInstallation()
+                    }
+                },
+                    enabled = !BuildConfig.DEBUG && if(update==null)state.canCheckForUpdates else !state.checking,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = AkiraBrand.accent,
-                        contentColor = androidx.compose.ui.graphics.Color.Black)) {
-                    Text(if (state.failure != null) localizedText("Retry", "Reintentar")
-                        else localizedText("Check for updates", "Buscar actualizaciones"), fontWeight = FontWeight.SemiBold)
+                    colors = ButtonDefaults.buttonColors()) {
+                    Text(when(state.primaryAction) {
+                        UpdatePrimaryAction.ViewUpdate -> localizedText("View update", "Ver actualización")
+                        UpdatePrimaryAction.ViewProgress -> localizedText("View download", "Ver descarga")
+                        UpdatePrimaryAction.Install -> localizedText("Install update", "Instalar actualización")
+                        UpdatePrimaryAction.Check -> if(state.failure!=null)localizedText("Retry","Reintentar")
+                            else localizedText("Check for updates","Buscar actualizaciones")
+                    }, fontWeight = FontWeight.SemiBold)
                 }
-                if (update != null) TextButton(onClick = model::openDetails,
-                    enabled = !state.checking && !state.preparingInstaller && !BuildConfig.DEBUG,
+                if (update != null) TextButton(onClick = { model.check(showAvailable=false) },
+                    enabled = state.canCheckForUpdates && !BuildConfig.DEBUG,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text(localizedText("View update", "Ver actualización"))
+                    Text(localizedText("Check again", "Volver a comprobar"))
                 }
             }
             Spacer(Modifier.height(16.dp))
@@ -113,7 +123,6 @@ internal fun UpdatesScreen(onBack: () -> Unit, model: UpdatesViewModel = viewMod
             }
             if (linkFailed) Text(localizedText("Couldn't open the link.", "No se pudo abrir el enlace."),
                 color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            if (state.dialogVisible && update != null) UpdateAvailableDialog(state, update, model)
         }
     }
 }

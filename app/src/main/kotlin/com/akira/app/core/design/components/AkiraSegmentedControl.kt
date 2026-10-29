@@ -35,12 +35,12 @@ fun AkiraSegmentedControl(options: List<Pair<String, String>>, selected: String,
         val cell = maxWidth / options.size
         val position by animateDpAsState(cell * options.indexOfFirst { it.first == selected }.coerceAtLeast(0),
             tween(if (reduced) 0 else 230), label = "segment_position")
-        if (options.any { it.first == selected }) Box(Modifier.offset(x = position).width(cell).height(42.dp).padding(horizontal = 2.dp)
+        if (options.any { it.first == selected }) Box(Modifier.offset(x = position).width(cell).heightIn(min = 48.dp).padding(horizontal = 2.dp)
             .clip(RoundedCornerShape(indicatorRadius)).background(indicatorColor))
         Row(Modifier.fillMaxWidth()) {
             options.forEach { (key, label) ->
                 val active = key == selected
-                Box(Modifier.weight(1f).height(42.dp).selectable(active,
+                Box(Modifier.weight(1f).heightIn(min = 48.dp).selectable(active,
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     indication = null, role = Role.RadioButton, onClick = { onSelect(key) }),
                     contentAlignment = Alignment.Center) {

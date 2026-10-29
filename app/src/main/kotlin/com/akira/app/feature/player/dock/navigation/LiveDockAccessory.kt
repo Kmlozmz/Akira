@@ -28,6 +28,8 @@ import com.akira.app.core.design.backdrop.backdrops.LayerBackdrop
 
 internal val LocalDockNavigationGlass=staticCompositionLocalOf<LayerBackdrop?> {null}
 internal val LocalDockMorphActive=staticCompositionLocalOf { false }
+internal val LocalDockTargetInline=staticCompositionLocalOf { false }
+internal val LocalDockSurfaceContact=staticCompositionLocalOf<com.akira.app.core.design.components.AkiraPressResponse?> { null }
 
 /** Physical coordinates throughout; the placement must not mirror them again. */
 internal fun dockFoldSelectionTarget(inline: Boolean, width: Int, compactHeight: Dp,
@@ -54,7 +56,7 @@ internal fun dockFoldSelectionTarget(inline: Boolean, width: Int, compactHeight:
 internal fun LiveDockFoldSelection(inline: Boolean, width: Int, compactHeight: Dp,
     expandedHeight: Dp, count: Int, selected: Int, padding: androidx.compose.foundation.layout.PaddingValues,
     spacing: Dp, color: androidx.compose.ui.graphics.Color, moving: Boolean, modifier: Modifier) {
-    if(count <= 0 || selected !in 0 until count)return
+    if(inline || count <= 0 || selected !in 0 until count)return
     val density=androidx.compose.ui.platform.LocalDensity.current
     val direction=androidx.compose.ui.platform.LocalLayoutDirection.current
     val target = dockFoldSelectionTarget(inline, width, compactHeight, expandedHeight,
@@ -89,7 +91,7 @@ internal fun LiveDockNavigationGlass(inline: Boolean, width: Int, compactHeight:
     val searchBounds = with(density) { Rect(0f, -compactHeight.toPx(), compactHeight.toPx(), 0f) }
     val bounds = androidx.compose.ui.geometry.lerp(foldBounds, searchBounds, replacementProgress)
     CompositionLocalProvider(LocalGlassExport provides backdrop) {
-        Layout(modifier=modifier,content={Box(surface())}) { children,constraints ->
+        Layout(modifier=modifier,content={Box((LocalDockSurfaceContact.current?.visualModifier ?: Modifier).then(surface()))}) { children,constraints ->
             val child=children.single().measure(Constraints.fixed(bounds.width.roundToInt().coerceAtLeast(1),
                 bounds.height.roundToInt().coerceAtLeast(1)))
             layout(constraints.maxWidth,constraints.maxHeight) {
@@ -156,11 +158,12 @@ internal class DockFoldMotion(inline: Boolean) {
         val dt=elapsed/steps
         val end=if(inline)1f else 0f
         var w=width.value;var y=travel.value;var h=height.value
-        val widthK=if(inline)230f else 700f
-        val travelK=if(inline)700f else 440f
-        val widthDrag=2f*(if(inline).70f else .80f)*sqrt(widthK)
-        val travelDrag=2f*(if(inline).85f else .72f)*sqrt(travelK)
-        val heightDrag=2f*.86f*sqrt(650f)
+        val widthK=if(inline)320f else DockSpring.WidthStiffness
+        val travelK=if(inline)DockSpring.WidthStiffness else DockSpring.TravelStiffness
+        val widthDrag=2f*(if(inline)DockSpring.TravelDamping else DockSpring.WidthDamping)*sqrt(widthK)
+        val travelDrag=2f*(if(inline)DockSpring.WidthDamping else DockSpring.TravelDamping)*sqrt(travelK)
+        val heightK=DockSpring.WidthStiffness
+        val heightDrag=2f*DockSpring.HeightDamping*sqrt(heightK)
         repeat(steps) {
             // Width leads collapse; vertical travel leads expansion. The
             // follower starts immediately with growing acceleration, not delay.
@@ -168,7 +171,7 @@ internal class DockFoldMotion(inline: Boolean) {
             val travelTarget=if(inline)w else end
             widthVelocity+=(widthK*(widthTarget-w)-widthDrag*widthVelocity)*dt
             travelVelocity+=(travelK*(travelTarget-y)-travelDrag*travelVelocity)*dt
-            heightVelocity+=(650f*(end-h)-heightDrag*heightVelocity)*dt
+            heightVelocity+=(heightK*(end-h)-heightDrag*heightVelocity)*dt
             w+=widthVelocity*dt;y+=travelVelocity*dt;h+=heightVelocity*dt
         }
         widthState.floatValue=w;travelState.floatValue=y;heightState.floatValue=h
@@ -204,10 +207,9 @@ internal fun rememberDockFoldMotion(inline: Boolean): DockFoldMotion {
 @Composable
 internal fun rememberDockGlassShape(): com.akira.app.core.design.motion.ElasticGlassShape {
     val density=androidx.compose.ui.platform.LocalDensity.current
-    val strain=com.akira.app.core.design.glass.LocalGlassStrain.current
-    return remember(density,strain) {
-        com.akira.app.core.design.motion.ElasticGlassShape({Float.MAX_VALUE},{0f},strain,density,
-            preserveCapsuleEnds=true)
+    return remember(density) {
+        com.akira.app.core.design.motion.ElasticGlassShape({Float.MAX_VALUE},{0f},
+            { androidx.compose.ui.geometry.Offset.Zero },density,preserveCapsuleEnds=true)
     }
 }
 

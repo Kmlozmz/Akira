@@ -6,6 +6,7 @@ import com.akira.app.core.updates.UpdateFailure
 import java.io.File
 
 internal enum class InstallationNotice { Permission, Error }
+internal enum class UpdatePrimaryAction { Check, ViewUpdate, ViewProgress, Install }
 
 internal data class UpdatesState(
     val checking: Boolean = false,
@@ -32,4 +33,12 @@ internal data class UpdatesState(
 
     val canCheckForUpdates: Boolean
         get() = !checking && !downloading && !verifying && !preparingInstaller
+
+    val primaryAction: UpdatePrimaryAction
+        get() = when {
+            availableUpdate == null -> UpdatePrimaryAction.Check
+            downloading || verifying || preparingInstaller -> UpdatePrimaryAction.ViewProgress
+            downloaded != null -> UpdatePrimaryAction.Install
+            else -> UpdatePrimaryAction.ViewUpdate
+        }
 }

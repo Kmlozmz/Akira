@@ -1,0 +1,9 @@
+Liquid Glass sources from ClearPDF by Chethan616.
+https://github.com/Chethan616/ClearPDF
+Revision: 7403022186101c76d80aeaaf024393eb29b0d825
+UI components: Copyright 2026 Chethan616, MIT License (LICENSE-MIT).
+Backdrop engine: AndroidLiquidGlass by kyant0, Apache License 2.0 (LICENSE-APACHE-2.0).
+LiquidStretch: AndroidLiquidGlassView, Copyright 2025-2026 Donny Yale, MIT License.
+Akira adaptations: namespaces, Akira palette, accessible input, shared runtime and settings.
+PDF-specific screens and file operations are not part of this library.
+Integration fixes: live-shape outline invalidation, self-capture guard, single-pass scene recording and reuse of filtered layers on export.

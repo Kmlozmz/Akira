@@ -30,6 +30,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.akira.app.BuildConfig
 import com.akira.app.core.datastore.UserPreferences
 import com.akira.app.core.datastore.UserPreferencesRepository
+import com.akira.app.core.audio.EqualizerConfiguration
+import com.akira.app.core.audio.OutputRoutes
 import com.akira.app.core.design.components.LocalAkiraOverlayBackdrop
 import com.akira.app.core.design.icon.AkiraIcons
 import com.akira.app.core.design.motion.rememberAkiraBouncingFling
@@ -69,11 +71,13 @@ fun SettingsScreen(prefsRepo: UserPreferencesRepository, onBack: () -> Unit, mod
     val haptics = rememberAkiraHaptics()
     val list = rememberLazyListState()
     val backdrop = rememberLayerBackdrop()
+    val pageColor = MaterialTheme.colorScheme.background
+    val controlsBackdrop = com.akira.app.core.design.backdrop.backdrops.rememberCanvasBackdrop { drawRect(pageColor) }
     val collapse by rememberPageCollapse(list)
     val status = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    CompositionLocalProvider(LocalStudioNavigation provides navigation, LocalAppBackdrop provides backdrop,
+    CompositionLocalProvider(LocalStudioNavigation provides navigation, LocalAppBackdrop provides controlsBackdrop,
         LocalAkiraOverlayBackdrop provides backdrop, LocalPageHeaderBackdrop provides backdrop) {
         Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
             .semantics { paneTitle = strings.settingsTitle; isTraversalGroup = true }) {
@@ -82,7 +86,8 @@ fun SettingsScreen(prefsRepo: UserPreferencesRepository, onBack: () -> Unit, mod
                 CircularProgressIndicator(Modifier.size(28.dp), color = MaterialTheme.colorScheme.onSurface)
                 Text(strings.ui(AkiraUiText.SettingsLoading), style = MaterialTheme.typography.bodyMedium)
             } else LazyColumn(state = list,
-                modifier = Modifier.widthIn(max = 720.dp).fillMaxSize().align(Alignment.TopCenter).layerBackdrop(backdrop),
+                modifier = Modifier.widthIn(max = 720.dp).fillMaxSize().align(Alignment.TopCenter)
+                    .then(if (com.akira.app.core.design.glass.LocalLiquidGlassEnabled.current && com.akira.app.core.design.glass.isGlassSupported()) Modifier.layerBackdrop(backdrop) else Modifier),
                 contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = status + 126.dp,
                     bottom = maxOf(bottomContentPadding, bottom + 32.dp)),
                 verticalArrangement = Arrangement.spacedBy(2.dp), flingBehavior = rememberAkiraBouncingFling()) {
@@ -112,7 +117,7 @@ fun SettingsScreen(prefsRepo: UserPreferencesRepository, onBack: () -> Unit, mod
                     Column(Modifier.fillMaxWidth().verticalScroll(LocalPageScrollState.current ?: rememberScrollState(),
                         flingBehavior = rememberAkiraBouncingFling()).padding(top = 118.dp)
                         .padding(horizontal = 24.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(strings.ui(category.summary), Modifier.padding(bottom = 8.dp),
+                        if(category!=SettingsSection.SOUND) Text(strings.ui(category.summary), Modifier.padding(bottom = 8.dp),
                             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         when (category) {
                             SettingsSection.PLAYBACK -> {
@@ -124,10 +129,6 @@ fun SettingsScreen(prefsRepo: UserPreferencesRepository, onBack: () -> Unit, mod
                                     SettingsToggleRow(Icons.Rounded.FastForward, strings.skipSilence, strings.skipSilenceDesc, current.skipSilence) {
                                         scope.launch { prefsRepo.setSkipSilence(it) }
                                     }
-                                    SettingsRow(Icons.Rounded.Waves, strings.transitionsTitle,
-                                        if (current.crossfadeSeconds == 0) strings.transitionGapless else
-                                            strings.transitionCrossfade + " · " + strings.secondsFormat.format(current.crossfadeSeconds),
-                                        { editor = SettingsEditor.TRANSITIONS })
                                 }
                                 SettingsGroupTitle(strings.ui(AkiraUiText.SettingsHeadphones))
                                 SettingsGroup {
@@ -139,6 +140,10 @@ fun SettingsScreen(prefsRepo: UserPreferencesRepository, onBack: () -> Unit, mod
                                 }
                             }
                             SettingsSection.SOUND -> SettingsGroup {
+                                SettingsRow(Icons.Rounded.Waves, strings.transitionCrossfade,
+                                    if(current.crossfadeSeconds==0)localizedText("Off · tracks play without overlap","Desactivado · sin solapamiento")
+                                    else strings.secondsFormat.format(current.crossfadeSeconds),
+                                    {editor=SettingsEditor.TRANSITIONS})
                                 SettingsRow(AkiraIcons.Airplay, strings.library.normalization, normalizationLabel(current.normalizationMode),
                                     { editor = SettingsEditor.NORMALIZATION }, opensSelector = true)
                                 SettingsRow(Icons.Rounded.Equalizer, strings.ui(AkiraUiText.Equalizer),
@@ -199,15 +204,18 @@ fun SettingsScreen(prefsRepo: UserPreferencesRepository, onBack: () -> Unit, mod
                 SettingsEditor.LIBRARY_EXCEPTIONS -> LibraryExceptionsScreen(current, prefsRepo) { editor = null }
                 SettingsEditor.EQUALIZER -> EqualizerScreen(current, haptics, { editor = null },
                     { scope.launch { prefsRepo.setEqEnabled(it) } },
-                    { preset -> scope.launch { prefsRepo.setEqConfiguration(preset.name, preset.gains, preset.bass, preset.space) } },
+                    { preset -> scope.launch { prefsRepo.editActiveEqualizer(OutputRoutes.current.value, preset.name) {
+                        it.copy(bands = preset.gains, bass = preset.bass, space = preset.space)
+                    } } },
                     { index, value -> scope.launch {
-                        prefsRepo.setEqualizer("CUSTOM", current.bassBoost, current.virtualizer)
-                        prefsRepo.setEqBandGain(index, value)
+                        prefsRepo.editActiveEqualizer(OutputRoutes.current.value) { config ->
+                            config.copy(bands = config.bands.toMutableList().also { it[index] = value })
+                        }
                     } },
-                    { scope.launch { prefsRepo.setEqualizer("CUSTOM", it, current.virtualizer) } },
-                    { scope.launch { prefsRepo.setEqualizer("CUSTOM", current.bassBoost, it) } },
-                    { scope.launch { prefsRepo.setEqPreamp(it) } },
-                    { scope.launch { prefsRepo.setEqConfiguration("Equilibrado", List(5) { 0f }, 0f, 0f); prefsRepo.setEqPreamp(1f) } })
+                    { value -> scope.launch { prefsRepo.editActiveEqualizer(OutputRoutes.current.value) { it.copy(bass = value) } } },
+                    { value -> scope.launch { prefsRepo.editActiveEqualizer(OutputRoutes.current.value) { it.copy(space = value) } } },
+                    { value -> scope.launch { prefsRepo.editActiveEqualizer(OutputRoutes.current.value) { it.copy(preamp = value) } } },
+                    { scope.launch { prefsRepo.editActiveEqualizer(OutputRoutes.current.value, "Equilibrado") { EqualizerConfiguration() } } })
                 SettingsEditor.TRANSITIONS -> {
                     val outgoing = CurveSpec(runCatching { CrossfadeShape.valueOf(current.crossfadeOutShape) }.getOrDefault(CrossfadeShape.CURRENT),
                         current.crossfadeOutCurvature, current.crossfadeOutStart, current.crossfadeOutEnd)
@@ -235,7 +243,7 @@ private fun SettingsSection.icon(): ImageVector = when (this) {
     SettingsSection.APPLICATION -> Icons.Rounded.Settings
 }
 
-@Composable private fun normalizationLabel(mode: String): String = LocalStrings.current.library.let {
+@Composable internal fun normalizationLabel(mode: String): String = LocalStrings.current.library.let {
     when (mode) { "TRACK" -> it.track; "ALBUM" -> it.album; else -> it.off }
 }
 @Composable private fun languageLabel(language: String): String = LocalStrings.current.let {

@@ -8,7 +8,7 @@ import androidx.compose.ui.Modifier
 import com.akira.app.core.design.glass.liquidGlass
 import com.akira.app.core.design.backdrop.Backdrop
 
-/** Reading surfaces protect foreground contrast while controls retain clear glass. */
+/** A shared material, with a contrast-protected role for reading surfaces. */
 enum class AkiraMaterialRole { Control, Panel, AudioOutput }
 
 @Composable
@@ -19,5 +19,8 @@ fun Modifier.akiraMaterial(shape: CornerBasedShape, role: AkiraMaterialRole = Ak
 @Composable
 fun AkiraMaterialSurface(shape: CornerBasedShape, modifier: Modifier = Modifier,
     role: AkiraMaterialRole = AkiraMaterialRole.Panel, content: @Composable BoxScope.() -> Unit) {
-    Box(modifier.akiraMaterial(shape,role), content=content)
+    Box(modifier.akiraMaterial(shape,role)) {
+        androidx.compose.runtime.CompositionLocalProvider(
+            com.akira.app.core.design.glass.LocalGlassReadableSurface provides (role != AkiraMaterialRole.Control)) { content() }
+    }
 }

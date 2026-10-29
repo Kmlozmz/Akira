@@ -51,21 +51,36 @@ import com.akira.app.core.design.navigation.*
 import com.akira.app.core.design.rendering.*
 import com.akira.app.feature.home.components.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.stateIn
+
+class HomeFeedSources(context: android.content.Context, scope: kotlinx.coroutines.CoroutineScope) {
+    private val db = AppDatabase.getInstance(context)
+    private val store = PlaylistStore(context)
+    private val started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000)
+    val history = db.historyDao().observeHistory(500).stateIn(scope, started, emptyList())
+    val stats = store.stats.stateIn(scope, started, emptyList())
+    val playlists = store.playlists.stateIn(scope, started, emptyList())
+    val items = store.items.stateIn(scope, started, emptyList())
+}
+
+@Composable internal fun rememberHomeFeedSources(): HomeFeedSources {
+    val context = LocalContext.current.applicationContext
+    val scope = rememberCoroutineScope()
+    return remember(context, scope) { HomeFeedSources(context, scope) }
+}
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, current: Song?, playing: Boolean,
     obscured: Boolean, onPlay: (Song, List<Song>) -> Unit, onTogglePlay: () -> Unit,
     onRandomPlay: (Song) -> Unit, onMore: (Song) -> Unit, onSettings: () -> Unit, onRetry: () -> Unit,
-    modifier: Modifier = Modifier, scrollToTopRequest: Int = 0, playerSheetProgress: () -> Float = { 0f }) {
+    modifier: Modifier = Modifier, scrollToTopRequest: Int = 0, playerSheetProgress: () -> Float = { 0f }, sources: HomeFeedSources? = null) {
     val context = LocalContext.current
-    val db = remember { AppDatabase.getInstance(context) }
-    val store = remember { PlaylistStore(context) }
-    val historyFlow=remember(db){db.historyDao().observeHistory(500)}
-    val history by historyFlow.collectAsStateWithLifecycle(emptyList())
-    val stats by store.stats.collectAsStateWithLifecycle(emptyList())
-    val playlists by store.playlists.collectAsStateWithLifecycle(emptyList())
-    val playlistEntries by store.items.collectAsStateWithLifecycle(emptyList())
+    val retained = sources ?: rememberHomeFeedSources()
+    val history by retained.history.collectAsStateWithLifecycle()
+    val stats by retained.stats.collectAsStateWithLifecycle()
+    val playlists by retained.playlists.collectAsStateWithLifecycle()
+    val playlistEntries by retained.items.collectAsStateWithLifecycle()
     val byId = remember(songs) { songs.associateBy { it.id } }
     val byKey = remember(songs) { songs.associateBy { SongKey.of(it).encoded } }
     val statsMap = remember(stats) { stats.associateBy { it.songKey } }
@@ -250,7 +265,7 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
                     }
                 }
             }
-            HomeTopBar(heroProgress,onSettings,homeGlassState,playerSheetProgress,heroHeight)
+            HomeTopBar(heroProgress,homeGlassState,playerSheetProgress,heroHeight)
             }
             }
         }
@@ -263,8 +278,10 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
 }
 
 @Composable
-internal fun HomeTopBar(progress:()->Float,onSettings:()->Unit,glassState:GlassState,playerSheetProgress:()->Float,
+internal fun HomeTopBar(progress:()->Float,glassState:GlassState,playerSheetProgress:()->Float,
     heroHeightPx:Float) {
+    var profile by remember { mutableStateOf(false) }
+    if (profile) com.akira.app.feature.online.OnlineAccountSheet { profile = false }
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val headerHeight = statusTop + 74.dp
     // Page triggers the brand/title swap once half the hero has scrolled.
@@ -302,8 +319,8 @@ internal fun HomeTopBar(progress:()->Float,onSettings:()->Unit,glassState:GlassS
                 Text(localizedText("Home","Inicio"),style=TextStyle(fontFamily=AkiraFontFamily,fontWeight=FontWeight.Bold,fontSize=32.sp,letterSpacing=(-.06).em),
                     modifier=Modifier.graphicsLayer{alpha=p})
             }
-            com.akira.app.core.design.components.AkiraAccountButton(onSettings,
-                Modifier.graphicsLayer { scaleX=1f-p*.1f;scaleY=scaleX })
+            com.akira.app.core.design.components.AkiraAccountButton({ profile = true },
+                Modifier.graphicsLayer { scaleX=1f-p*.1f;scaleY=scaleX }, alwaysShowProfile = true)
         }
     }
 }

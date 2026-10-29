@@ -337,7 +337,7 @@ internal class GlassPillMotion(
         liftX = liftXPos.toFloat()
         liftY = liftYPos.toFloat()
         material = liftPos.coerceIn(0.0, 1.0).toFloat()
-        deviation = squash.toFloat()
+        deviation = 0f
         glassPresence = (1 - handover).coerceIn(0.0, 1.0).toFloat()
     }
 
@@ -384,12 +384,15 @@ internal class GlassPillMotion(
             stiffness: Double,
             damping: Double,
         ): Pair<Double, Double> {
+            val tunedStiffness = stiffness
+            val ratio = (damping / (2.0 * kotlin.math.sqrt(stiffness))).toFloat()
+            val tunedDamping = 2.0 * kotlin.math.sqrt(tunedStiffness) * ratio
             var t = dt
             var px = x
             var pv = vel
             while (t > 0) {
                 val step = if (t > 1 / 240.0) 1 / 240.0 else t
-                val accel = -stiffness * (px - target) - damping * pv
+                val accel = -tunedStiffness * (px - target) - tunedDamping * pv
                 pv += accel * step
                 px += pv * step
                 t -= step

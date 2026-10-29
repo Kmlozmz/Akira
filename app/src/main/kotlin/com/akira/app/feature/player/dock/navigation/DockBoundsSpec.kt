@@ -7,6 +7,14 @@ import androidx.compose.animation.core.TwoWayConverter
 import androidx.compose.animation.core.VectorizedFiniteAnimationSpec
 import androidx.compose.ui.geometry.Rect
 
+internal object DockSpring {
+    const val WidthDamping = .78f
+    const val TravelDamping = .72f
+    const val HeightDamping = .82f
+    const val WidthStiffness = 600f
+    const val TravelStiffness = 420f
+}
+
 /**
  * A dock changes its width before its vertical travel settles. Using one spring
  * for the four rectangle edges makes it look like a rigid diagonal translation.
@@ -16,10 +24,9 @@ import androidx.compose.ui.geometry.Rect
  */
 internal object DockBoundsSpec : FiniteAnimationSpec<Rect> {
     private val springs = listOf(
-        FloatSpringSpec(dampingRatio = .84f, stiffness = 850f, visibilityThreshold = .1f),
-        FloatSpringSpec(dampingRatio = .82f, stiffness = 650f, visibilityThreshold = .1f),
-        FloatSpringSpec(dampingRatio = .80f, stiffness = 850f, visibilityThreshold = .1f),
-        FloatSpringSpec(dampingRatio = .86f, stiffness = 650f, visibilityThreshold = .1f),
+        FloatSpringSpec(.94f, 850f, .1f), FloatSpringSpec(DockSpring.TravelDamping, DockSpring.TravelStiffness, .1f),
+        FloatSpringSpec(DockSpring.WidthDamping, DockSpring.WidthStiffness, .1f),
+        FloatSpringSpec(DockSpring.HeightDamping, DockSpring.WidthStiffness, .1f),
     )
 
     override fun <V : AnimationVector> vectorize(converter: TwoWayConverter<Rect, V>): VectorizedFiniteAnimationSpec<V> =

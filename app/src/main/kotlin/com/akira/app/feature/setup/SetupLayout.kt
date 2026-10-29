@@ -48,8 +48,6 @@ internal fun SetupLayout(title: String, subtitle: String, onBack: (() -> Unit)? 
     val repo = remember(context) { UserPreferencesRepository(context) }
     val initial = remember(context) { AppUiSnapshot.read(context) ?: UserPreferences() }
     val prefs by repo.userPreferences.collectAsStateWithLifecycle(initial)
-    val opacity by rememberUpdatedState(prefs.liquidGlassOpacity)
-    val diffusion by rememberUpdatedState(prefs.liquidGlassDiffusion)
     val colors = MaterialTheme.colorScheme
     val density = LocalDensity.current
     var headerHeight by remember { mutableStateOf(80.dp) }
@@ -60,11 +58,12 @@ internal fun SetupLayout(title: String, subtitle: String, onBack: (() -> Unit)? 
     CompositionLocalProvider(LocalContentColor provides colors.onBackground,
         LocalAppBackdrop provides backdrop, LocalPageHeaderBackdrop provides backdrop,
         LocalLiquidGlassEnabled provides prefs.liquidGlassEnabled,
-        LocalLiquidGlassOpacity provides remember { { GlassOpacityPreview.value ?: opacity } },
-        LocalLiquidGlassDiffusion provides remember { { GlassDiffusionPreview.value ?: diffusion } }) {
+        LocalDockBackgroundDiffusion provides prefs.dockLiquidGlassEnabled,
+        LocalLiquidGlassOpacity provides { GlassOpacityPreview.value ?: prefs.liquidGlassOpacity },
+        LocalLiquidGlassDiffusion provides { GlassDiffusionPreview.value ?: prefs.liquidGlassDiffusion }) {
         Box(modifier.fillMaxSize().background(colors.background).safeDrawingPadding()
             .semantics { paneTitle = title; isTraversalGroup = true }) {
-            Canvas(Modifier.matchParentSize().layerBackdrop(backdrop).clipToBounds()) {
+            Canvas(Modifier.matchParentSize().then(if (prefs.liquidGlassEnabled && isGlassSupported()) Modifier.layerBackdrop(backdrop) else Modifier).clipToBounds()) {
                 drawRect(colors.background)
                 val center = Offset(size.width * (.85f + .12f * kotlin.math.sin(phase.value)), size.height * .12f)
                 drawCircle(Brush.radialGradient(listOf(AkiraBrand.accent.copy(alpha = .065f), Color.Transparent),
@@ -122,13 +121,13 @@ internal fun SetupLayout(title: String, subtitle: String, onBack: (() -> Unit)? 
                             }
                             Text("Akira", style = MaterialTheme.typography.titleLarge)
                             Spacer(Modifier.weight(1f))
-                            Text("${(step + 1).coerceIn(1, 8).toString().padStart(2, '0')} / 08",
+                            Text("${(step + 1).coerceIn(1, 7).toString().padStart(2, '0')} / 07",
                                 style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
                         }
                         Row(Modifier.fillMaxWidth().semantics {
-                            progressBarRangeInfo = ProgressBarRangeInfo((step + 1).toFloat(), 1f..8f, 6)
+                            progressBarRangeInfo = ProgressBarRangeInfo((step + 1).toFloat(), 1f..7f, 5)
                         }, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                            repeat(8) { index -> Box(Modifier.weight(1f).height(3.dp)
+                            repeat(7) { index -> Box(Modifier.weight(1f).height(3.dp)
                                 .background(if (index <= step) colors.primary else colors.onSurface.copy(alpha = .10f), CircleShape)) }
                         }
                     }

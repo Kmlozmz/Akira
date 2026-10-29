@@ -271,7 +271,11 @@ fun FloatingTabBar(
     val foldStrain=remember(fold) { { fold.strain() } }
     val foldMaterial=remember(fold) { { fold.deformation() } }
     val folding = !fold.settled(scrollConnection.isInline)
-    CompositionLocalProvider(LocalDockMorphActive provides folding,
+    val navigationContact=com.akira.app.core.design.components.rememberAkiraPressResponse(false)
+    CompositionLocalProvider(com.akira.app.core.design.glass.LocalGlassIsDock provides true,
+        LocalDockMorphActive provides folding,
+        LocalDockTargetInline provides scrollConnection.isInline,
+        LocalDockSurfaceContact provides navigationContact,
         LocalDockNavigationGlass provides navigationGlass,
         LocalDockFoldMotion provides fold,
         com.akira.app.core.design.glass.LocalGlassStrain provides foldStrain,
@@ -582,10 +586,11 @@ private fun SharedTransitionScope.InlineBar(
 
 
 @Composable
-private fun DockContactSurface(content: @Composable (Modifier, MutableInteractionSource) -> Unit) {
+private fun DockContactSurface(navigation: Boolean = false, content: @Composable (Modifier, MutableInteractionSource) -> Unit) {
     val touch=remember { MutableInteractionSource() }
     val pressed by touch.collectIsPressedAsState()
-    val response=com.akira.app.core.design.components.rememberAkiraPressResponse(pressed)
+    val ownResponse=com.akira.app.core.design.components.rememberAkiraPressResponse(pressed)
+    val response=if(navigation) LocalDockSurfaceContact.current ?: ownResponse else ownResponse
     val inherited=com.akira.app.core.design.glass.LocalGlassDeformation.current
     val inheritedStrain=com.akira.app.core.design.glass.LocalGlassStrain.current
     val contactStrain=remember(inheritedStrain,response) { { inheritedStrain()+response.strain() } }
@@ -593,7 +598,7 @@ private fun DockContactSurface(content: @Composable (Modifier, MutableInteractio
         com.akira.app.core.design.glass.LocalGlassStrain provides contactStrain,
         com.akira.app.core.design.glass.LocalGlassDeformation provides {
             (inherited()+response.amount()*.35f).coerceIn(0f,1f)
-        }) { content(response.modifier,touch) }
+        }, com.akira.app.core.design.components.LocalGlassPressHandled provides true) { content(response.modifier,touch) }
 }
 
 @Composable
@@ -609,7 +614,7 @@ private fun SharedTransitionScope.InlineTab(
     tabBarContentModifier: @Composable () -> Modifier
 ) {
     val dockBounds=if(LocalContentMotionReduced.current)snap<androidx.compose.ui.geometry.Rect>() else DockBoundsSpec
-    DockContactSurface { contact, touch ->
+    DockContactSurface(navigation = true) { contact, touch ->
     val surfaceShape=rememberDockGlassShape()
     Box(
         modifier = modifier.then(contact)
@@ -917,7 +922,7 @@ private fun SharedTransitionScope.ExpandedTabs(
         val x = position * tabStepPx + tabWidthPx / 2f
         Offset(if (isRtl) rowSize.width - x else x, rowHeightPx / 2f)
     }
-    val showPill = selectedTabIndex >= 0 && tabWidthPx > 0f
+    val showPill = !LocalDockTargetInline.current && selectedTabIndex >= 0 && tabWidthPx > 0f
 
     LaunchedEffect(selectedTabIndex, reduceAnimation) {
         if (selectedTabIndex >= 0) {
@@ -935,7 +940,7 @@ private fun SharedTransitionScope.ExpandedTabs(
     // Unclipped: the lifted pill stands past the bar's edges, so it is drawn
     // here, over the bar, rather than inside the bar's clip.
     Box(
-        modifier = modifier
+        modifier = modifier.then(LocalDockSurfaceContact.current?.modifier ?: Modifier)
             .sharedElement(
                 sharedContentState = rememberSharedContentState("tabGroup"),
                 boundsTransform = { _, _ -> dockBounds },
@@ -1018,7 +1023,7 @@ private fun SharedTransitionScope.ExpandedTabs(
                     tabs.forEach { tab ->
                         val isSelected = tab.key == selectedTabKey
                         val iconScale by animateFloatAsState(
-                            targetValue = if (isSelected) 1.08f else 1f,
+                            targetValue = 1f,
                             animationSpec = selectionSpec,
                             label = "glassTabScale"
                         )

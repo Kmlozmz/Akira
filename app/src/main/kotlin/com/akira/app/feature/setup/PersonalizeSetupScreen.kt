@@ -95,12 +95,12 @@ import kotlin.math.roundToInt
     val completion by rememberUpdatedState(onComplete)
     LaunchedEffect(state.completed) {if(state.completed)completion()}
     val sample=remember(songs) {songs.firstOrNull { !it.albumArtUri.isNullOrBlank() } ?: songs.firstOrNull()}
+    SideEffect { if (step > 4) step = 4; if (presentedStep > 4) presentedStep = 4 }
     val titles = listOf(
         localizedText("Library filters", "Filtros de biblioteca"),
         localizedText("Appearance", "Apariencia"),
         localizedText("Player", "Reproductor"),
         localizedText("Playback", "Reproducción"),
-        "Liquid Glass",
         localizedText("Setup complete", "Configuración lista")
     )
     val subtitles = listOf(
@@ -108,19 +108,18 @@ import kotlin.math.roundToInt
         localizedText("Choose a light or dark theme, or use your phone’s setting.", "Elige un tema claro, oscuro o el del teléfono."),
         localizedText("Preview the album cover layout.", "Comprueba cómo se verá la portada."),
         localizedText("Adjust song transitions and volume.", "Ajusta las transiciones y el volumen."),
-        localizedText("Adjust transparency and background blur.", "Ajusta la transparencia y el desenfoque del fondo."),
         localizedText("Your library and settings are ready.", "Tu biblioteca y tus ajustes están listos.")
     )
-    SetupLayout(titles[presentedStep], subtitles[presentedStep], { if (!finishing) back() },
+    SetupLayout(titles[presentedStep.coerceAtMost(4)], subtitles[presentedStep.coerceAtMost(4)], { if (!finishing) back() },
         step = presentedStep + 2, pagePresence = { pagePresence.value }, footer = {
             val page = presentedStep
-            SetupAction(if(finishing)localizedText("Preparing your collection…","Preparando tu colección…") else if(page==5)localizedText("Start listening","Empezar a escuchar") else localizedText("Continue","Continuar"),
+            SetupAction(if(finishing)localizedText("Preparing your collection…","Preparando tu colección…") else if(page==4)localizedText("Start listening","Empezar a escuchar") else localizedText("Continue","Continuar"),
                 enabled=!finishing && !saveFailed) {
                 if(changingPage) return@SetupAction
                 // Wait for preference writes before advancing without blinking the footer disabled.
                 scope.launch {
                     snapshotFlow {pending}.first {it==0}
-                    if(!finishing && !saveFailed && step==page) {if(page<5)step++ else {finishing=true;model.controller.start()}}
+                    if(!finishing && !saveFailed && step==page) {if(page<4)step++ else {finishing=true;model.controller.start()}}
                 }
             }
         }) {
@@ -183,8 +182,7 @@ import kotlin.math.roundToInt
                         SetupSoundChoice(localizedText("By album","Por álbum"),localizedText("Keep an album’s intended balance","Respeta el equilibrio de cada álbum"),prefs.normalizationMode=="ALBUM",AkiraIcons.Album) {save {repo.setNormalizationMode("ALBUM")}}
                     }
                 }
-                4 -> com.akira.app.feature.settings.GlassSettingsControls(prefs,repo,sample,scope,tonalReset=true)
-                5 -> {
+                4 -> {
                     val included = remember(songs, prefs.minDurationSeconds, prefs.excludedFolderPaths, prefs.whitelistedSongIds) {
                         songs.filter { com.akira.app.core.data.passesLibraryFilters(it, prefs.minDurationSeconds, prefs.excludedFolderPaths, prefs.whitelistedSongIds) }
                     }

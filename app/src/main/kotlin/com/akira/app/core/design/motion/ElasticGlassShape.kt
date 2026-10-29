@@ -52,7 +52,7 @@ internal class ElasticGlassShape(
     }
     override fun createOutline(size: Size, topStart: Float, topEnd: Float, bottomEnd: Float,
         bottomStart: Float, layoutDirection: LayoutDirection): Outline {
-        val radiusPx = radius().coerceIn(0f,size.minDimension/2f)
+        val radiusPx = minOf(topStart, topEnd, bottomEnd, bottomStart).coerceIn(0f,size.minDimension/2f)
         val smooth = smoothing().coerceIn(0f,1f)
         val deformation = strainFor(size)
         // Clipping, the rim and the shadow request the same outline in a frame.

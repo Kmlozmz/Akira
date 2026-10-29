@@ -61,13 +61,11 @@ class AkiraMenuSource(private val host: AkiraMenuAnchors?, private val hideOnOpe
             if (returningProvider?.invoke() == true) 1f - presence else 0f
         } else 1f - .55f * presence
     }
-    internal fun responseAmount(): Float = max(contactProvider?.invoke() ?: 0f,
-        sin(presentationProgress().coerceIn(0f,1f)*PI.toFloat())*.7f)
-    /** Applied to the whole shared capsule, including its sampled material. */
+    internal fun responseAmount(): Float = contactProvider?.invoke() ?: 0f
+    /** Contact belongs to the complete control, not its individual glyphs. */
     internal val containerModifier: Modifier = Modifier.graphicsLayer {
         val p=responseAmount()
-        scaleX=1f+.035f*p;scaleY=1f-.055f*p
-        translationY=2.dp.toPx()*p
+        scaleX=1f-.02f*p;scaleY=scaleX
     }
     private val focus = androidx.compose.ui.focus.FocusRequester()
     internal fun captureBounds(bounds: Rect, isAttached: Boolean) { rect=bounds;attached=isAttached }
@@ -201,6 +199,9 @@ enum class AkiraMenuStyle { Actions, Choices }
         if(style==AkiraMenuStyle.Choices) Box(Modifier.size(18.dp),contentAlignment=Alignment.Center) {
             if(action.selected) Icon(Icons.Rounded.Check,null,Modifier.size(15.dp),tint=color)
         } else action.icon?.let { Icon(it,null,Modifier.size(22.dp),tint=color) }
+        if(style==AkiraMenuStyle.Choices) action.icon?.let {
+            Spacer(Modifier.width(8.dp));Icon(it,null,Modifier.size(20.dp),tint=color)
+        }
         Spacer(Modifier.width(if(style==AkiraMenuStyle.Choices)10.dp else if(dense)12.dp else 16.dp));Box(Modifier.weight(1f)){label()}
         if(action.hasSubmenu)Icon(com.akira.app.core.design.icon.AkiraIcons.ChevronRight,null,Modifier.size(16.dp),tint=color.copy(alpha=.6f))}
 }

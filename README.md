@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Kmlozmz/Akira/releases"><img src="https://img.shields.io/badge/versi%C3%B3n-0.2.0-FA243C?style=flat-square" alt="Versión 0.2.0" /></a>
+  <a href="https://github.com/Kmlozmz/Akira/releases"><img src="https://img.shields.io/badge/versi%C3%B3n-0.3.0-FA243C?style=flat-square" alt="Versión 0.3.0" /></a>
   <img src="https://img.shields.io/badge/Android-8.0%2B-242428?style=flat-square" alt="Android 8.0 o posterior" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/licencia-GPL--3.0-242428?style=flat-square" alt="GPL versión 3" /></a>
   <img src="https://img.shields.io/badge/idiomas-ES%20%2F%20EN-242428?style=flat-square" alt="Español e inglés" />
@@ -56,7 +56,7 @@ El modo en línea sigue en desarrollo; el catálogo, la conexión de cuentas y a
   <tr>
     <td valign="top">
       <h3>Elegir cómo se ve</h3>
-      <p>Temas claro y oscuro, colores de la portada, carátulas a pantalla completa y controles Liquid Glass configurables.</p>
+      <p>Temas claro y oscuro, colores de la portada, carátulas a pantalla completa y controles Liquid Glass configurables con respuesta háptica.</p>
     </td>
     <td valign="top">
       <h3>Controlar la reproducción</h3>
@@ -99,7 +99,7 @@ La disponibilidad de los efectos y de las transiciones depende del dispositivo, 
 
 Akira puede leer letras locales o consultar varios proveedores. La búsqueda automática compara las opciones disponibles y da prioridad a las letras sincronizadas. Si el tiempo no coincide, puedes corregirlo desde el reproductor.
 
-El reproductor admite portadas enmarcadas o a pantalla completa, colores obtenidos de la carátula y material animado cuando está disponible y es compatible. Los controles y paneles Liquid Glass permiten ajustar su transparencia y difusión.
+El reproductor admite portadas enmarcadas o a pantalla completa, colores obtenidos de la carátula y portadas animadas cuando están disponibles. Los controles y paneles Liquid Glass permiten ajustar su transparencia y difusión desde Apariencia. La respuesta háptica y la reducción de movimiento se configuran por separado.
 
 ## Instalación y actualizaciones
 

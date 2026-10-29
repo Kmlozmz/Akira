@@ -104,7 +104,14 @@ internal data class LibraryCategoryLink(val key: String, val title: String, val 
 @Composable internal fun LibraryActionCapsule(first: ImageVector, description: String,
     onFirst: () -> Unit, onMore: () -> Unit) {
     val source = rememberAkiraMenuSource(hasOwnSurface = true, icon = null)
-    val ink = if (MaterialTheme.colorScheme.background.luminance() > .5f) Color.Black else MaterialTheme.colorScheme.onSurface
+    val response = rememberAkiraPressResponse(false)
+    DisposableEffect(source, response) {
+        source.contactProvider = response.amount
+        source.contactStrain = response.strain
+        onDispose { source.contactProvider = { 0f }; source.contactStrain = { androidx.compose.ui.geometry.Offset.Zero } }
+    }
+    val probe = com.akira.app.core.design.glass.rememberGlassInk()
+    val ink = probe.color
     source.visualVerticalInsetPx = with(LocalDensity.current) { 2.dp.toPx() }
     SideEffect {
         source.surfaceContent = {
@@ -114,13 +121,15 @@ internal data class LibraryCategoryLink(val key: String, val title: String, val 
             }
         }
     }
-    Box(Modifier.size(112.dp, 48.dp).then(source.modifier).then(source.containerModifier)) {
+    Box(Modifier.size(112.dp, 48.dp).then(response.modifier).then(probe.modifier).then(source.modifier).then(source.containerModifier)) {
         Box(Modifier.matchParentSize().padding(vertical = 2.dp).akiraNavigationSurface(RoundedCornerShape(50)))
+        CompositionLocalProvider(LocalGlassPressHandled provides true) {
         Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
             AkiraIconButton(first, description, { source.open(onFirst) }, Modifier.weight(1f), tint = ink,
                 showBackground = false, glyphSize = 23.dp)
             AkiraIconButton(AkiraIcons.MoreHoriz, localizedText("More options", "Más opciones"), onMore, Modifier.weight(1f),
                 tint = ink, showBackground = false, glyphSize = 23.dp, menuSourceOverride = source, glyphOverride = LibraryIcons.More)
+        }
         }
     }
 }

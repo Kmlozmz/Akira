@@ -31,6 +31,7 @@ import com.akira.app.core.design.backdrop.backdrops.rememberLayerBackdrop
 @Composable
 internal fun AppearanceScreen(prefs: UserPreferences, repo: UserPreferencesRepository,
     previewSongs: List<Song>, previewSong: Song?, onBack: () -> Unit) {
+    var showInteraction by androidx.compose.runtime.saveable.rememberSaveable {mutableStateOf(false)}
     var showGlass by androidx.compose.runtime.saveable.rememberSaveable {mutableStateOf(false)}
     val scope = rememberCoroutineScope()
     val strings = LocalStrings.current
@@ -82,10 +83,14 @@ internal fun AppearanceScreen(prefs: UserPreferences, repo: UserPreferencesRepos
         }
         }
         Spacer(Modifier.height(16.dp))
-        SettingsGroup { SettingsRow(AkiraIcons.Appearance,"Liquid Glass",
-            com.akira.app.core.design.components.localizedText("Material, opacity and background diffusion","Material, opacidad y difuminado del fondo"),{showGlass=true})
+        SettingsGroup {
+            SettingsRow(AkiraIcons.Appearance,"Liquid Glass",
+                com.akira.app.core.design.components.localizedText("Transparency and background diffusion", "Transparencia y difuminado del fondo"),{showGlass=true})
+            SettingsRow(AkiraIcons.Appearance,com.akira.app.core.design.components.localizedText("Interaction", "Interacción"),
+            com.akira.app.core.design.components.localizedText("Haptic feedback and motion", "Respuesta háptica y movimiento"),{showInteraction=true})
         }
     }
     }
+    if(showInteraction)InteractionSettingsScreen() {showInteraction=false}
     if(showGlass)LiquidGlassSettingsScreen(prefs,repo,previewSong ?: previewSongs.firstOrNull()) {showGlass=false}
 }

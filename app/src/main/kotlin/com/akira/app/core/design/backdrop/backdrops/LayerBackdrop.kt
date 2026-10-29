@@ -51,16 +51,24 @@ class LayerBackdrop internal constructor(
     override val isCoordinatesDependent: Boolean = true
 
     internal var layerCoordinates: LayoutCoordinates? by mutableStateOf(null)
+    internal var isRecording = false
 
     private var inverseLayerScope: InverseLayerScope? = null
+    private val samplingMatrix = Matrix()
 
     override fun DrawScope.drawBackdrop(
         density: Density,
         coordinates: LayoutCoordinates?,
         layerBlock: (GraphicsLayerScope.() -> Unit)?
     ) {
+        if (isRecording) return
         val coordinates = coordinates?.takeIf { it.isAttached } ?: return
         val layerCoordinates = layerCoordinates?.takeIf { it.isAttached } ?: return
+        var ancestor: LayoutCoordinates? = coordinates
+        while (ancestor != null) {
+            if (ancestor === layerCoordinates) return
+            ancestor = ancestor.parentCoordinates
+        }
         // Map the recorded page into this surface's *current* local frame.
         // Translation alone glued the background to a control as its parent
         // squashed or stretched. Three points retain scale/shear/rotation too,
@@ -69,7 +77,8 @@ class LayerBackdrop internal constructor(
             val origin=coordinates.windowToLocal(layerCoordinates.localToWindow(Offset.Zero))
             val x=coordinates.windowToLocal(layerCoordinates.localToWindow(Offset(1f,0f)))-origin
             val y=coordinates.windowToLocal(layerCoordinates.localToWindow(Offset(0f,1f)))-origin
-            Matrix().apply {
+            samplingMatrix.apply {
+                reset()
                 values[0]=x.x;values[1]=x.y
                 values[4]=y.x;values[5]=y.y
                 values[12]=origin.x;values[13]=origin.y

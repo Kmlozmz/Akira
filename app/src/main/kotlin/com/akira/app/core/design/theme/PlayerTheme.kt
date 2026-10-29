@@ -128,8 +128,13 @@ fun AkiraTheme(
         typography = PlayerTypography
     ) {
         val base = LocalTextStyle.current
+        val reduced = com.akira.app.core.design.components.LocalContentMotionReduced.current || com.akira.app.core.design.motion.InteractionPreferences.reducedMotion
+        val delegateHaptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+        val haptics = remember(delegateHaptics) { com.akira.app.core.design.util.PreferenceHaptics(delegateHaptics) }
         CompositionLocalProvider(
             LocalRippleConfiguration provides null,
+            com.akira.app.core.design.components.LocalContentMotionReduced provides reduced,
+            androidx.compose.ui.platform.LocalHapticFeedback provides haptics,
             androidx.compose.foundation.LocalOverscrollFactory provides com.akira.app.core.design.motion.rememberAkiraBouncingFactory(),
             LocalThemeMode provides resolved,
             LocalAppearancePreset provides "MIDNIGHT",
