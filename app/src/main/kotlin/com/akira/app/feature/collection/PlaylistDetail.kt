@@ -30,7 +30,7 @@ import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.akira.app.R
-import com.akira.app.core.design.theme.AkiraFontFamily
+import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 import com.akira.app.core.design.components.*
 import com.akira.app.core.design.navigation.*
 import com.akira.app.core.design.rendering.*
@@ -51,48 +51,48 @@ internal val TrackShape = RoundedCornerShape(9.dp)
 // a pressed track lights a pill from one side of the screen to the other, like the swipe slab
 private val TrackHighlight: androidx.compose.foundation.Indication @Composable get() = RoundedHighlight(100.dp, (-10).dp, color = LocalDetailInk.current.copy(alpha=.12f))
 
-internal val PlaylistTitleStyle = TextStyle(
+internal val PlaylistTitleStyle: TextStyle @Composable get() = TextStyle(
     fontFamily = AkiraFontFamily,
     fontWeight = FontWeight.Bold,
     fontSize = 24.sp,
     lineHeight = 28.sp,
     letterSpacing = PlaylistTracking,
 )
-internal val PlaylistCreatorStyle = TextStyle(
+internal val PlaylistCreatorStyle: TextStyle @Composable get() = TextStyle(
     fontFamily = AkiraFontFamily,
     fontWeight = FontWeight.Bold,
     fontSize = 15.sp,
     lineHeight = 18.sp,
     letterSpacing = (-0.04).em,
 )
-internal val PlaylistStatsStyle = TextStyle(
+internal val PlaylistStatsStyle: TextStyle @Composable get() = TextStyle(
     fontFamily = AkiraFontFamily,
     fontWeight = FontWeight.SemiBold,
     fontSize = 11.sp,
     lineHeight = 14.sp,
     letterSpacing = (-0.02).em,
 )
-internal val PillLabelStyle = TextStyle(
+internal val PillLabelStyle: TextStyle @Composable get() = TextStyle(
     fontFamily = AkiraFontFamily,
     fontWeight = FontWeight.Bold,
     fontSize = 16.sp,
     letterSpacing = PlaylistTracking,
 )
-internal val TrackTitleStyle = TextStyle(
+internal val TrackTitleStyle: TextStyle @Composable get() = TextStyle(
     fontFamily = AkiraFontFamily,
     fontWeight = FontWeight.SemiBold,
     fontSize = 14.sp,
     lineHeight = 17.sp,
     letterSpacing = (-0.03).em,
 )
-internal val TrackSubtitleStyle = TextStyle(
+internal val TrackSubtitleStyle: TextStyle @Composable get() = TextStyle(
     fontFamily = AkiraFontFamily,
     fontWeight = FontWeight.Medium,
     fontSize = 11.5.sp,
     lineHeight = 14.sp,
     letterSpacing = (-0.02).em,
 )
-internal val SectionTitleStyle = TextStyle(
+internal val SectionTitleStyle: TextStyle @Composable get() = TextStyle(
     fontFamily = AkiraFontFamily,
     fontWeight = FontWeight.Bold,
     fontSize = 16.sp,
@@ -650,7 +650,7 @@ fun playlistCompactHeaderTop(): Dp =
 @Composable
 fun playlistCompactHeaderHeight(): Dp = playlistCompactHeaderTop() + 120.dp
 
-internal val PlaylistCompactTitleStyle = TextStyle(
+internal val PlaylistCompactTitleStyle: TextStyle @Composable get() = TextStyle(
     fontFamily = AkiraFontFamily,
     fontWeight = FontWeight.Bold,
     fontSize = 32.sp,

@@ -87,8 +87,7 @@ internal fun rememberPlayerArtworkMotion(expansion: Animatable<Float,*>,
 
 @Composable
 internal fun PlayerArtworkSurface(motion: PlayerArtworkMotion, song: Song,
-    expansion: Animatable<Float,*>, fullWidthPx: Float, motionArtwork: MotionArtwork?=null,
-    isPlaying: Boolean=false) {
+    expansion: Animatable<Float,*>, fullWidthPx: Float, motionArtwork: MotionArtwork?=null) {
     val density=LocalDensity.current
     val outline=remember(motion,density) {
         ElasticGlassShape({motion.radius.value},{0f},{androidx.compose.ui.geometry.Offset.Zero},density)
@@ -122,7 +121,7 @@ internal fun PlayerArtworkSurface(motion: PlayerArtworkMotion, song: Song,
             },tint=Color.White)
         }
         if(motionArtwork!=null && motion.ready) {
-            MotionArtworkVideo(motionArtwork,isPlaying,Modifier.fillMaxSize())
+            MotionArtworkVideo(motionArtwork,isPlaying=true,Modifier.fillMaxSize())
         }
     }
 }

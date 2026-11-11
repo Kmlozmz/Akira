@@ -57,20 +57,21 @@ fun LiquidToggle(
     backdrop: Backdrop,
     modifier: Modifier = Modifier
 ) {
+    val sharedMaterial = com.akira.app.core.design.glass.LocalSharedGlassMaterial.current
+    val glassOpacity = com.akira.app.core.design.glass.LocalLiquidGlassOpacity.current
+    val glassDiffusion = com.akira.app.core.design.glass.LocalLiquidGlassDiffusion.current
     val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(context) { MotionSettings.load(context) }
     val isDarkMode = (MaterialTheme.colorScheme.surface.luminance() < .5f)
     val isLightTheme = !isDarkMode
-    val accentColor =
-        if (isLightTheme) Color(0xFFFA243C)
-        else Color(0xFFFA243C)
+    val accentColor = MaterialTheme.colorScheme.primary
     val trackColor =
         if (isLightTheme) Color(0xFF787878).copy(0.2f)
         else Color(0xFF787880).copy(0.36f)
 
     val density = LocalDensity.current
     val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
-    val dragWidth = with(density) { 20f.dp.toPx() }
+    val dragWidth = with(density) { (if (sharedMaterial != null) 22f else 20f).dp.toPx() }
     val animationScope = rememberCoroutineScope()
     var didDrag by remember { mutableStateOf(false) }
     var fraction by remember { mutableFloatStateOf(if (selected()) 1f else 0f) }
@@ -154,7 +155,7 @@ fun LiquidToggle(
                     val fraction = dampedDragAnimation.value
                     drawRect(lerp(trackColor, accentColor, fraction))
                 }
-                .size(64f.dp, 28f.dp)
+                .size(if (sharedMaterial != null) 63.dp else 64.dp, 28.dp)
         )
 
         Box(
@@ -174,40 +175,48 @@ fun LiquidToggle(
                             val progress = dampedDragAnimation.pressProgress
                             val scaleX = lerp(2f / 3f, 0.75f, progress)
                             val scaleY = lerp(0f, 0.75f, progress)
-                            scale(scaleX, scaleY) {
-                                drawBackdrop()
-                            }
+                            if(sharedMaterial!=null)drawBackdrop()
+                            else scale(scaleX, scaleY) { drawBackdrop() }
                         }
                     ),
                     shape = { Capsule },
                     effects = {
-                        val progress = dampedDragAnimation.pressProgress
-                        // At rest the thumb is an opaque white capsule (see onDrawSurface), so a blur
-                        // of what is under it would be invisible work. Only refract once pressed.
-                        if (progress > 0f) blur(8f.dp.toPx() * (1f - progress) * GlassSettings.style.blur)
-                        lens(
-                            5f.dp.toPx() * progress * GlassSettings.style.refractionHeight,
-                            10f.dp.toPx() * progress * GlassSettings.style.refractionAmount,
-                            chromaticAberration = GlassSettings.style.chromaticAberration, depthEffect = GlassSettings.style.depthEffect
-                        )
+                        if (sharedMaterial != null) {
+                            sharedMaterial.switchMaterial?.apply(this,
+                                dampedDragAnimation.pressProgress.coerceIn(0f,1f))
+                        } else {
+                            val progress = dampedDragAnimation.pressProgress
+                            // At rest the thumb is an opaque white capsule (see onDrawSurface), so a blur
+                            // of what is under it would be invisible work. Only refract once pressed.
+                            if (progress > 0f) blur(8f.dp.toPx() * (1f - progress) * GlassSettings.style.blur)
+                            lens(
+                                5f.dp.toPx() * progress * GlassSettings.style.refractionHeight,
+                                10f.dp.toPx() * progress * GlassSettings.style.refractionAmount,
+                                chromaticAberration = GlassSettings.style.chromaticAberration, depthEffect = GlassSettings.style.depthEffect
+                            )
+                        }
                     },
                     highlight = {
-                        val progress = dampedDragAnimation.pressProgress
-                        // Alpha 0 at rest: skip it outright, so an idle thumb never builds the
-                        // highlight shader at all.
-                        if (progress <= 0f) null else Highlight.Ambient.copy(
-                            width = Highlight.Ambient.width / 1.5f,
-                            blurRadius = Highlight.Ambient.blurRadius / 1.5f,
-                            alpha = progress
-                        )
+                        if (sharedMaterial != null) null else {
+                            val progress = dampedDragAnimation.pressProgress
+                            // Alpha 0 at rest: skip it outright, so an idle thumb never builds the
+                            // highlight shader at all.
+                            if (progress <= 0f) null else Highlight.Ambient.copy(
+                                width = Highlight.Ambient.width / 1.5f,
+                                blurRadius = Highlight.Ambient.blurRadius / 1.5f,
+                                alpha = progress
+                            )
+                        }
                     },
                     shadow = null,
                     innerShadow = {
-                        val progress = dampedDragAnimation.pressProgress
-                        if (progress <= 0f) null else InnerShadow(
-                            radius = 4f.dp * progress,
-                            alpha = progress
-                        )
+                        if (sharedMaterial != null) null else {
+                            val progress = dampedDragAnimation.pressProgress
+                            if (progress <= 0f) null else InnerShadow(
+                                radius = 4f.dp * progress,
+                                alpha = progress
+                            )
+                        }
                     },
                     // The backdrop is fully covered by the opaque white surface at rest; don't even
                     // record it then. A scrolling list re-samples every visible glass node per frame,
@@ -216,15 +225,20 @@ fun LiquidToggle(
                         if (dampedDragAnimation.pressProgress > 0f) drawBackdrop()
                     },
                     layerBlock = {
-                        scaleX = dampedDragAnimation.scaleX
-                        scaleY = dampedDragAnimation.scaleY
+                        if(sharedMaterial!=null && !GlassSettings.reducedMotion) {
+                            val p=dampedDragAnimation.pressProgress
+                            scaleX=1f+21f/37f*p;scaleY=1f+14.333f/24f*p
+                        } else {
+                            scaleX=dampedDragAnimation.scaleX;scaleY=dampedDragAnimation.scaleY
+                        }
                     },
                     onDrawSurface = {
                         val progress = dampedDragAnimation.pressProgress
-                        drawRect(Color.White.copy(alpha = 1f - progress))
+                        drawRect(Color.White.copy(alpha = if (sharedMaterial != null &&
+                            (sharedMaterial.failed || sharedMaterial.switchMaterial?.failed!=false || android.os.Build.VERSION.SDK_INT < 33)) 1f else 1f - progress))
                     }
                 )
-                .size(40f.dp, 24f.dp)
+                .size(if (sharedMaterial != null) 37.dp else 40.dp, 24.dp)
         )
     }
 }

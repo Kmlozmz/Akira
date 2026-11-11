@@ -22,7 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.*
-import com.akira.app.core.design.theme.AkiraFontFamily
+import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 import com.akira.app.core.i18n.akiraStrings
 import com.akira.app.core.design.components.LocalContentMotionReduced
 import kotlinx.coroutines.launch
@@ -47,6 +47,7 @@ class AkiraMenuSource(private val host: AkiraMenuAnchors?, private val hideOnOpe
     internal var controlSizePx = 48f
     internal var visualInsetPx = 0f
     internal var visualVerticalInsetPx = 0f
+    internal var flatSourceSurface = false
     internal var surfaceContent: (@Composable () -> Unit)? = null
     internal var attached by mutableStateOf(true)
     internal var progressProvider by mutableStateOf<(() -> Float)?>(null)
@@ -54,13 +55,9 @@ class AkiraMenuSource(private val host: AkiraMenuAnchors?, private val hideOnOpe
     internal var contactProvider by mutableStateOf<(() -> Float)?>(null)
     internal var contactStrain by mutableStateOf<(() -> Offset)?>(null)
     internal fun presentationProgress(): Float = progressProvider?.invoke() ?: 0f
-    internal fun presentationAlpha(): Float {
-        if (!hideOnOpen || progressProvider == null || host?.hiddenSource !== this) return 1f
-        val presence = presentationSourcePresence(presentationProgress())
-        return if (hasOwnSurface) {
-            if (returningProvider?.invoke() == true) 1f - presence else 0f
-        } else 1f - .55f * presence
-    }
+    internal val transfersForeground get()=hideOnOpen
+    internal fun presentationAlpha(): Float =
+        if(hideOnOpen && progressProvider!=null && host?.hiddenSource===this)0f else 1f
     internal fun responseAmount(): Float = contactProvider?.invoke() ?: 0f
     /** Contact belongs to the complete control, not its individual glyphs. */
     internal val containerModifier: Modifier = Modifier.graphicsLayer {
@@ -110,7 +107,7 @@ class AkiraMenuSource(private val host: AkiraMenuAnchors?, private val hideOnOpe
     return then(source.modifier).clickable(role=Role.Button){haptics.light();source.open(onClick)}
 }
 data class AkiraContextAction(val icon:ImageVector?,val label:String,val selected:Boolean=false,
-    val destructive:Boolean=false,val opensPresentation:Boolean=false,val hasSubmenu:Boolean=false,val onClick:()->Unit)
+    val destructive:Boolean=false,val opensPresentation:Boolean=false,val hasSubmenu:Boolean=false,val description:String?=null,val onClick:()->Unit)
 
 /** Places a menu beside its trigger while keeping it inside the safe window bounds. */
 internal fun anchoredMenuPosition(anchor:Rect?,window:Size,child:Size,margin:Float,gap:Float,preferAbove:Boolean,
@@ -133,7 +130,8 @@ enum class AkiraMenuStyle { Actions, Choices }
 
 @Composable fun AkiraContextMenu(onDismiss: () -> Unit, quickActions: List<AkiraContextAction> = emptyList(),
     groups: List<List<AkiraContextAction>>, preferAbove: Boolean = false, dense: Boolean = false,
-    style: AkiraMenuStyle = AkiraMenuStyle.Actions) {
+    style: AkiraMenuStyle = AkiraMenuStyle.Actions,title:String?=null,
+    header: (@Composable () -> Unit)? = null) {
     val presentation = LocalAkiraPresentationState.current
     val options = akiraStrings().options
     AkiraPresentation(AkiraPresentationKind.Menu, onDismiss, preferAbove) {
@@ -144,14 +142,20 @@ enum class AkiraMenuStyle { Actions, Choices }
                 // surface while it returns. Nested panels instead retarget it.
                 val entry = presentation.entries.lastOrNull { !it.removed }
                 if (entry != null) {
+                    presentation.dismissAll()
                     action.onClick()
-                    presentation.closing = entry
                 }
             } else { action.onClick(); onDismiss() }
         }
+        AkiraMenuContactSurface(enabled = presentation?.closing == null) { contact ->
+        val scroll = rememberScrollState()
+        contact.scroll = scroll
         BoxWithConstraints(Modifier.semantics { paneTitle = options }) {
             val groupsContent: @Composable ColumnScope.() -> Unit = {
-                Column(Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+                Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+                    if(!title.isNullOrBlank())Text(title,Modifier.padding(horizontal=20.dp,vertical=8.dp),
+                        fontFamily=AkiraFontFamily,fontSize=12.sp,fontWeight=FontWeight.SemiBold,
+                        color=MaterialTheme.colorScheme.onSurfaceVariant)
                     groups.filter { it.isNotEmpty() }.forEachIndexed { index, group ->
                         if (index > 0 || quickActions.isNotEmpty()) HorizontalDivider(
                             Modifier.padding(horizontal = 16.dp, vertical = if (index == 0) 0.dp else if (dense) 4.dp else 8.dp),
@@ -162,6 +166,8 @@ enum class AkiraMenuStyle { Actions, Choices }
             }
             val shortcutColumns = if (androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.4f) 2 else quickActions.size.coerceIn(1,4)
             val shortcuts: @Composable () -> Unit = {
+                Column(Modifier.fillMaxWidth()) {
+                header?.invoke()
                 if (quickActions.isNotEmpty()) Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                     quickActions.chunked(shortcutColumns).forEach { actions ->
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
@@ -172,10 +178,12 @@ enum class AkiraMenuStyle { Actions, Choices }
                         }
                     }
                 }
+                }
             }
             if (maxHeight < 360.dp || androidx.compose.ui.platform.LocalDensity.current.fontScale * 17 > 28)
-                Column(Modifier.verticalScroll(rememberScrollState())) { shortcuts(); groupsContent() }
-            else Column { shortcuts(); Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), content = groupsContent) }
+                Column(Modifier.onGloballyPositioned { contact.viewport = it }.verticalScroll(scroll)) { shortcuts(); groupsContent() }
+            else Column { shortcuts(); Column(Modifier.weight(1f, fill = false).onGloballyPositioned { contact.viewport = it }.verticalScroll(scroll), content = groupsContent) }
+        }
         }
     }
 }
@@ -187,11 +195,12 @@ enum class AkiraMenuStyle { Actions, Choices }
     val pressed by interaction.collectIsPressedAsState()
     val response=rememberAkiraPressResponse(pressed)
     val source=rememberAkiraMenuSource(hideOnOpen=false,icon=action.icon)
-    val modifier=Modifier.fillMaxWidth().heightIn(min=48.dp).then(if(action.opensPresentation)source.modifier else Modifier).then(response.modifier).background(color.copy(alpha=if(pressed).07f else 0f),androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+    val activate = { if(action.opensPresentation) source.open(onClick) else onClick() }
+    val modifier=Modifier.menuContactTarget(activate).fillMaxWidth().heightIn(min=com.akira.app.core.design.system.AkiraMenuSpec.rowHeight.dp).then(if(action.opensPresentation)source.modifier else Modifier).then(response.modifier).background(color.copy(alpha=if(pressed).07f else 0f),androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
         .clickable(interactionSource=interaction,indication=null,enabled=enabled,role=Role.Button,
-            onClick={if(action.opensPresentation)source.open(onClick) else onClick()})
+            onClick=activate)
         .semantics{selected=action.selected}
-        .padding(horizontal=if(compact)4.dp else 16.dp,vertical=if(compact){if(dense)6.dp else 10.dp}else if(dense)8.dp else 14.dp)
+        .padding(horizontal=if(compact)4.dp else com.akira.app.core.design.system.AkiraMenuSpec.horizontalInset.dp,vertical=if(compact){if(dense)6.dp else 10.dp}else if(dense)8.dp else 14.dp)
     val label:@Composable ()->Unit={Text(action.label,fontFamily=AkiraFontFamily,fontSize=(if(compact)12 else 16).sp,
         fontWeight=if(compact)FontWeight.SemiBold else FontWeight.Normal,textAlign=if(compact)TextAlign.Center else TextAlign.Start,color=color)}
     if(compact)Column(modifier,horizontalAlignment=Alignment.CenterHorizontally){action.icon?.let { Icon(it,null,Modifier.size(21.dp),tint=color) };Spacer(Modifier.height(if(dense)4.dp else 7.dp));label()}
@@ -202,6 +211,10 @@ enum class AkiraMenuStyle { Actions, Choices }
         if(style==AkiraMenuStyle.Choices) action.icon?.let {
             Spacer(Modifier.width(8.dp));Icon(it,null,Modifier.size(20.dp),tint=color)
         }
-        Spacer(Modifier.width(if(style==AkiraMenuStyle.Choices)10.dp else if(dense)12.dp else 16.dp));Box(Modifier.weight(1f)){label()}
+        Spacer(Modifier.width(if(style==AkiraMenuStyle.Choices)10.dp else if(dense)12.dp else 16.dp));Column(Modifier.weight(1f)){
+            label()
+            action.description?.let{Text(it,fontFamily=AkiraFontFamily,fontSize=12.sp,lineHeight=16.sp,
+                color=color.copy(alpha=.68f),modifier=Modifier.padding(top=3.dp))}
+        }
         if(action.hasSubmenu)Icon(com.akira.app.core.design.icon.AkiraIcons.ChevronRight,null,Modifier.size(16.dp),tint=color.copy(alpha=.6f))}
 }

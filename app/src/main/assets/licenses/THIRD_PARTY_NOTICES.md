@@ -155,3 +155,14 @@ source defaults. Full license:
 ## Source organization
 
 Presentation adapters are organized under feature/home, feature/collection, feature/player and core/design. Backdrop sources are in app/src/main/kotlin/com/akira/app/core/design/backdrop. RefractionLens.kt retains the adapted optical surface; its Apache-2.0 license is included in licenses/backdrop/LICENSE-APACHE-2.0. BouncingScrollPhysics.kt contains the adapted scroll equations. Source filenames and packages have changed; the attribution and license terms above continue to apply.
+
+## Shared interface runtime
+
+The Appearance module uses Flutter, distributed under the BSD 3-Clause license.
+The bundled notice is in `app/src/main/assets/licenses/FLUTTER-BSD-3-Clause.txt`.
+The interface retains Akira's Roboto Flex defaults. Pretendard, used by retained
+renderer dependencies, is distributed under the SIL Open Font License 1.1; its
+notice is in `app/src/main/assets/licenses/Pretendard-OFL.txt`.
+
+Runtime component contracts and adapters are in `design-system/akira` and
+`ui_bridge`; existing third-party copyright notices remain in the adapted sources.

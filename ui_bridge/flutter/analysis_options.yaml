@@ -1,0 +1,6 @@
+analyzer:
+  exclude:
+    - lib/bridge/appearance.g.dart
+    - build/**
+    - android/**
+    - ios/**

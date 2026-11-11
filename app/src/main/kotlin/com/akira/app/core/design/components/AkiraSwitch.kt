@@ -19,6 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import com.akira.app.core.design.system.AkiraClassicControlSpec as Classic
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.focusable
 import androidx.compose.ui.graphics.graphicsLayer
@@ -43,12 +45,39 @@ fun AkiraSwitch(
         if (haptic != null) haptic(value) else haptics.toggle(value)
         currentChange(value)
     }
-    if (!com.akira.app.core.design.glass.LocalLiquidGlassEnabled.current || !com.akira.app.core.design.glass.isGlassSupported() || LocalContentMotionReduced.current) {
+    if(com.akira.app.core.design.glass.LocalSharedGlassMaterial.current!=null &&
+        com.akira.app.core.design.glass.LocalLiquidGlassEnabled.current &&
+        com.akira.app.core.design.glass.isGlassSupported()) {
+        AkiraGlassSwitch(checked,{if(enabled)change(it)},modifier
+            .graphicsLayer{alpha=if(enabled)1f else .38f}
+            .then(if(enabled)Modifier else Modifier.pointerInput(Unit){awaitPointerEventScope{
+                while(true)awaitPointerEvent(PointerEventPass.Initial).changes.forEach{it.consume()}
+            }})
+            .semantics{if(!enabled)disabled()}
+            .onKeyEvent{event->
+                if(enabled && event.type==KeyEventType.KeyUp &&
+                    (event.key==Key.Spacebar || event.key==Key.Enter || event.key==Key.DirectionCenter)){
+                    change(!currentChecked);true
+                }else false
+            }.focusable(enabled))
+        return
+    }
+    if (!com.akira.app.core.design.glass.LocalLiquidGlassEnabled.current || !com.akira.app.core.design.glass.isGlassSupported() ||
+        (LocalContentMotionReduced.current && com.akira.app.core.design.glass.LocalSharedGlassMaterial.current == null)) {
+        val dark=androidx.compose.material3.MaterialTheme.colorScheme.background.luminance()<.5f
+        val track=Color(if(dark)Classic.inactiveTrackDarkArgb else Classic.inactiveTrackLightArgb)
+        val thumb=Color(if(dark)Classic.inactiveThumbDarkArgb else Classic.inactiveThumbLightArgb)
+        val active=androidx.compose.material3.MaterialTheme.colorScheme.primary
+        val activeThumb=if(active.luminance()>Classic.contrastThreshold)Color.Black else Color.White
         Switch(checked = checked, onCheckedChange = ::change, modifier = modifier, enabled = enabled,
-            thumbContent = { Icon(if (checked) Icons.Rounded.Check else Icons.Rounded.Close, null, Modifier.size(16.dp)) },
+            thumbContent = { Icon(if (checked) Icons.Rounded.Check else Icons.Rounded.Close, null, Modifier.size(Classic.iconSize.dp)) },
             colors = SwitchDefaults.colors(
                 checkedTrackColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                uncheckedTrackColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerHighest,
+                uncheckedTrackColor = track,
+                checkedThumbColor = activeThumb,
+                uncheckedThumbColor = thumb,
+                checkedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                uncheckedIconColor = track,
                 checkedBorderColor = Color.Transparent, uncheckedBorderColor = Color.Transparent))
         return
     }

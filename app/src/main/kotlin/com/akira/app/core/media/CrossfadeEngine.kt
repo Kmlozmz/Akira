@@ -48,10 +48,22 @@ class CrossfadeEngine(
     private fun applyDeckVolumes(fadeOutGain: Float, fadeInGain: Float) {
         lastAppliedFadeOut = fadeOutGain.coerceIn(0f, 1f)
         lastAppliedFadeIn = fadeInGain.coerceIn(0f, 1f)
-        val finalOut = (lastAppliedFadeOut * externalVolumeMultiplier * (normalizationFactors[activePlayer] ?: 1f)).coerceIn(0f, 1f)
-        val finalIn = (lastAppliedFadeIn * externalVolumeMultiplier * (normalizationFactors[inactivePlayer] ?: 1f)).coerceIn(0f, 1f)
-        if(kotlin.math.abs(activePlayer.volume-finalOut)>.00001f)activePlayer.volume = finalOut
-        if(kotlin.math.abs(inactivePlayer.volume-finalIn)>.00001f)inactivePlayer.volume = finalIn
+        val out = (lastAppliedFadeOut * externalVolumeMultiplier * (normalizationFactors[activePlayer] ?: 1f)).coerceIn(0f, 1f)
+        val incoming = (lastAppliedFadeIn * externalVolumeMultiplier * (normalizationFactors[inactivePlayer] ?: 1f)).coerceIn(0f, 1f)
+        // Equal-power curves preserve energy, but coincident peaks can still sum
+        // above full scale in the system mixer. Share headroom without changing
+        // the balance or the saved curve/normalization settings.
+        val peakBudget = maxOf(1f, out + incoming)
+        val finalOut = out / peakBudget
+        val finalIn = incoming / peakBudget
+        val previousOut = activePlayer.volume
+        val previousIn = inactivePlayer.volume
+        // AudioTracks update separately. Reduce before increasing either deck,
+        // including cancellation and handover, to avoid a transient overload.
+        if (finalOut < previousOut - .00001f) activePlayer.volume = finalOut
+        if (finalIn < previousIn - .00001f) inactivePlayer.volume = finalIn
+        if (finalOut > previousOut + .00001f) activePlayer.volume = finalOut
+        if (finalIn > previousIn + .00001f) inactivePlayer.volume = finalIn
     }
 
     private var tickerJob: Job? = null

@@ -25,7 +25,7 @@ import com.akira.app.core.design.backdrop.backdrops.rememberCanvasBackdrop
 import com.akira.app.core.design.components.*
 import com.akira.app.core.design.glass.LocalAppBackdrop
 import com.akira.app.core.design.navigation.*
-import com.akira.app.core.design.theme.AkiraFontFamily
+import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 
 internal class LibraryChromeState(initialCategory: Boolean = false) {
     var category by mutableStateOf(initialCategory)

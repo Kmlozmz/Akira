@@ -58,7 +58,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun SettingsScreen(prefsRepo: UserPreferencesRepository, onBack: () -> Unit, modifier: Modifier = Modifier,
     onTestCrossfade: () -> Unit = {}, previewSongs: List<Song> = emptyList(), previewSong: Song? = null,
-    bottomContentPadding: Dp = 0.dp, startWithSound: Boolean = false) {
+    bottomContentPadding: Dp = 0.dp, startWithSound: Boolean = false, rootBackLabel: String? = null) {
     val prefs by prefsRepo.userPreferences.collectAsStateWithLifecycle(initialValue = null)
     var section by rememberSaveable(startWithSound) {
         mutableStateOf<SettingsSection?>(if (startWithSound) SettingsSection.SOUND else null)
@@ -67,13 +67,13 @@ fun SettingsScreen(prefsRepo: UserPreferencesRepository, onBack: () -> Unit, mod
     val parentNavigation = LocalStudioNavigation.current
     val navigation = parentNavigation ?: remember { StudioNavigationState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val strings = LocalStrings.current
     val haptics = rememberAkiraHaptics()
     val list = rememberLazyListState()
     val backdrop = rememberLayerBackdrop()
     val pageColor = MaterialTheme.colorScheme.background
     val controlsBackdrop = com.akira.app.core.design.backdrop.backdrops.rememberCanvasBackdrop { drawRect(pageColor) }
-    val collapse by rememberPageCollapse(list)
     val status = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
@@ -88,25 +88,32 @@ fun SettingsScreen(prefsRepo: UserPreferencesRepository, onBack: () -> Unit, mod
             } else LazyColumn(state = list,
                 modifier = Modifier.widthIn(max = 720.dp).fillMaxSize().align(Alignment.TopCenter)
                     .then(if (com.akira.app.core.design.glass.LocalLiquidGlassEnabled.current && com.akira.app.core.design.glass.isGlassSupported()) Modifier.layerBackdrop(backdrop) else Modifier),
-                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = status + 126.dp,
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = status + 84.dp,
                     bottom = maxOf(bottomContentPadding, bottom + 32.dp)),
-                verticalArrangement = Arrangement.spacedBy(2.dp), flingBehavior = rememberAkiraBouncingFling()) {
-                item("online-mode") { Box(Modifier.padding(bottom = 18.dp)) {
+                verticalArrangement = Arrangement.spacedBy(24.dp), flingBehavior = rememberAkiraBouncingFling()) {
+                item("online-mode") { Box {
                     com.akira.app.feature.online.OnlineModeControl()
                 } }
-                itemsIndexed(SettingsSection.entries, key = { _,category -> category.name }) { index,category ->
-                    Box(Modifier.clip(settingsSegmentShape(index,SettingsSection.entries.size))) {
-                        SettingsRow(category.icon(), strings.ui(category.title), strings.ui(category.summary),
-                            { section = category }, Modifier.testTag("settings-section-${category.name}"),
-                            leading = if (category == SettingsSection.LIBRARY) ({
-                                Icon(androidx.compose.ui.res.painterResource(com.akira.app.R.drawable.ic_navigation_library_filled), null,
-                                    Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .85f))
-                            }) else null)
-                    }
+                listOf(
+                    listOf(SettingsSection.APPEARANCE,SettingsSection.PLAYBACK,SettingsSection.SOUND,SettingsSection.LYRICS),
+                    listOf(SettingsSection.LIBRARY),listOf(SettingsSection.APPLICATION)
+                ).forEachIndexed { group,categories ->
+                    item("sections-$group") { SettingsGroup {
+                        categories.forEach { category ->
+                            SettingsRow(category.icon(),strings.ui(category.title),"",
+                                { if(category==SettingsSection.APPEARANCE)
+                                    context.startActivity(Intent(context,com.akira.app.feature.appearance.AppearanceActivity::class.java))
+                                  else section=category },Modifier.testTag("settings-section-${category.name}"),
+                                leading=if(category==SettingsSection.LIBRARY) ({Icon(androidx.compose.ui.res.painterResource(com.akira.app.R.drawable.ic_navigation_library_filled),null,Modifier.size(23.dp),tint=category.tint())}) else null,
+                                iconTint=category.tint())
+                        }
+                        if(group==2)SettingsRow(AkiraIcons.Download,com.akira.app.core.design.components.localizedText("Updates","Actualizaciones"),"",
+                            { editor=SettingsEditor.UPDATES },iconTint=androidx.compose.ui.graphics.Color(0xFF78B77C))
+                    } }
                 }
             }
-            PagePageHeader(strings.settingsTitle, onBack, collapse,
-                Modifier.widthIn(max = 720.dp).align(Alignment.TopCenter), topInset = status)
+            SettingsPageHeader(strings.settingsTitle, onBack,
+                Modifier.widthIn(max = 720.dp).align(Alignment.TopCenter), topInset = status,backLabel=rootBackLabel ?: com.akira.app.core.design.components.localizedText("Home","Inicio"))
         }
         prefs?.let { current ->
             // Back can arrive before the native selector window gains focus.
@@ -115,8 +122,8 @@ fun SettingsScreen(prefsRepo: UserPreferencesRepository, onBack: () -> Unit, mod
                 if (category == SettingsSection.APPEARANCE) AppearanceScreen(current, prefsRepo, previewSongs, previewSong, closeSection)
                 else AkiraStudioScreen(strings.ui(category.title), closeSection) {
                     Column(Modifier.fillMaxWidth().verticalScroll(LocalPageScrollState.current ?: rememberScrollState(),
-                        flingBehavior = rememberAkiraBouncingFling()).padding(top = 118.dp)
-                        .padding(horizontal = 24.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        flingBehavior = rememberAkiraBouncingFling()).padding(top = 80.dp)
+                        .padding(horizontal = 16.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         if(category!=SettingsSection.SOUND) Text(strings.ui(category.summary), Modifier.padding(bottom = 8.dp),
                             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         when (category) {
@@ -239,7 +246,7 @@ private fun SettingsSection.icon(): ImageVector = when (this) {
     SettingsSection.SOUND -> Icons.Rounded.Equalizer
     SettingsSection.APPEARANCE -> AkiraIcons.Appearance
     SettingsSection.LYRICS -> AkiraIcons.Lyrics
-    SettingsSection.LIBRARY -> AkiraIcons.Queue // Painter override shares the dock's Library glyph.
+    SettingsSection.LIBRARY -> AkiraIcons.Queue
     SettingsSection.APPLICATION -> Icons.Rounded.Settings
 }
 
@@ -315,3 +322,12 @@ private fun DiagnosticsSettings() {
         })
     }
 }
+
+private fun SettingsSection.tint():androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(when(this) {
+    SettingsSection.APPEARANCE->0xFFB16AD1
+    SettingsSection.PLAYBACK->0xFF7A8BDA
+    SettingsSection.SOUND->0xFF5EA6EB
+    SettingsSection.LYRICS->0xFF5EBEC4
+    SettingsSection.LIBRARY->0xFFFA243C
+    SettingsSection.APPLICATION->0xFF8B9BA6
+})

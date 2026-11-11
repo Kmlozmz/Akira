@@ -1,6 +1,8 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.akira.app.feature.library
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
@@ -35,7 +37,7 @@ import com.akira.app.core.design.glass.*
 import com.akira.app.core.design.icon.AkiraIcons
 import com.akira.app.core.design.motion.rememberAkiraBouncingFling
 import com.akira.app.core.design.navigation.*
-import com.akira.app.core.design.theme.AkiraFontFamily
+import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 import com.akira.app.core.media.MusicServiceConnection
 import com.akira.app.core.model.Song
 import com.akira.app.feature.collection.localAlbumKey
@@ -50,7 +52,7 @@ internal data class LibraryCategoryLink(val key: String, val title: String, val 
     LibraryCategoryLink("Folders", localizedText("Folders", "Carpetas"), LibraryIcons.Folders))
 
 @Composable internal fun LibraryOverview(categories: List<LibraryCategoryLink>, onSelect: (String) -> Unit,
-    onAccount: () -> Unit, modifier: Modifier = Modifier) {
+    onAccount: () -> Unit, modifier: Modifier = Modifier, onRefresh: () -> Unit = {}, onCreatePlaylist: (() -> Unit)? = null) {
     var menu by remember { mutableStateOf(false) }
     var profile by remember { mutableStateOf(false) }
     val background = MaterialTheme.colorScheme.background
@@ -84,19 +86,19 @@ internal data class LibraryCategoryLink(val key: String, val title: String, val 
             categories.forEach { category ->
                 Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable { onSelect(category.key) },
                     verticalAlignment = Alignment.CenterVertically) {
-                    Icon(category.icon, null, Modifier.size(23.dp), tint = if (category.key in listOf("Tracks", "songs")) Color(0xFFFC5265) else Color(0xFFFA2B45))
-                    Text(category.title, Modifier.weight(1f).padding(horizontal = 16.dp), fontSize = 19.sp,
+                    Icon(category.icon, null, Modifier.size(24.dp), tint = LibraryIcons.Accent)
+                    Text(category.title, Modifier.weight(1f).padding(start = 15.dp, end = 16.dp), fontSize = 19.sp,
                         fontFamily = AkiraFontFamily, color = MaterialTheme.colorScheme.onSurface)
                     Icon(AkiraIcons.ChevronRight, null, Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 HorizontalDivider(Modifier.padding(start = 55.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = .07f), thickness = .5.dp)
             }
         }
-        if (menu) AkiraContextMenu(onDismiss = { menu = false }, groups = listOf(listOf(
-            AkiraContextAction(Icons.Rounded.Search, localizedText("Search library", "Buscar en la biblioteca")) {
-                onSelect(categories.firstOrNull { it.key in listOf("Tracks", "songs") }?.key ?: categories.first().key)
-            },
-            AkiraContextAction(Icons.Rounded.Settings, localizedText("Settings", "Ajustes"), onClick = onAccount))))
+        if(menu) AkiraContextMenu(onDismiss={menu=false}, groups=listOf(buildList {
+            if(onCreatePlaylist!=null) add(AkiraContextAction(Icons.Rounded.Add,
+                localizedText("New playlist", "Nueva playlist"), opensPresentation=true) {menu=false;onCreatePlaylist()})
+            add(AkiraContextAction(Icons.Rounded.Refresh, localizedText("Refresh library", "Actualizar biblioteca")) {onRefresh()})
+        }))
         if (profile) com.akira.app.feature.online.OnlineAccountSheet { profile = false }
     }
 }
@@ -230,13 +232,20 @@ internal data class LibraryCategoryLink(val key: String, val title: String, val 
     val reduced = LocalContentMotionReduced.current
     val obscured = LocalContentObscured.current
     BackHandler(category != null && !obscured) { category = null }
+    var namingPlaylist by remember { mutableStateOf(false) }
+    val playlistContext=androidx.compose.ui.platform.LocalContext.current.applicationContext
+    val playlistStore=remember(playlistContext){com.akira.app.core.data.playlist.PlaylistStore(playlistContext)}
+    val playlistScope=rememberCoroutineScope()
+    if(namingPlaylist) AkiraNameDialog(onDismiss={namingPlaylist=false},onSave={name->
+        playlistScope.launch {playlistStore.create(name);namingPlaylist=false;category="Playlists"}
+    })
     val categories = localLibraryCategories()
     LibraryChromeHost {
-    AnimatedContent(category, transitionSpec = { pageNavigationTransform(targetState != null, reduced).using(null) },
-        label = "libraryCategory", modifier = Modifier.fillMaxSize()) { key ->
+    PageNavigationHost(target=category,backTarget=null,backEnabled=category!=null && !obscured,
+        onBack={category=null},forward={_,to->to!=null},modifier=Modifier.fillMaxSize()) { key ->
         CompositionLocalProvider(LocalLibraryChromeActive provides (key == category)) {
         states.SaveableStateProvider(key ?: "overview") {
-            if (key == null) LibraryOverview(categories, { category = it }, onSettings)
+            if (key == null) LibraryOverview(categories, { category = it }, onSettings, onRefresh=onRetry, onCreatePlaylist={namingPlaylist=true})
             else {
                 var query by rememberSaveable { mutableStateOf("") }
                 var searchVisible by rememberSaveable { mutableStateOf(false) }
@@ -328,9 +337,15 @@ internal data class LibraryCategoryLink(val key: String, val title: String, val 
                     LibraryFloatingBar(title, if (key == "Playlists") 1f else collapse, backdrop,
                         onBack = { if (folder != null) folder = null else category = null },
                         onFirst = { if (key == "Albums") sortMenu = true else onSort() }, onMore = { menu = true })
-                    if (menu) AkiraContextMenu(onDismiss = { menu = false }, groups = listOf(listOf(
-                        AkiraContextAction(Icons.Rounded.Search, localizedText("Search", "Buscar")) { searchVisible = true },
-                        AkiraContextAction(Icons.Rounded.Settings, localizedText("Settings", "Ajustes"), onClick = onSettings))))
+                    if (menu) AkiraContextMenu(onDismiss={menu=false},title=title,
+                        groups=listOf(listOf(AkiraContextAction(Icons.Rounded.Search,
+                            localizedText("Search this collection","Buscar en esta colección"),
+                            description=localizedText("Find a song, album or artist","Encuentra una canción, álbum o artista")){searchVisible=true}),
+                            if(filtered.isEmpty())emptyList()else listOf(
+                                AkiraContextAction(Icons.Rounded.PlayArrow,localizedText("Play all","Reproducir todo"),
+                                    description=localizedText("Replace the current queue","Reemplaza la cola actual")){play(false)},
+                                AkiraContextAction(Icons.Rounded.Shuffle,localizedText("Shuffle all","Reproducir al azar"),
+                                    description=localizedText("Start a shuffled queue","Inicia una cola aleatoria")){play(true)})))
                     if (sortMenu) LibrarySortMenu(albumSort, { albumSortName = it.name }, { sortMenu = false })
                 }
             }

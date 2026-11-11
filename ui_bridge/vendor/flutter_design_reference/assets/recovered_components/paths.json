@@ -1,0 +1,1961 @@
+{
+  "scope": "Union of byte-roundtrippable native paths and visual shape labels; full component attribution remains separate",
+  "decoder_sha256": "482852bc9045369350bb33c613e70b6e98d07c0a84f46034827433e6d91e7145",
+  "input_sources": [
+    {
+      "path": "native-vectores\\paths.dart",
+      "sha256": "0f840fb3be952eb56ba3ccf554a88136995f62d2244bd268d7c84037b6e8b7d0"
+    },
+    {
+      "path": "native-vectores-richtext\\paths.dart",
+      "sha256": "f336cf2ca8da2d47337978b2bb93e76a55d40bfe397d455dfbaa8751b990f9bb"
+    }
+  ],
+  "unique_geometries": 42,
+  "duplicate_bodies_verified": 12,
+  "dart": {
+    "path": "reconstruction\\recovered_paths.dart",
+    "sha256": "3a15c6185cad57aeddaec5c84e5e3ea6fd55108cb7f14b1c8fef7e780f5e74bd"
+  },
+  "registry": {
+    "path": "reconstruction\\recovered_path_registry.dart",
+    "sha256": "d9cb37065194a587c4683a14552a78f2fce518197da8c64843821dca2ab570bd"
+  },
+  "geometries": [
+    {
+      "id": "0fba6a5d8659",
+      "shape_label": "pin",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "0fba6a5d8659c42298aec3a7f77bec118b8fca9c52180c9c7088eb38bccb9f6c",
+      "bounds_of_control_points": [
+        0.054940637201070786,
+        -0.19499999284744263,
+        12.844964981079102,
+        19.329973220825195
+      ],
+      "point_count": 361,
+      "verb_count": 368,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3304261635,
+        "argb_f32": [
+          1,
+          0.8941176533699036,
+          0.686274528503418,
+          0.03921568766236305
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            297,
+            3571
+          ]
+        },
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            297
+          ]
+        }
+      ]
+    },
+    {
+      "id": "8e5e2e46173e",
+      "shape_label": "chevron_right",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "8e5e2e46173ee305fa89c49ee647d3a1cb9f8f02e05bfeee5a158a6f41e009c1",
+      "bounds_of_control_points": [
+        3.680000066757202,
+        1.9800000190734863,
+        8.739999771118164,
+        12.020000457763672
+      ],
+      "point_count": 3,
+      "verb_count": 3,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 1,
+      "paint": {
+        "flags_u32": 4241296035,
+        "argb_f32": [
+          0.32999998331069946,
+          0.23529411852359772,
+          0.23529411852359772,
+          0.26274511218070984
+        ],
+        "color_space": 1,
+        "stroke_width": 1.9199999570846558,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            298,
+            304,
+            330,
+            335,
+            356,
+            636,
+            646,
+            653,
+            673,
+            794,
+            802,
+            811,
+            836,
+            853,
+            867,
+            896,
+            1908,
+            1914
+          ]
+        },
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            298,
+            304,
+            331,
+            336,
+            357,
+            590,
+            850,
+            865,
+            870,
+            875,
+            885,
+            891,
+            897,
+            903,
+            909,
+            915,
+            921,
+            927,
+            933,
+            1119,
+            1127,
+            1139,
+            1151,
+            1162,
+            1173,
+            1184,
+            1195,
+            1206,
+            1217,
+            1224
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b3aff182411f",
+      "shape_label": "trash",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "b3aff182411f51df96660331882f7d82ae0dc7786a6df5edc11f3ffe7191771c",
+      "bounds_of_control_points": [
+        0,
+        0.15499095618724823,
+        16,
+        18.675003051757812
+      ],
+      "point_count": 476,
+      "verb_count": 494,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3123578883,
+        "argb_f32": [
+          1,
+          0.8941176533699036,
+          0.686274528503418,
+          0.03921568766236305
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            299,
+            3576,
+            4546,
+            4555
+          ]
+        },
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            299
+          ]
+        }
+      ]
+    },
+    {
+      "id": "4abdb10f975a",
+      "shape_label": "gear",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "4abdb10f975ae8e45dc2eb26d9544f1738c48f31c835e536201155b5029afda8",
+      "bounds_of_control_points": [
+        0.028356414288282394,
+        0.028356729075312614,
+        19.051645278930664,
+        19.051645278930664
+      ],
+      "point_count": 409,
+      "verb_count": 415,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 4241295363,
+        "argb_f32": [
+          1,
+          0.8941176533699036,
+          0.686274528503418,
+          0.03921568766236305
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            300,
+            632
+          ]
+        },
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            300
+          ]
+        }
+      ]
+    },
+    {
+      "id": "4bb70c945ee3",
+      "shape_label": "folder",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "4bb70c945ee3e58b75ebcf4b458de358e241dbe410fa2de5f339114fbdcd31f4",
+      "bounds_of_control_points": [
+        0,
+        0.14506526291370392,
+        18.83500099182129,
+        15.335000038146973
+      ],
+      "point_count": 224,
+      "verb_count": 228,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3123578883,
+        "argb_f32": [
+          1,
+          0.8941176533699036,
+          0.686274528503418,
+          0.03921568766236305
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            302,
+            331,
+            3583,
+            4541
+          ]
+        },
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            302,
+            332,
+            589,
+            704
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb04ab1e5fce",
+      "shape_label": "chevron_left",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "eb04ab1e5fce5ef3e1859469225f40832a292fef2266df9e34dd489f0f8553f0",
+      "bounds_of_control_points": [
+        6.710000038146973,
+        4.610000133514404,
+        15.140000343322754,
+        20.90999984741211
+      ],
+      "point_count": 3,
+      "verb_count": 3,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 1,
+      "paint": {
+        "flags_u32": 4241296035,
+        "argb_f32": [
+          1,
+          0,
+          0,
+          0
+        ],
+        "color_space": 1,
+        "stroke_width": 2.5,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            357,
+            1820,
+            1931,
+            2085
+          ]
+        },
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            358,
+            835
+          ]
+        }
+      ]
+    },
+    {
+      "id": "62b1a803db01",
+      "shape_label": "ellipsis",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "62b1a803db01f79b230787802ffb40543fec3c6a23aa2903ddf7a77785312b97",
+      "bounds_of_control_points": [
+        0,
+        0,
+        19.790000915527344,
+        4.119999885559082
+      ],
+      "point_count": 192,
+      "verb_count": 195,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3123578883,
+        "argb_f32": [
+          1,
+          0,
+          0,
+          0
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            358,
+            3740,
+            4159
+          ]
+        },
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            359,
+            721,
+            1621
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ffec3ca1340f",
+      "shape_label": "square_pencil",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "ffec3ca1340f02e45cad2ef57957b6a337b3c496e1cd9418661ed4f9d32c3fa4",
+      "bounds_of_control_points": [
+        0,
+        0.0005593489040620625,
+        21.379661560058594,
+        21.32999610900879
+      ],
+      "point_count": 241,
+      "verb_count": 244,
+      "weight_count": 0,
+      "fill_type": 1,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 23398403,
+        "argb_f32": [
+          1,
+          0,
+          0,
+          0
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            359,
+            403
+          ]
+        },
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            360,
+            404
+          ]
+        }
+      ]
+    },
+    {
+      "id": "7a5cd9dcd8e2",
+      "shape_label": "folder_plus",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "7a5cd9dcd8e2293792491cb83585882e9689e4881c26d77746fb6651a3b08480",
+      "bounds_of_control_points": [
+        0.020000040531158447,
+        -0.09999224543571472,
+        28.799999237060547,
+        19.979999542236328
+      ],
+      "point_count": 328,
+      "verb_count": 321,
+      "weight_count": 11,
+      "fill_type": 1,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 24840195,
+        "argb_f32": [
+          1,
+          0,
+          0,
+          0
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            454,
+            3591
+          ]
+        },
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            459
+          ]
+        }
+      ]
+    },
+    {
+      "id": "7f0e066a4567",
+      "shape_label": "paintbrush",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "7f0e066a4567a7dba19eb90f6587e38fee906fabcdb4249755a76ace66fc5792",
+      "bounds_of_control_points": [
+        0.21745839715003967,
+        -0.19136033952236176,
+        17.898193359375,
+        19.62898826599121
+      ],
+      "point_count": 198,
+      "verb_count": 196,
+      "weight_count": 6,
+      "fill_type": 1,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 14223363,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            635,
+            1771
+          ]
+        }
+      ]
+    },
+    {
+      "id": "737efb8377e4",
+      "shape_label": "shield_fill",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "737efb8377e4fafb60f2674c03e4411f3ff7562823215c8b8f370a32af6caa11",
+      "bounds_of_control_points": [
+        -1.5197737512906428e-10,
+        0.07936600595712662,
+        13.58981990814209,
+        16.75396728515625
+      ],
+      "point_count": 320,
+      "verb_count": 328,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 4241295363,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            638,
+            3544
+          ]
+        }
+      ]
+    },
+    {
+      "id": "94f9f8839695",
+      "shape_label": "lock",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "94f9f883969503bbcef82337d840153b7ac28ec8a8c04dc2298f0cb282150743",
+      "bounds_of_control_points": [
+        2.4769013180048205e-05,
+        0.045025650411844254,
+        11.329999923706055,
+        16.329999923706055
+      ],
+      "point_count": 171,
+      "verb_count": 173,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3123578883,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            639,
+            3547,
+            4539
+          ]
+        }
+      ]
+    },
+    {
+      "id": "251e3626cdbc",
+      "shape_label": "cloud_fill",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "251e3626cdbc54303128e958d1af857cd0113224855e2d3d397d8f68ccf9cd7f",
+      "bounds_of_control_points": [
+        0.07015737891197205,
+        0.13034942746162415,
+        19.878873825073242,
+        13.260000228881836
+      ],
+      "point_count": 170,
+      "verb_count": 171,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3123578883,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            641,
+            3551
+          ]
+        }
+      ]
+    },
+    {
+      "id": "f272a212fe61",
+      "shape_label": "circle_fill_a",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "f272a212fe61f9e30f521c976cb1d162ec67ff2101f9b4831cf52e79705b0695",
+      "bounds_of_control_points": [
+        0.050021085888147354,
+        0.010047455318272114,
+        16.950000762939453,
+        16.90999412536621
+      ],
+      "point_count": 128,
+      "verb_count": 129,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 4241295363,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            642,
+            3554
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cf6717ee3bd1",
+      "shape_label": "clockwise_arrows",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "cf6717ee3bd148e6955ae8ccad6bea8e8e1d2de280e2edd7bb30ebeb8e58e759",
+      "bounds_of_control_points": [
+        -0.09999978542327881,
+        -0.05008433759212494,
+        20.350000381469727,
+        16.970096588134766
+      ],
+      "point_count": 506,
+      "verb_count": 526,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3123578883,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            645
+          ]
+        }
+      ]
+    },
+    {
+      "id": "9c077634e158",
+      "shape_label": "bent_arrow_lines",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "9c077634e15874bd76c8561c1ac79ad6ca0cac8ddc455b7e8f2236e280aaccda",
+      "bounds_of_control_points": [
+        0.008956873789429665,
+        0.004999995231628418,
+        16.7549991607666,
+        14.425000190734863
+      ],
+      "point_count": 428,
+      "verb_count": 450,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3123578883,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            648
+          ]
+        }
+      ]
+    },
+    {
+      "id": "37837094f890",
+      "shape_label": "checklist",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "37837094f89014def6334cb3d02958c9ea4f4da14c469af29d7be829db387594",
+      "bounds_of_control_points": [
+        0,
+        0,
+        13.136699676513672,
+        11.83590030670166
+      ],
+      "point_count": 98,
+      "verb_count": 48,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 2900559875,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            649,
+            4162
+          ]
+        },
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            1625,
+            1797,
+            1831,
+            2027,
+            2333,
+            2347
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b80f01e70d78",
+      "shape_label": "bolt_a_badge",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "b80f01e70d78ee696644e60e3c6c52ea1a9b5ed4075e07e0fc8d79e82dd681cc",
+      "bounds_of_control_points": [
+        0.060000889003276825,
+        -0.10185694694519043,
+        15.539999961853027,
+        18.839990615844727
+      ],
+      "point_count": 214,
+      "verb_count": 204,
+      "weight_count": 14,
+      "fill_type": 1,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 972752899,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            801,
+            3533
+          ]
+        }
+      ]
+    },
+    {
+      "id": "435ceacdb96a",
+      "shape_label": "circle_equal",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "435ceacdb96a21da2aac9314d68625f494748a05bb887c64b451999795a0c571",
+      "bounds_of_control_points": [
+        -0.025183293968439102,
+        0.07484783232212067,
+        16.925207138061523,
+        17.02520179748535
+      ],
+      "point_count": 378,
+      "verb_count": 385,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 26740739,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            876,
+            3523,
+            4545
+          ]
+        }
+      ]
+    },
+    {
+      "id": "03becb16f09c",
+      "shape_label": "equal",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "03becb16f09cee9781a376a986fe92a612057d527541e730f095172c003f0745",
+      "bounds_of_control_points": [
+        0.023796681314706802,
+        0.019999980926513672,
+        11.569999694824219,
+        6.75
+      ],
+      "point_count": 132,
+      "verb_count": 138,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 27265027,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            895,
+            3528
+          ]
+        }
+      ]
+    },
+    {
+      "id": "58a63153a803",
+      "shape_label": "star_fill",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "58a63153a803d5fa472030265e4bef9e970deacb3f2a7c7bb1721407234f0121",
+      "bounds_of_control_points": [
+        0.0026038475334644318,
+        -0.004024434369057417,
+        18.961294174194336,
+        18.093612670898438
+      ],
+      "point_count": 340,
+      "verb_count": 361,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 30148611,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            971,
+            3513
+          ]
+        }
+      ]
+    },
+    {
+      "id": "f9696bbfa285",
+      "shape_label": "rounded_square_fill",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "f9696bbfa2858f19cf1d2eb76a548f41c9fabe59762edf77c0f90ad491848995",
+      "bounds_of_control_points": [
+        0,
+        6.50839283480309e-05,
+        20.079883575439453,
+        14.329994201660156
+      ],
+      "point_count": 58,
+      "verb_count": 59,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 4241295363,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            1082,
+            3518
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aac99e90e15a",
+      "shape_label": "clockwise_arrows_circle",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "aac99e90e15a787fd6fe424d747d2c64dea7bad411758da5b5863d2f78559816",
+      "bounds_of_control_points": [
+        -0.005192354321479797,
+        -0.0052112084813416,
+        17.005218505859375,
+        17.005212783813477
+      ],
+      "point_count": 656,
+      "verb_count": 677,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 28706819,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            1342,
+            3508
+          ]
+        }
+      ]
+    },
+    {
+      "id": "2c4626e6f520",
+      "shape_label": "line",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "2c4626e6f52006de0ccc62796f29903d3d330b747a15b9b68b340050ebdebb1f",
+      "bounds_of_control_points": [
+        81.33333587646484,
+        145,
+        151.3333282470703,
+        145.5
+      ],
+      "point_count": 4,
+      "verb_count": 4,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3303671811,
+        "argb_f32": [
+          0.19999998807907104,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            2063
+          ]
+        }
+      ]
+    },
+    {
+      "id": "5362f3d6677e",
+      "shape_label": "chevron_up_down",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "5362f3d6677e658c14237659084bba91fe3a86d4fda72e2f5935a8863ca0caac",
+      "bounds_of_control_points": [
+        2.426666736602783,
+        1.649999976158142,
+        9.90666675567627,
+        13.016666412353516
+      ],
+      "point_count": 6,
+      "verb_count": 6,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 1,
+      "paint": {
+        "flags_u32": 3303672483,
+        "argb_f32": [
+          0.6000000238418579,
+          0.9215686321258545,
+          0.9215686321258545,
+          0.9607843160629272
+        ],
+        "color_space": 1,
+        "stroke_width": 1.3899999856948853,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            2537
+          ]
+        }
+      ]
+    },
+    {
+      "id": "161d0026e6bb",
+      "shape_label": "paperclip",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "161d0026e6bbbbf7788f4867598dd1974f3bda110a96e7b13211529b15f939c7",
+      "bounds_of_control_points": [
+        -0.9726229310035706,
+        -0.38989800214767456,
+        19.576736450195312,
+        22.66643524169922
+      ],
+      "point_count": 352,
+      "verb_count": 355,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3123578883,
+        "argb_f32": [
+          1,
+          0,
+          0,
+          0
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            4163
+          ]
+        },
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            1626,
+            1799,
+            2348
+          ]
+        }
+      ]
+    },
+    {
+      "id": "4e388e31671f",
+      "shape_label": "square_arrow_up",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "4e388e31671f31e7eb9dcfad486ec1afb4921e0ccfe2673d114f1a897618d9ac",
+      "bounds_of_control_points": [
+        0.04000000283122063,
+        0.0009743209811858833,
+        19.01951026916504,
+        24.299999237060547
+      ],
+      "point_count": 381,
+      "verb_count": 390,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3123578883,
+        "argb_f32": [
+          1,
+          0,
+          0,
+          0
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            4164
+          ]
+        },
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            1624,
+            1826
+          ]
+        }
+      ]
+    },
+    {
+      "id": "d3cd624a3915",
+      "shape_label": "circle_fill_b",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "d3cd624a3915f1dcc2b403df7f405af8f59bff9c54d78ef6b2f87a3124a639cd",
+      "bounds_of_control_points": [
+        0.0400206483900547,
+        0.04004672169685364,
+        16.959999084472656,
+        16.959993362426758
+      ],
+      "point_count": 128,
+      "verb_count": 129,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 4241295363,
+        "argb_f32": [
+          1,
+          0.8941176533699036,
+          0.686274528503418,
+          0.03921568766236305
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            4335,
+            4345
+          ]
+        }
+      ]
+    },
+    {
+      "id": "2d0ba49aa8f2",
+      "shape_label": "circle_outline",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "2d0ba49aa8f2a56f70f90aa04c39fab8405e03334ce7efa42e46487d99e01449",
+      "bounds_of_control_points": [
+        0.03478744626045227,
+        0.034787457436323166,
+        16.965211868286133,
+        16.965211868286133
+      ],
+      "point_count": 258,
+      "verb_count": 259,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3123578883,
+        "argb_f32": [
+          1,
+          0.772549033164978,
+          0.772549033164978,
+          0.7803921699523926
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            4356
+          ]
+        }
+      ]
+    },
+    {
+      "id": "6438f0e428ed",
+      "shape_label": "pin_slash",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "6438f0e428edb706c5c0751ad7240aba042dca88eff1934c12dbf00b70928f08",
+      "bounds_of_control_points": [
+        0.36500000953674316,
+        0,
+        16.53499984741211,
+        19.329954147338867
+      ],
+      "point_count": 198,
+      "verb_count": 201,
+      "weight_count": 0,
+      "fill_type": 1,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 21104643,
+        "argb_f32": [
+          0.9599999785423279,
+          0,
+          0,
+          0
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            4538
+          ]
+        }
+      ]
+    },
+    {
+      "id": "716c9c64caa2",
+      "shape_label": "magnifier",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "716c9c64caa22110b2c5079b7074d4df30691a923df81dcabe589814f1a907d1",
+      "bounds_of_control_points": [
+        0.00977613590657711,
+        0.009776136837899685,
+        16.329999923706055,
+        16.329023361206055
+      ],
+      "point_count": 332,
+      "verb_count": 336,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3123578883,
+        "argb_f32": [
+          0.9599999785423279,
+          0,
+          0,
+          0
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            4540
+          ]
+        }
+      ]
+    },
+    {
+      "id": "3c184f3fefcd",
+      "shape_label": "list_bullet_rectangle",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "3c184f3fefcdc04f0facbf0388144a1f7a679e2213cb3d71a305e457fd7cb85b",
+      "bounds_of_control_points": [
+        0.004999981727451086,
+        0.005143162328749895,
+        19.574094772338867,
+        15.325000762939453
+      ],
+      "point_count": 552,
+      "verb_count": 569,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3123578883,
+        "argb_f32": [
+          0.9599999785423279,
+          0,
+          0,
+          0
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            4542
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cb9032938a56",
+      "shape_label": "sliders_horizontal_3",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "cb9032938a561d5a1f85426ab7e63f43798bd30d801f898468f595dbb90aad20",
+      "bounds_of_control_points": [
+        0.008898253552615643,
+        -0.07500205934047699,
+        16.7450008392334,
+        14.195001602172852
+      ],
+      "point_count": 750,
+      "verb_count": 771,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3123578883,
+        "argb_f32": [
+          0.9599999785423279,
+          0,
+          0,
+          0
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            4543
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bc5bd1ec697e",
+      "shape_label": "stacked_rectangles",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "bc5bd1ec697ecaa6bf3c7bb69a6c02910a05aaacd4958188c30b8acbc28c7819",
+      "bounds_of_control_points": [
+        0.004973265342414379,
+        0.004999968223273754,
+        17.324907302856445,
+        15.324999809265137
+      ],
+      "point_count": 324,
+      "verb_count": 326,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3123578883,
+        "argb_f32": [
+          0.9599999785423279,
+          0,
+          0,
+          0
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores\\catalogo.json",
+          "catalog_sha256": "46cb70bde47e5571e554c98889c693fa4772d4ba659d7d8002181f1d25275176",
+          "capture": "instrumentacion\\runtime-vectores1.jsonl",
+          "capture_sha256": "a94a72995fbdedb14e961cf027af4529004c81b7bebecdd244a6f5eb1c3555ec",
+          "source_lines": [
+            4544
+          ]
+        }
+      ]
+    },
+    {
+      "id": "529925d6d0c2",
+      "shape_label": "format_aa",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "529925d6d0c2faa4210ef2777a3c743cb053f26726c0db843f8f0ac5857f6233",
+      "bounds_of_control_points": [
+        0.08398549258708954,
+        0,
+        25.64499855041504,
+        16.001054763793945
+      ],
+      "point_count": 328,
+      "verb_count": 328,
+      "weight_count": 0,
+      "fill_type": 1,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 91752451,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            1796,
+            1830
+          ]
+        }
+      ]
+    },
+    {
+      "id": "99fd4e318735",
+      "shape_label": "rounded_square_decoration",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "99fd4e318735313e6c030fe6eb630a09e981aeff38920f5346b9d74ce46378ea",
+      "bounds_of_control_points": [
+        0,
+        0,
+        25.18000030517578,
+        19.760000228881836
+      ],
+      "point_count": 73,
+      "verb_count": 60,
+      "weight_count": 20,
+      "fill_type": 1,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3205564419,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            1798,
+            1832,
+            2028,
+            2334
+          ]
+        }
+      ]
+    },
+    {
+      "id": "24ae79d644c7",
+      "shape_label": "bullet_list",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "24ae79d644c7bff863ec76d80ad3338bd3b7e4aefe60450b5c8d6534eadbe352",
+      "bounds_of_control_points": [
+        6.000748634338379,
+        18.220184326171875,
+        93.99877166748047,
+        81.77981567382812
+      ],
+      "point_count": 321,
+      "verb_count": 327,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 2051,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            1800
+          ]
+        }
+      ]
+    },
+    {
+      "id": "579d4bab9d44",
+      "shape_label": "italic_i",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "579d4bab9d44d4cc623060198b2d3e693fea08789e81b20b2353fee1010023b7",
+      "bounds_of_control_points": [
+        27.359697341918945,
+        18.65999984741211,
+        72.66000366210938,
+        81.34000396728516
+      ],
+      "point_count": 128,
+      "verb_count": 135,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 2051,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            1807
+          ]
+        }
+      ]
+    },
+    {
+      "id": "d59d65ed432f",
+      "shape_label": "underline_u",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "d59d65ed432fde5f7e6ebe1c34f828f0550facedeadac923bea1214a535a61e2",
+      "bounds_of_control_points": [
+        24.07671356201172,
+        11.357916831970215,
+        76,
+        88.66000366210938
+      ],
+      "point_count": 114,
+      "verb_count": 120,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 2051,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            1808
+          ]
+        }
+      ]
+    },
+    {
+      "id": "5ce45c774367",
+      "shape_label": "strikethrough_s",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "5ce45c77436766bc7142789eb7383c7905228f313288f7d4e4159fa18cc25278",
+      "bounds_of_control_points": [
+        14,
+        17.846181869506836,
+        86,
+        82.18547821044922
+      ],
+      "point_count": 178,
+      "verb_count": 184,
+      "weight_count": 0,
+      "fill_type": 0,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 2051,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            1809
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a05a4cc1acf4",
+      "shape_label": "highlighter_tip",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "a05a4cc1acf47c800442a53400fb59ab1e1a16a0ebe0cbc03d856b3b312912d1",
+      "bounds_of_control_points": [
+        0.10000000149011612,
+        0.09999990463256836,
+        24.399999618530273,
+        7.800000190734863
+      ],
+      "point_count": 45,
+      "verb_count": 39,
+      "weight_count": 10,
+      "fill_type": 1,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 3121416195,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            1811,
+            1834,
+            2026
+          ]
+        }
+      ]
+    },
+    {
+      "id": "af93f21d9462",
+      "shape_label": "chain_link",
+      "label_basis": "Visual shape identification in the combined atlas; not recovered class or widget names",
+      "geometry_sha256": "af93f21d9462477fe6552a47e9f25d630e94fbf5882e7eb7101205de70f039eb",
+      "bounds_of_control_points": [
+        5.113489627838135,
+        5.110086917877197,
+        94.89740753173828,
+        94.89742279052734
+      ],
+      "point_count": 417,
+      "verb_count": 414,
+      "weight_count": 5,
+      "fill_type": 1,
+      "reference_draw_style": 0,
+      "paint": {
+        "flags_u32": 2051,
+        "argb_f32": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "color_space": 1,
+        "stroke_width": 0,
+        "stroke_miter": 4,
+        "color_source_object_candidate": "0x0"
+      },
+      "observations": [
+        {
+          "catalog": "native-vectores-richtext\\catalogo.json",
+          "catalog_sha256": "4f2d4eab75c2428490e72bfd14ef67e4b2fff72eab24e567c732b32f78ec2a68",
+          "capture": "instrumentacion\\runtime-vectores3.jsonl",
+          "capture_sha256": "4d872a663c7d14e4f88c3e7415c6d100ffeef39f3a24001a643bdf550b200428",
+          "source_lines": [
+            1812,
+            1835,
+            2335
+          ]
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "Control-point bounds are local geometry bounds, not tight painted or accessibility bounds.",
+    "Same shape can appear in several controls and multiple paths can compose one icon.",
+    "Paint and local transforms are captured separately; factories preserve path geometry only.",
+    "Only observed paths are included; neither 42 paths nor the shape labels prove full application coverage."
+  ]
+}

@@ -90,7 +90,8 @@ fun Modifier.drawPlainBackdrop(
                 onDrawBackdrop = onDrawBackdrop,
                 onDrawSurface = onDrawSurface,
                 onDrawFront = onDrawFront,
-                backdropScale = 1f
+                backdropScale = 1f,
+                clipOutput = true
             )
         )
 }
@@ -113,7 +114,8 @@ fun Modifier.drawBackdrop(
     // processes far fewer pixels. Pixel-sized effect parameters (blur radius, lens
     // refraction) must be pre-multiplied by the same factor by the caller; the blur
     // hides the upscaling. 1f keeps the original full resolution behavior.
-    backdropScale: Float = 1f
+    backdropScale: Float = 1f,
+    clipOutput: Boolean = true
 ): Modifier {
     val shapeProvider = ShapeProvider(shape)
     return this
@@ -165,7 +167,8 @@ fun Modifier.drawBackdrop(
                 onDrawBackdrop = onDrawBackdrop,
                 onDrawSurface = onDrawSurface,
                 onDrawFront = onDrawFront,
-                backdropScale = backdropScale.coerceIn(0.05f, 1f)
+                backdropScale = backdropScale.coerceIn(0.05f, 1f),
+                clipOutput = clipOutput
             )
         )
 }
@@ -180,7 +183,8 @@ private class DrawBackdropElement(
     val onDrawBackdrop: DrawScope.(drawBackdrop: DrawScope.() -> Unit) -> Unit,
     val onDrawSurface: (DrawScope.() -> Unit)?,
     val onDrawFront: (DrawScope.() -> Unit)?,
-    val backdropScale: Float
+    val backdropScale: Float,
+    val clipOutput: Boolean
 ) : ModifierNodeElement<DrawBackdropNode>() {
 
     override fun create(): DrawBackdropNode {
@@ -194,7 +198,8 @@ private class DrawBackdropElement(
             onDrawBackdrop = onDrawBackdrop,
             onDrawSurface = onDrawSurface,
             onDrawFront = onDrawFront,
-            backdropScale = backdropScale
+            backdropScale = backdropScale,
+            clipOutput = clipOutput
         )
     }
 
@@ -212,6 +217,7 @@ private class DrawBackdropElement(
         node.onDrawSurface = onDrawSurface
         node.onDrawFront = onDrawFront
         node.backdropScale = backdropScale
+        node.clipOutput = clipOutput
         node.invalidateDrawCache()
     }
 
@@ -242,6 +248,7 @@ private class DrawBackdropElement(
         if (onDrawSurface != other.onDrawSurface) return false
         if (onDrawFront != other.onDrawFront) return false
         if (backdropScale != other.backdropScale) return false
+        if (clipOutput != other.clipOutput) return false
 
         return true
     }
@@ -257,6 +264,7 @@ private class DrawBackdropElement(
         result = 31 * result + (onDrawSurface?.hashCode() ?: 0)
         result = 31 * result + (onDrawFront?.hashCode() ?: 0)
         result = 31 * result + backdropScale.hashCode()
+        result = 31 * result + clipOutput.hashCode()
         return result
     }
 }
@@ -271,7 +279,8 @@ private class DrawBackdropNode(
     var onDrawBackdrop: DrawScope.(drawBackdrop: DrawScope.() -> Unit) -> Unit,
     var onDrawSurface: (DrawScope.() -> Unit)?,
     var onDrawFront: (DrawScope.() -> Unit)?,
-    var backdropScale: Float
+    var backdropScale: Float,
+    var clipOutput: Boolean
 ) : LayoutModifierNode, DrawModifierNode, GlobalPositionAwareModifierNode, ObserverModifierNode, Modifier.Node() {
 
     private val effectScope =
@@ -284,7 +293,7 @@ private class DrawBackdropNode(
     private var surfaceClipPath: Path? = null
 
     private val layoutLayerBlock: GraphicsLayerScope.() -> Unit = {
-        clip = true
+        clip = clipOutput
         shape = shapeProvider.shape
         // The filtered backdrop already owns a low-resolution offscreen layer.
         // This clips the placed child. Our own filtered draw is clipped separately
@@ -406,6 +415,11 @@ private class DrawBackdropNode(
 
     /** Clip the optical output, not its padded input or the outer shadow/rim. */
     private inline fun DrawScope.withSurfaceClip(draw: DrawScope.() -> Unit) {
+        // Optical thumb shaders own their alpha and padded rim.
+        if (!clipOutput) {
+            draw()
+            return
+        }
         val outline = shapeProvider.shape.createOutline(size, layoutDirection, this)
         val path = if (outline is Outline.Rounded) {
             surfaceClipPath ?: Path().also { surfaceClipPath = it }

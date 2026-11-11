@@ -205,7 +205,9 @@ open class MainActivity : ComponentActivity() {
             )
 
             val prefsState = loadedPrefs ?: initialUi
-            AkiraTheme(themeMode = prefsState?.themeMode ?: "SYSTEM", appearancePreset = prefsState?.appearancePreset ?: "MIDNIGHT", accentColor = prefsState?.accentColor ?: "PRESET", spaceMode = prefsState?.spaceMode ?: false, spaceStyle = prefsState?.spaceStyle ?: "SPACE") {
+            AkiraTheme(themeMode = prefsState?.themeMode ?: "SYSTEM", appearancePreset = prefsState?.appearancePreset ?: "MIDNIGHT", accentColor = prefsState?.accentColor ?: "PRESET", spaceMode = prefsState?.spaceMode ?: false, spaceStyle = prefsState?.spaceStyle ?: "SPACE",
+                appearanceFont = prefsState?.appearanceFont ?: "system", appearanceFontId = prefsState?.appearanceFontId ?: "",
+                appearanceSizeIndex = prefsState?.appearanceSizeIndex ?: 3) {
                 com.akira.app.core.design.rendering.PreferInteractiveFrameRate()
                 val activeLanguage = prefsState?.language ?: "SYSTEM"
                 val currentStrings = remember(activeLanguage) {
@@ -230,7 +232,15 @@ open class MainActivity : ComponentActivity() {
                     }
                 }
                 val rootGlassBackdrop = com.akira.app.core.design.components.rememberAkiraGlassBackdrop()
+                val visualMaterial = com.akira.app.core.design.glass.rememberSharedGlassMaterial()
+                val rootOpacity = androidx.compose.runtime.rememberUpdatedState(prefsState?.liquidGlassOpacity ?: com.akira.app.core.design.glass.AkiraGlassDefaults.Opacity)
+                val rootDiffusion = androidx.compose.runtime.rememberUpdatedState(prefsState?.liquidGlassDiffusion ?: com.akira.app.core.design.glass.AkiraGlassDefaults.Diffusion)
                 androidx.compose.runtime.CompositionLocalProvider(
+                    com.akira.app.core.design.glass.LocalSharedGlassMaterial provides visualMaterial,
+                    com.akira.app.core.design.glass.LocalLiquidGlassEnabled provides (prefsState?.liquidGlassEnabled == true && prefsState?.appearanceReduceTransparency != true),
+                    com.akira.app.core.design.glass.LocalDockBackgroundDiffusion provides (prefsState?.dockLiquidGlassEnabled != false),
+                    com.akira.app.core.design.glass.LocalLiquidGlassOpacity provides remember { { rootOpacity.value } },
+                    com.akira.app.core.design.glass.LocalLiquidGlassDiffusion provides remember { { rootDiffusion.value } },
                     com.akira.app.core.design.components.LocalMultiWindowMode provides multiWindowMode,
                     com.akira.app.core.design.components.LocalAkiraGlassBackdrop provides rootGlassBackdrop,
                     com.akira.app.core.i18n.LocalStrings provides currentStrings

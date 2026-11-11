@@ -40,6 +40,7 @@ __pycache__/
 /backups/
 
 # Internal documentation and distribution tools
+/CONTEXTO.md
 /docs/
 /scripts/
 /anti-slop/
@@ -81,3 +82,11 @@ __pycache__/
 *.dmp
 *.db-wal
 *.db-shm
+
+# Flutter-generated platform projects and local tooling
+**/.dart_tool/
+**/.android/
+**/.ios/
+**/.flutter-plugins*
+/ui_bridge/flutter/test/
+/ui_bridge/flutter/tool/

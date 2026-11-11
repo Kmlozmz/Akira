@@ -72,36 +72,21 @@ internal fun artworkAmbientColors(bitmap: android.graphics.Bitmap, fallback: Col
         return if (main[1] > .2f && (other[1] < .16f || hueDistance > 45f)) primary
             else androidx.compose.ui.graphics.lerp(primary, color, .18f)
     }
-    // Read the whole sleeve as well as its lower edge. Keep black/white in the
-    // quantisation so a tiny bright logo cannot turn a dark photograph neon.
-    val swatches=androidx.palette.graphics.Palette.from(bitmap).clearFilters().maximumColorCount(24).generate()
-        .swatches.sortedByDescending { it.population }
-    val total=swatches.sumOf {it.population}.coerceAtLeast(1)
-    val colors=mutableListOf<Color>()
-    for(swatch in swatches) {
-        if(swatch.population.toFloat()/total < .045f) continue
-        val color=Color(swatch.rgb)
-        if(colors.none { existing ->
-            val dr=existing.red-color.red; val dg=existing.green-color.green; val db=existing.blue-color.blue
-            dr*dr+dg*dg+db*db < .065f
-        })colors.add(color)
-        if(colors.size==5)break
-    }
+    val pixels=IntArray(bitmap.width*bitmap.height)
+    bitmap.getPixels(pixels,0,bitmap.width,0,0,bitmap.width,bitmap.height)
+    val colors=ambientArtworkAccents(pixels)
     return PlayerArtworkColors(primary, local(sample(0f,.36f)), local(sample(.64f,1f)),
         colors.ifEmpty {listOf(primary)})
 }
 
 internal fun playerArtworkBase(primary: Color): Color {
-    val hsv = FloatArray(3)
-    android.graphics.Color.colorToHSV(primary.toArgb(), hsv)
-    val neutral = 1f-hsv[1]
-    // Saturated sleeves keep depth and hue; dark neutrals stay dark, creams
-    // stay light. No minimum-grey floor and no global saturation reduction.
-    val neutralGain=.40f+.32f*hsv[2]
-    val chromaticGain=(1.35f-1.05f*hsv[2]).coerceIn(.42f,1f)
-    hsv[2] = (hsv[2]*(neutralGain*neutral+chromaticGain*(1f-neutral))).coerceIn(.015f,.88f)
-    hsv[1] = (hsv[1]*1.04f).coerceAtMost(1f)
-    return Color(android.graphics.Color.HSVToColor(hsv))
+    val value=maxOf(primary.red,primary.green,primary.blue)
+    if(value<=.001f)return Color(0f,0f,0f,primary.alpha)
+    val saturation=(value-minOf(primary.red,primary.green,primary.blue))/value
+    val target=(Math.pow(value.toDouble(),.84)*(.94-.04*saturation)).toFloat().coerceIn(.015f,.94f)
+    val scale=target/value
+    return Color((primary.red*scale).coerceIn(0f,1f),(primary.green*scale).coerceIn(0f,1f),
+        (primary.blue*scale).coerceIn(0f,1f),primary.alpha)
 }
 
 /** Reveal the actual spatial backdrop through the lower cover. Masking the image

@@ -23,7 +23,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import com.akira.app.core.design.theme.AkiraFontFamily
+import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 
 /** Reserved for player metadata; lists and sheets continue to use ordinary Text. */
 @Composable

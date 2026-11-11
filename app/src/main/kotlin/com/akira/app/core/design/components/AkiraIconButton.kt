@@ -46,7 +46,8 @@ fun AkiraIconButton(
     surfaceSize: Dp = 40.dp,
     glassSurface: Boolean = true,
     menuSourceOverride: AkiraMenuSource? = null,
-    glyphOverride: ImageVector? = null
+    glyphOverride: ImageVector? = null,
+    enabled: Boolean = true
 ) {
     val defaultSource=rememberAkiraMenuSource(hasOwnSurface=showBackground)
     val menuSource=menuSourceOverride ?: defaultSource
@@ -56,9 +57,16 @@ fun AkiraIconButton(
     val neutral = tint == Color.White || tint == androidx.compose.material3.MaterialTheme.colorScheme.onSurface || tint == Color.Black
     val ink = if (showBackground && glassSurface && neutral) com.akira.app.core.design.glass.rememberGlassInk(tint) else null
     val glyphTint = ink?.color ?: tint
+    androidx.compose.runtime.SideEffect {
+        if(isMore && menuSourceOverride==null)menuSource.surfaceContent={
+            Box(Modifier.size(surfaceSize),contentAlignment=Alignment.Center) {
+                Icon(glyphOverride ?: icon,null,Modifier.size(glyphSize),tint=glyphTint)
+            }
+        }
+    }
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val response=rememberAkiraPressResponse(pressed)
+    val response=rememberAkiraPressResponse(pressed && enabled, referenceContact=showBackground && surfaceSize==44.dp)
     androidx.compose.runtime.DisposableEffect(menuSource,response,isMore) {
         if(isMore && menuSourceOverride==null) { menuSource.contactProvider=response.amount;menuSource.contactStrain=response.strain }
         onDispose { if(isMore && menuSourceOverride==null) { menuSource.contactProvider=null;menuSource.contactStrain=null } }
@@ -73,7 +81,7 @@ fun AkiraIconButton(
     val pop = remember { Animatable(0f) }
     var lastPop by remember { mutableStateOf(popOnTrue) }
     LaunchedEffect(popOnTrue,reduced) {
-        val shouldPop = popOnTrue && !lastPop
+        val shouldPop = popOnTrue && !lastPop && enabled
         lastPop = popOnTrue
         if (shouldPop) haptics.toggle()
         if (shouldPop && !reduced) {
@@ -88,8 +96,9 @@ fun AkiraIconButton(
         modifier = modifier.then(ink?.modifier ?: Modifier)
             .then(if(isMore && menuSourceOverride==null)menuSource.modifier else Modifier)
             .size(48.dp)
-            .then(response.modifier)
+            .then(if(enabled)response.modifier else Modifier)
             .clickable(
+                enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null,
                 role = Role.Button,
@@ -105,14 +114,14 @@ fun AkiraIconButton(
             Box(
                 modifier = Modifier
                     .size(surfaceSize)
-                    .then(if(glassSurface) Modifier.lightweightLiquidGlass(surfaceShape, tint.copy(alpha = 0.14f))
+                    .then(if(glassSurface) Modifier.akiraNavigationSurface(surfaceShape)
                         else Modifier.background(tint.copy(alpha = .10f), surfaceShape))
             )
         }
         AkiraAnimatedGlyph(
             icon = glyphOverride ?: icon,
             label = contentDescription ?: if(isMore)com.akira.app.core.i18n.akiraStrings().options else null,
-            tint = glyphTint,
+            tint = if(enabled)glyphTint else glyphTint.copy(alpha=.28f),
             modifier = Modifier.size(glyphSize).graphicsLayer { scaleX=1f+pop.value;scaleY=scaleX }
         )
         }

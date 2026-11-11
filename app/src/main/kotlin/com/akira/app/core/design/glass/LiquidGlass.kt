@@ -21,8 +21,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.luminance
@@ -139,9 +141,9 @@ fun Modifier.lightweightLiquidGlass(shape: CornerBasedShape, fallbackColor: Colo
  * lens. Each surface still owns its shader/shape cache and live coordinates. */
 @Composable
 fun Modifier.liquidGlass(shape: CornerBasedShape, backdropOverride: Backdrop? = null,
-    shadowStrength: Float = 1f, readableContent: Boolean = false): Modifier =
+    shadowStrength: Float = 1f, readableContent: Boolean = false, presence: () -> Float = FullGlass): Modifier =
     renderLiquidGlass(shape, backdropOverride ?: LocalAppBackdrop.current,
-        exportedBackdrop = LocalGlassExport.current,shadowStrength=shadowStrength,
+        exportedBackdrop = LocalGlassExport.current,shadowStrength=shadowStrength, presence=presence,
         readableContent=readableContent)
 
 /** The sole optical implementation. Presence/material describe the lens's
@@ -152,11 +154,23 @@ internal fun Modifier.renderLiquidGlass(shape: CornerBasedShape, backdrop: Backd
     exportedBackdrop: LayerBackdrop? = null, presence: () -> Float = FullGlass,
     material: () -> Float = FullGlass, clearLens: Boolean = false, shadowStrength: Float = 1f,
     readableContent: Boolean = false): Modifier {
+    // Selection lenses retain Akira's production Snell optics rather than a panel/control recipe.
+    val sharedMaterial = if(clearLens)null else LocalSharedGlassMaterial.current
+    val contactAmount = LocalGlassDeformation.current
+    val nature = if (clearLens) SharedGlassNature.Lens else if (readableContent || LocalGlassReadableSurface.current) {
+        LocalSharedGlassNature.current.let { if (it == SharedGlassNature.Control) SharedGlassNature.Panel else it }
+    } else LocalSharedGlassNature.current
     val reading = readableContent || LocalGlassReadableSurface.current
+    val dockReading = LocalGlassIsDock.current
     val glass = LocalLiquidGlassEnabled.current && isGlassSupported()
-    if (!glass) return then(if (shadowStrength > 0f) Modifier.shadow(8.dp * shadowStrength.coerceIn(0f,1f), shape,
+    val classicSurface = if (reading) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainer
+    if (!glass) return then(if (shadowStrength > 0f && shape !is com.akira.app.core.design.motion.SharedPresentationShape) Modifier.shadow(8.dp * shadowStrength.coerceIn(0f,1f), shape,
         clip=false, ambientColor=Color.Black.copy(alpha=.10f), spotColor=Color.Black.copy(alpha=.14f)) else Modifier)
-        .clip(shape).background(if (reading) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainer)
+        .then(if(shape is com.akira.app.core.design.motion.SharedPresentationShape)Modifier else Modifier.clip(shape))
+        .drawBehind {
+            drawOutline(shape.createOutline(size,layoutDirection,this),
+                classicSurface.copy(alpha=classicSurface.alpha*presence().coerceIn(0f,1f)))
+        }
     val opacity = LocalLiquidGlassOpacity.current
     val diffusion = LocalLiquidGlassDiffusion.current
     val diffuse = !clearLens && (!LocalGlassIsDock.current || LocalDockBackgroundDiffusion.current)
@@ -181,6 +195,11 @@ internal fun Modifier.renderLiquidGlass(shape: CornerBasedShape, backdrop: Backd
                 (if(reading)1f else .25f) * density.density * scale * material() else 0f
             // Filter the source once, then refract that same continuous image.
             // A separately masked sharp rim makes the capsule look laminated.
+            if (sharedMaterial != null) {
+                sharedMaterial.apply(this, density.density * scale, lightInk,
+                    if(clearLens)0f else opacity() * material(), if (diffuse) diffusion()*(if(reading)1f else .28f) else 0f,
+                    presence(), !clearLens && reading, nature, 0f)
+            } else {
             if (!clearLens) padding = maxOf(diffusionRadius * 2f, 26f * density.density * scale)
             if (diffusionRadius > 0f) blur(diffusionRadius)
             if (glass && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -190,22 +209,33 @@ internal fun Modifier.renderLiquidGlass(shape: CornerBasedShape, backdrop: Backd
             }
             if (glass) glassReadability(lightInk, presence(), reading,
                 if (lightInk && !clearLens) AkiraGlassMaterialProfile.DarkSurfaceFloor * material() * presence() else 0f)
+            }
         },
-        highlight = if (glass) ({
+        highlight = if (glass && sharedMaterial == null) ({
             val alpha = material() * AkiraGlassMaterialProfile.rim(presence())
             if(alpha > 0f)AkiraGlassMaterialProfile.HighlightStyle.copy(alpha=alpha) else null
         }) else null,
-        shadow = if (glass) ({
+        shadow = if (glass && !(sharedMaterial!=null && (nature==SharedGlassNature.Menu || nature==SharedGlassNature.Panel))) ({
             val alpha = material() * AkiraGlassMaterialProfile.rim(presence())
-            if(alpha > 0f && shadowStrength > 0f)AkiraGlassMaterialProfile.ContactShadow.copy(alpha=alpha*shadowStrength.coerceIn(0f,1f)) else null
+            if(alpha > 0f && shadowStrength > 0f) {
+                if (sharedMaterial != null) Shadow(radius = (if(dockReading || clearLens)16 else if(nature==SharedGlassNature.Menu || nature==SharedGlassNature.Panel)12 else 6).dp,
+                    offset=DpOffset(0.dp,if(dockReading || clearLens)4.dp else 2.dp),
+                    color=Color.Black.copy(alpha=if(dockReading || clearLens).16f else if(nature==SharedGlassNature.Menu || nature==SharedGlassNature.Panel).18f else .08f),
+                    alpha=alpha*shadowStrength.coerceIn(0f,1f))
+                else AkiraGlassMaterialProfile.ContactShadow.copy(alpha=alpha*shadowStrength.coerceIn(0f,1f))
+            } else null
         }) else null,
         onDrawSurface = {
             redraw()
-            val tint = if(glass)opacity().coerceIn(0f,1f)*material().coerceIn(0f,1f) else .65f
-            if(tint>0f)drawRect(color = surfaceTintColor.copy(alpha=tint), size=size)
+            val tint = if (sharedMaterial != null) {
+                if (sharedMaterial.failed || Build.VERSION.SDK_INT < 33) 1f else 0f
+            } else if(glass)opacity().coerceIn(0f,1f)*material().coerceIn(0f,1f) else .65f
+            if(tint>0f)drawOutline(shape.createOutline(size,layoutDirection,this),color=surfaceTintColor.copy(alpha=tint))
         },
         exportedBackdrop = exportedBackdrop,
         backdropScale = scale,
+        clipOutput = !(sharedMaterial!=null && !sharedMaterial.failed && Build.VERSION.SDK_INT>=33 &&
+            (nature==SharedGlassNature.Menu || nature==SharedGlassNature.Panel)),
     )
 }
 

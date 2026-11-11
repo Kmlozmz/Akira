@@ -1,0 +1,6 @@
+{
+  "source": "visual_bridge/reference_snapshot/flutter_runtime/shaders/glass_lean_lens_structured.frag",
+  "source_sha256": "d7cc3767615e82dae954b8bcdc45cd1395161049cf05539be33b6de20d6ff4f2",
+  "android_sha256": "be9810f6509d51c8adc828036b8e34592b585b24983c0ffc2f147a09f2bf4334",
+  "recipe_sha256": "9eff286b6031ad63c6ff72df889cf681d84251a8b1189766993b18ed6d77cf80"
+}

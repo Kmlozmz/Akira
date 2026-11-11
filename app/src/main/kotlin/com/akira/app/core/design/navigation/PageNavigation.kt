@@ -29,7 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import com.akira.app.R
-import com.akira.app.core.design.theme.AkiraFontFamily
+import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 import com.akira.app.core.design.util.rememberAkiraHaptics
 import com.akira.app.core.design.backdrop.Backdrop
 import com.akira.app.core.design.backdrop.backdrops.rememberCanvasBackdrop
@@ -45,8 +45,8 @@ fun pageNavigationTransform(forward: Boolean, reduced: Boolean = false): Content
     if (reduced) return EnterTransition.None togetherWith ExitTransition.None
     // A page pushes the previous page away. Neither page dissolves in place.
     val timing=tween<IntOffset>(300,easing=PagePushEasing)
-    return (slideInHorizontally(timing) { if (forward) it else -it / 3 } togetherWith
-        slideOutHorizontally(timing) { if (forward) -it / 3 else it }).apply {
+    return (slideInHorizontally(timing) { if (forward) it else -(it*com.akira.app.core.design.system.AkiraPageMotionSpec.backgroundTravel).toInt() } togetherWith
+        slideOutHorizontally(timing) { if (forward) -(it*com.akira.app.core.design.system.AkiraPageMotionSpec.backgroundTravel).toInt() else it }).apply {
             targetContentZIndex=if(forward)1f else -1f
         }
 }
@@ -80,22 +80,33 @@ private val HeaderCollapseDistance = 68.dp
     } }
 }
 
-@Composable fun PageBackButton(onBack: () -> Unit, modifier: Modifier = Modifier,
-    collapseProgress: Float = 1f) {
+@OptIn(ExperimentalFoundationApi::class)
+@Composable fun AkiraBackButton(onBack: () -> Unit, modifier: Modifier = Modifier,
+    collapseProgress: Float = 1f, onLongClick: (() -> Unit)? = null, haptic: Boolean = true) {
     val haptics = rememberAkiraHaptics()
     val ink = com.akira.app.core.design.glass.rememberGlassInk(MaterialTheme.colorScheme.onSurface)
     val pageColor = MaterialTheme.colorScheme.background
     val fallback = rememberCanvasBackdrop { drawRect(pageColor) }
     val backdrop = LocalPageHeaderBackdrop.current ?: fallback
-    Box(modifier.then(ink.modifier).size(AkiraNavigationMetrics.Target), contentAlignment = Alignment.Center) {
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val response=rememberAkiraPressResponse(false,referenceContact=true)
+    CompositionLocalProvider(com.akira.app.core.design.glass.LocalGlassDeformation provides response.amount) {
+    Box(modifier.then(ink.modifier).then(response.modifier).size(AkiraNavigationMetrics.Target), contentAlignment = Alignment.Center) {
         Box(Modifier.size(AkiraNavigationMetrics.BackSurface).akiraNavigationSurface(CircleShape, backdrop))
-        Box(Modifier.matchParentSize().clip(CircleShape).clickable { haptics.light(); onBack() },
+        Box(Modifier.matchParentSize().clip(CircleShape).combinedClickable(interactionSource=interaction, indication=null,
+            onClick={ if(haptic)haptics.light(); onBack() }, onLongClick=onLongClick),
             contentAlignment = Alignment.Center) {
             Icon(painterResource(R.drawable.ic_navigation_back), localizedText("Back", "Atrás"),
-                Modifier.size(18.dp), tint = ink.color)
+                Modifier.size(com.akira.app.core.design.system.AkiraNavigationSpec.glyph.dp), tint = ink.color)
         }
     }
+    }
 }
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable fun PageBackButton(onBack:()->Unit,modifier:Modifier=Modifier,
+    collapseProgress:Float=1f,onLongClick:(()->Unit)?=null)=
+    AkiraBackButton(onBack,modifier,collapseProgress,onLongClick)
 
 /** Shared title travel and scale, with sharp glyphs throughout the collapse. */
 @Composable fun PagePageHeader(title: String, onBack: (() -> Unit)?, progress: Float = 0f,
@@ -138,7 +149,7 @@ private val HeaderCollapseDistance = 68.dp
     val currentBack by rememberUpdatedState(onBack)
     val currentTarget by rememberUpdatedState(target)
     val reduced = LocalContentMotionReduced.current
-    LaunchedEffect(target) { state.animateTo(target) }
+    LaunchedEffect(target) {state.animateTo(target)}
     PredictiveBackHandler(enabled = backEnabled) { events ->
         try {
             events.collect { state.seekTo(it.progress.coerceIn(0f,1f),backTarget) }

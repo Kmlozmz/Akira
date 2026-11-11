@@ -283,7 +283,8 @@ import kotlinx.coroutines.flow.first
         else listOf(
             LibraryCategoryLink("songs", localizedText("Liked songs", "Me gusta"), AkiraIcons.StarFilled),
             LibraryCategoryLink("recent", localizedText("Recently played", "Recientes"), Icons.Rounded.Schedule))
-        LibraryOverview(links, { libraryKind = it; libraryCategoryVisible = true; libraryQuery = "" }, onSettings)
+        LibraryOverview(links, { libraryKind = it; libraryCategoryVisible = true; libraryQuery = "" }, onSettings,
+            onRefresh={revision++})
         return
     }
     if (active != null && page?.collection != null) {
@@ -439,35 +440,48 @@ import kotlinx.coroutines.flow.first
     val repository = remember(context) { com.akira.app.core.online.OnlineRepository.get(context) }
     val enabled by repository.enabled.collectAsStateWithLifecycle()
     val account by repository.account.collectAsStateWithLifecycle()
-    AkiraModalSheet(onDismissRequest = onDismiss, style = com.akira.app.core.design.components.AkiraPanelStyle.Popover) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            com.akira.app.core.design.components.AkiraAccountAvatar(account, Modifier.size(44.dp))
-            Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                Text(if (account.connected) account.name else localizedText("Guest", "Invitado"),
-                    style = MaterialTheme.typography.titleMedium)
-                Text(localizedText("Listening mode", "Modo de escucha"), style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        listOf(false, true).forEach { online ->
-            val selected = enabled == online
-            Row(Modifier.padding(horizontal = 12.dp, vertical = 3.dp).fillMaxWidth()
-                .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
-                .background(if (selected) MaterialTheme.colorScheme.surfaceContainerHighest else androidx.compose.ui.graphics.Color.Transparent)
-                .clickable { repository.setEnabled(online); onDismiss() }.padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Icon(if (online) Icons.Rounded.Public else Icons.Rounded.MusicNote, null, Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.onSurface)
-                Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                    Text(if (online) localizedText("Online", "En línea") else localizedText("On this phone", "En este teléfono"),
-                        style = MaterialTheme.typography.titleMedium)
-                    Text(if (online) localizedText("Recommendations and search", "Recomendaciones y búsqueda")
-                        else localizedText("Your saved music", "Tu música local"),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val themeMode=com.akira.app.core.design.theme.LocalThemeMode.current
+    val preset=com.akira.app.core.design.theme.LocalAppearancePreset.current
+    AkiraModalSheet(onDismissRequest=onDismiss,style=com.akira.app.core.design.components.AkiraPanelStyle.Popover){
+        Column(Modifier.fillMaxWidth().padding(horizontal=20.dp,vertical=12.dp)){
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+                com.akira.app.core.design.components.AkiraAccountAvatar(account,Modifier.size(44.dp))
+                Column(Modifier.weight(1f).padding(start=12.dp)){
+                    Text(if(account.connected)account.name else localizedText("Your music","Tu música"),
+                        style=MaterialTheme.typography.titleLarge)
+                    Text(if(account.connected)localizedText("Account connected","Cuenta conectada")
+                        else localizedText("Choose where to listen","Elige dónde escuchar"),
+                        style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                if (selected) Icon(Icons.Rounded.Check, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
             }
+            Spacer(Modifier.height(20.dp))
+            Text(localizedText("Listening mode","Modo de escucha"),style=MaterialTheme.typography.labelLarge,
+                color=MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
+            com.akira.app.core.design.components.AkiraChoiceRow(Icons.Rounded.MusicNote,
+                localizedText("Local library","Biblioteca local"),
+                localizedText("Music stored on this phone","Música guardada en este teléfono"),!enabled,
+                {repository.setEnabled(false);onDismiss()})
+            Spacer(Modifier.height(4.dp))
+            com.akira.app.core.design.components.AkiraChoiceRow(Icons.Rounded.Public,
+                localizedText("Online music","Música en línea"),
+                localizedText("Discover, search and stream","Descubre, busca y reproduce"),enabled,
+                {repository.setEnabled(true);onDismiss()})
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider(color=MaterialTheme.colorScheme.onSurface.copy(alpha=.08f))
+            TextButton(onClick={
+                onDismiss()
+                context.startActivity(android.content.Intent(context,YouTubeLoginActivity::class.java)
+                    .putExtra("themeMode",themeMode).putExtra("appearancePreset",preset))
+            },modifier=Modifier.fillMaxWidth().heightIn(min=48.dp)){
+                Icon(Icons.Rounded.Person,null,Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(if(account.connected)localizedText("Manage account","Gestionar cuenta")
+                    else localizedText("Connect an account","Vincular una cuenta"))
+            }
+            if(!account.connected)Text(localizedText("Online listening also works without an account.",
+                "También puedes escuchar en línea sin una cuenta."),style=MaterialTheme.typography.bodySmall,
+                color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=2.dp,bottom=4.dp))
         }
     }
 }

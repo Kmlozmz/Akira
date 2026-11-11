@@ -197,13 +197,12 @@ import kotlin.math.roundToInt
                 TextButton(onBack) {Text(localizedText("Review permissions","Revisar permisos"))}
             }
     }
-    if(showReview) androidx.compose.ui.window.Dialog(onDismissRequest={showReview=false},
-        properties=androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth=false)) {
-        Surface(Modifier.fillMaxWidth(.94f).widthIn(max=600.dp).fillMaxHeight(.86f),shape=RoundedCornerShape(32.dp),color=MaterialTheme.colorScheme.surfaceContainer) {
-            Column(Modifier.padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
-                Text(localizedText("Song filters","Filtros de canciones"),style=MaterialTheme.typography.headlineSmall)
-                LibraryFilterReview(songs,prefs,repo,Modifier.fillMaxWidth().weight(1f),fontFamily=com.akira.app.core.design.brand.AkiraBrandFont,onDone={showReview=false})
-            }
+    if(showReview) com.akira.app.core.design.components.AkiraModalSheet(onDismissRequest={showReview=false}) {
+        Column(Modifier.fillMaxWidth().height(androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp*.74f)
+            .padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+            Text(localizedText("Song filters","Filtros de canciones"),style=MaterialTheme.typography.headlineSmall)
+            LibraryFilterReview(songs,prefs,repo,Modifier.fillMaxWidth().weight(1f),
+                fontFamily=com.akira.app.core.design.theme.CurrentAkiraFontFamily,onDone={showReview=false})
         }
     }
 }

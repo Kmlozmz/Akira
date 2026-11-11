@@ -1,0 +1,15 @@
+name: inotes_design_reference
+description: Evidence-linked Flutter components and interaction integration for the iNotes research reference.
+publish_to: none
+version: 0.1.0
+environment:
+  sdk: ">=3.13.0 <4.0.0"
+  flutter: ">=3.47.8"
+dependencies:
+  flutter:
+    sdk: flutter
+  inotes_recovered:
+    path: ../flutter_runtime
+flutter:
+  assets:
+    - assets/recovered_components/

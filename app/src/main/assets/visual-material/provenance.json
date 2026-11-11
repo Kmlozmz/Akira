@@ -1,0 +1,6 @@
+{
+  "optical_source": "visual_bridge/reference_snapshot/flutter_runtime/shaders/glass_lean_structured.frag",
+  "source_sha256": "490f5ca846a5aa04a419135066782ccf58fa928b286063ea236ed726be75779a",
+  "android_sha256": "f3e2d002095a3eb74f1537e85946ea17e7ac9975ce2e312a3e68dd30d45b97cb",
+  "sampling": "GPU separable Gaussian input before refraction; Flutter retains its six-stage mip chain"
+}

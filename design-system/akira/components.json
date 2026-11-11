@@ -1,0 +1,127 @@
+{
+  "AkiraNavigationSpec": {
+    "face": 44,
+    "target": 48,
+    "glyph": 24,
+    "gutter": 20,
+    "headerTop": 16
+  },
+  "AkiraSwitchSpec": {
+    "trackWidth": 63,
+    "trackHeight": 28,
+    "targetHeight": 48,
+    "thumbWidth": 37,
+    "thumbHeight": 24,
+    "heldWidth": 58,
+    "heldHeight": 38.333,
+    "travel": 22,
+    "leadingInset": 2,
+    "dragSlop": 3,
+    "trackGradientExtent": 567,
+    "trackGradientEnd": 63,
+    "revealOnPeriod": 0.68,
+    "revealOffPeriod": 0.4,
+    "inactiveDarkArgb": "0x4DEBEBF5",
+    "inactiveLightArgb": "0x4D3C3C43"
+  },
+  "AkiraSliderSpec": {
+    "thumbWidth": 37,
+    "thumbHeight": 24,
+    "heldScale": 1.55,
+    "trackHeight": 6,
+    "targetHeight": 48,
+    "inactiveDarkArgb": "0x35787880",
+    "inactiveLightArgb": "0x33787880"
+  },
+  "AkiraContactSpec": {
+    "heldPeriod": 0.262,
+    "heldDamping": 0.625,
+    "releasePeriod": 0.4,
+    "releaseDamping": 0.375,
+    "buttonMargin": 16,
+    "buttonResistance": 2000,
+    "paneMargin": 4,
+    "paneResistance": 24000,
+    "glowPeriod": 0.1,
+    "glowDamping": 1,
+    "glowAmount": 0.8,
+    "glowReach": 3,
+    "glowDodge": 4,
+    "paneHeldPeriod": 0.314,
+    "paneHeldDamping": 0.625,
+    "paneReleasePeriod": 0.36,
+    "paneReleaseDamping": 0.6,
+    "glowReleasePeriod": 0.5
+  },
+  "AkiraControlMotionSpec": {
+    "contactPeriod": 0.27,
+    "contactDamping": 0.625,
+    "releasePeriod": 0.5,
+    "releaseDamping": 0.7,
+    "trackingPeriod": 0.1,
+    "trackingDamping": 1,
+    "sliderTrackingPeriod": 0.4,
+    "sliderTrackingDamping": 1,
+    "switchTrackingPeriod": 0.4,
+    "switchTrackingDamping": 0.85,
+    "switchReleasePeriod": 0.3,
+    "switchReleaseDamping": 1,
+    "selectionPeriod": 0.12,
+    "selectionDamping": 1
+  },
+  "AkiraMenuSpec": {
+    "rowHeight": 48,
+    "horizontalInset": 16,
+    "denseVerticalInset": 8,
+    "verticalInset": 12,
+    "iconSize": 22,
+    "width": 260,
+    "glassRadius": 32,
+    "classicRadius": 22
+  },
+  "AkiraPanelSpec": {
+    "gutter": 20,
+    "sectionGap": 16,
+    "choiceRadius": 18,
+    "avatarSize": 44
+  },
+  "AkiraDockSpec": {
+    "accentArgb": "0xFFFA243C",
+    "lensLift": 9,
+    "lensZoom": 1,
+    "dispersion": 0.65,
+    "compactHeight": 48
+  },
+  "AkiraThumbMotionSpec": {
+    "heldPeriod": 0.4443393939393939,
+    "heldDamping": 0.5620606060606061,
+    "heldAccelerationScale": 2003.030303030303,
+    "heldExtent": 10.545454545454554,
+    "heldMinimum": 0.899090909090909,
+    "heldMaximum": 1.1003030303030303,
+    "switchPeriod": 0.4462620606060606,
+    "switchDamping": 0.5737339393939395,
+    "switchAccelerationScale": 2020.1969696969697,
+    "switchExtent": 13.635454545454541,
+    "switchMinimum": 0.8939409090909092,
+    "switchMaximum": 1.1020196969696971,
+    "releasePeriod": 0.444,
+    "releaseDamping": 0.56,
+    "releaseAccelerationScale": 2000,
+    "releaseExtent": 10,
+    "releaseMinimum": 0.9,
+    "releaseMaximum": 1.1
+  },
+  "AkiraClassicControlSpec": {
+    "inactiveTrackDarkArgb": "0xFF39393D",
+    "inactiveTrackLightArgb": "0xFFE0E0E5",
+    "inactiveThumbDarkArgb": "0xFFB5B5BD",
+    "inactiveThumbLightArgb": "0xFF68686D",
+    "iconSize": 16,
+    "contrastThreshold": 0.179,
+    "disabledAlpha": 0.38
+  },
+  "AkiraPageMotionSpec": {
+    "backgroundTravel": 0.3
+  }
+}

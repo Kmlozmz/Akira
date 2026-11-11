@@ -14,9 +14,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable internal fun AudioDialog(onDismiss: () -> Unit, content: @Composable () -> Unit) {
     AkiraAudioTheme {
-        BasicAlertDialog(onDismissRequest=onDismiss) {
-            Surface(shape=androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
-                color=MaterialTheme.colorScheme.surfaceContainer, tonalElevation=0.dp) { content() }
-        }
+        com.akira.app.core.design.components.AkiraModalSheet(onDismiss,
+            style=com.akira.app.core.design.components.AkiraPanelStyle.Update) { content() }
     }
 }

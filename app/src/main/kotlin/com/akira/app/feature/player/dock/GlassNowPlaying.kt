@@ -57,14 +57,15 @@ internal fun GlassNowPlaying(
     DisposableEffect(swipe) {onDispose {swipe.dispose()}}
     val visibleSong=swipe.shownSong
     var nextPulse by remember {mutableIntStateOf(0)}
-    val haptics = rememberHaptics()
     val pressSource = remember { MutableInteractionSource() }
     val foldDeformation=LocalGlassDeformation.current
     val response=com.akira.app.core.design.components.rememberAkiraPressResponse(false, .4f)
     val density=androidx.compose.ui.platform.LocalDensity.current
-    val surfaceShape=remember(response,density) {
+    val inheritedStrain=com.akira.app.core.design.glass.LocalGlassStrain.current
+    val elastic=com.akira.app.core.design.glass.LocalLiquidGlassEnabled.current && !com.akira.app.core.design.components.LocalContentMotionReduced.current
+    val surfaceShape=remember(response,density,inheritedStrain,elastic) {
         com.akira.app.core.design.motion.ElasticGlassShape({Float.MAX_VALUE},{0f},
-            { androidx.compose.ui.geometry.Offset.Zero },density)
+            { if(elastic)inheritedStrain()+response.strain() else androidx.compose.ui.geometry.Offset.Zero },density,preserveCapsuleEnds=true)
     }
 
     val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
@@ -89,11 +90,9 @@ internal fun GlassNowPlaying(
             .miniPlayerGestures(
                 pull = pull,
                 onNext = {
-                    haptics.play(Haptic.SkipNext)
                     onNext()
                 },
                 onPrevious = {
-                    haptics.play(Haptic.SkipPrevious)
                     onPrevious()
                 },
                 locked = controlsLocked,
@@ -144,12 +143,12 @@ internal fun GlassNowPlaying(
                     // available width changes; no artist fade or vertical title snap.
                     Box(Modifier.weight(1f).height((30f * fontScale).dp), contentAlignment = Alignment.CenterStart) {
                         Text(visibleSong.title, style = MaterialTheme.typography.titleMedium.copy(
-                            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = FontFamily.SansSerif,
+                            fontSize = 14.sp, lineHeight = 16.sp, fontFamily = com.akira.app.core.design.theme.CurrentAkiraFontFamily,
                             fontWeight = FontWeight.SemiBold), color = resolvedContentColor,
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.fillMaxWidth().graphicsLayer { translationY = (-7f * fontScale).dp.toPx() })
                         Text(visibleSong.artist, style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 12.sp, lineHeight = 14.sp, fontFamily = FontFamily.SansSerif),
+                            fontSize = 12.sp, lineHeight = 14.sp, fontFamily = com.akira.app.core.design.theme.CurrentAkiraFontFamily),
                             color = resolvedContentColor.copy(alpha = .88f), maxLines = 1, overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.fillMaxWidth().graphicsLayer {
                                 translationY = (8f * fontScale).dp.toPx()
@@ -168,7 +167,6 @@ internal fun GlassNowPlaying(
             } else {
                 MiniControlButton(
                     onClick = {
-                        haptics.play(if (isPlaying) Haptic.Pause else Haptic.Resume)
                         onPlayPause()
                     },
                     modifier = Modifier.size(glyphSlot),
@@ -188,8 +186,7 @@ internal fun GlassNowPlaying(
                 Spacer(Modifier.width((8f * expanded).dp))
                 MiniControlButton(
                     onClick = {
-                        haptics.play(Haptic.SkipNext)
-                        nextPulse++
+                            nextPulse++
                         onNext()
                     },
                     enabled = !controlsLocked,

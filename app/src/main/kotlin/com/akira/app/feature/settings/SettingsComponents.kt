@@ -18,6 +18,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -32,55 +37,49 @@ import com.akira.app.core.design.components.LocalContentMotionReduced
 
 @Composable
 internal fun SettingsGroup(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    // Each row keeps its own hit target and rounded clip. A shared outer clip
-    // would fill the gaps and leave the internal corners square.
-    Layout(content=content,modifier=modifier.fillMaxWidth()) { children,constraints ->
-        val gap=2.dp.roundToPx()
-        val rows=children.map {it.measure(constraints.copy(minHeight=0))}
-        val width=(rows.maxOfOrNull {it.width} ?: 0).coerceIn(constraints.minWidth,constraints.maxWidth)
-        val height=(rows.sumOf {it.height}+gap*(rows.size-1).coerceAtLeast(0)).coerceIn(constraints.minHeight,constraints.maxHeight)
-        layout(width,height) {
-            var y=0
-            rows.forEachIndexed {index,row ->
-                row.placeRelativeWithLayer(0,y) {clip=true;shape=settingsSegmentShape(index,rows.size)}
-                y+=row.height+gap
-            }
-        }
+    val boundaries=remember{mutableListOf<Int>()}
+    val separator=MaterialTheme.colorScheme.onSurface.copy(alpha=.1f)
+    Layout(content=content,modifier=modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
+        .background(settingsSurfaceColor()).drawWithContent {
+            drawContent()
+            for(y in boundaries)drawLine(separator,androidx.compose.ui.geometry.Offset(60.dp.toPx(),y.toFloat()),
+                androidx.compose.ui.geometry.Offset(size.width-16.dp.toPx(),y.toFloat()),.5.dp.toPx())
+        }) {children,constraints ->
+        val rows=children.map{it.measure(constraints.copy(minHeight=0))}
+        val width=(rows.maxOfOrNull{it.width} ?: 0).coerceIn(constraints.minWidth,constraints.maxWidth)
+        val height=rows.sumOf{it.height}.coerceIn(constraints.minHeight,constraints.maxHeight)
+        boundaries.clear();var edge=0
+        rows.dropLast(1).forEach{edge+=it.height;boundaries.add(edge)}
+        layout(width,height){var y=0;rows.forEach{it.placeRelative(0,y);y+=it.height}}
     }
 }
 
-internal fun settingsSegmentShape(index: Int, count: Int) = RoundedCornerShape(
-    topStart=if(index==0)20.dp else 4.dp,topEnd=if(index==0)20.dp else 4.dp,
-    bottomStart=if(index==count-1)20.dp else 4.dp,bottomEnd=if(index==count-1)20.dp else 4.dp)
-
 @Composable
 internal fun SettingsGroupTitle(title: String) {
-    Text(title, Modifier.padding(start = 4.dp, top = 8.dp, bottom = 8.dp).semantics { heading() },
-        style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(title, Modifier.padding(start = 18.dp, top = 12.dp, bottom = 8.dp).semantics { heading() },
+        fontFamily=AkiraFontFamily,fontSize=13.sp,fontWeight=FontWeight.Medium,color=MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 @Composable
 internal fun SettingsRow(icon: ImageVector, title: String, detail: String, onClick: () -> Unit,
     modifier: Modifier = Modifier, enabled: Boolean = true, opensSelector: Boolean = false,
-    leading: (@Composable () -> Unit)? = null) {
+    leading: (@Composable () -> Unit)? = null, iconTint: Color = MaterialTheme.colorScheme.primary) {
     val haptics = rememberAkiraHaptics()
     val source = rememberAkiraMenuSource(hideOnOpen = false, trailingControl = true, icon = AkiraIcons.ChevronRight)
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val reduced = LocalContentMotionReduced.current
-    val fill by animateColorAsState(if (pressed) MaterialTheme.colorScheme.surfaceContainerHigh
-        else MaterialTheme.colorScheme.surfaceContainer, if (reduced) snap() else tween(120), label = "settingsRowContact")
-    Row(modifier.fillMaxWidth().heightIn(min = 76.dp).background(fill)
+    val fill by animateColorAsState(if (pressed) MaterialTheme.colorScheme.onSurface.copy(alpha=.07f)
+        else Color.Transparent, if (reduced) snap() else tween(120), label = "settingsRowContact")
+    Row(modifier.fillMaxWidth().heightIn(min = if(detail.isBlank())52.dp else 68.dp).background(fill)
         .then(if (opensSelector) source.modifier else Modifier)
         .clickable(interactionSource = interaction, indication = null, role = Role.Button, enabled = enabled) {
-            haptics.light()
             if (opensSelector) source.open(onClick) else onClick()
-        }.padding(horizontal = 18.dp, vertical = 16.dp),
+        }.padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        if (leading != null) leading() else
-            Icon(icon, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) .85f else .38f))
+        SettingsLeadingIcon(icon,enabled,leading,iconTint)
         SettingsRowText(title, detail, Modifier.weight(1f), enabled)
-        Icon(AkiraIcons.ChevronRight, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (enabled) .7f else .35f))
+        Icon(AkiraIcons.ChevronRight, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (enabled) .7f else .35f))
     }
 }
 
@@ -89,12 +88,12 @@ internal fun SettingsToggleRow(icon: ImageVector, title: String, detail: String,
     onChange: (Boolean) -> Unit) {
     val haptics = rememberAkiraHaptics()
     fun change(value: Boolean) { haptics.toggle(value); onChange(value) }
-    Row(Modifier.fillMaxWidth().heightIn(min = 76.dp)
-        .background(MaterialTheme.colorScheme.surfaceContainer)
+    Row(Modifier.fillMaxWidth().heightIn(min = if(detail.isBlank())52.dp else 68.dp)
+        .background(Color.Transparent)
         .toggleable(checked, role = Role.Switch, onValueChange = ::change)
-        .padding(start = 18.dp, end = 10.dp, top = 12.dp, bottom = 12.dp),
+        .padding(start = 16.dp, end = 10.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        Icon(icon, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .85f))
+        SettingsLeadingIcon(icon)
         SettingsRowText(title, detail, Modifier.weight(1f))
         AkiraSwitch(checked, ::change, Modifier.clearAndSetSemantics { }, haptic = {})
     }
@@ -102,10 +101,10 @@ internal fun SettingsToggleRow(icon: ImageVector, title: String, detail: String,
 
 @Composable
 private fun SettingsRowText(title: String, detail: String, modifier: Modifier, enabled: Boolean = true) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(title, style = MaterialTheme.typography.titleMedium,
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(title,fontFamily=AkiraFontFamily,fontSize=17.sp,fontWeight=FontWeight.Normal,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else .38f))
-        if (detail.isNotBlank()) Text(detail, style = MaterialTheme.typography.bodyMedium,
+        if (detail.isNotBlank()) Text(detail,fontFamily=AkiraFontFamily,fontSize=13.sp,lineHeight=18.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (enabled) 1f else .5f))
     }
 }

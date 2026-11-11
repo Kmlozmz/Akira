@@ -42,7 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.akira.app.R
 import com.akira.app.core.database.AppDatabase
 import com.akira.app.core.data.playlist.PlaylistStore
-import com.akira.app.core.design.theme.AkiraFontFamily
+import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 import com.akira.app.core.model.Song
 import com.akira.app.feature.collection.*
 import com.akira.app.core.model.SongKey
@@ -54,6 +54,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.stateIn
 
 class HomeFeedSources(context: android.content.Context, scope: kotlinx.coroutines.CoroutineScope) {
+    internal val songIndex=HomeSongIndexCache()
     private val db = AppDatabase.getInstance(context)
     private val store = PlaylistStore(context)
     private val started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000)
@@ -81,19 +82,20 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
     val stats by retained.stats.collectAsStateWithLifecycle()
     val playlists by retained.playlists.collectAsStateWithLifecycle()
     val playlistEntries by retained.items.collectAsStateWithLifecycle()
-    val byId = remember(songs) { songs.associateBy { it.id } }
-    val byKey = remember(songs) { songs.associateBy { SongKey.of(it).encoded } }
+    val songIndex=retained.songIndex.get(songs)
+    val byId=songIndex.byId
+    val byKey=songIndex.byKey
     val statsMap = remember(stats) { stats.associateBy { it.songKey } }
     val recent = remember(history, songs, stats) {
         (history.mapNotNull { byId[it.songId] } + stats.sortedByDescending { it.lastPlayedAt }.mapNotNull { byKey[it.songKey] }).distinctBy { it.id }.take(30)
     }
-    val most = remember(songs, stats) { songs.filter { (statsMap[SongKey.of(it).encoded]?.playCount ?: 0) > 0 }
-        .sortedByDescending { statsMap[SongKey.of(it).encoded]?.playCount }.take(30) }
-    val added = remember(songs) { songs.sortedByDescending { if (it.dateAddedSec > 0) it.dateAddedSec else it.dateModifiedSec }.take(30) }
-    val favorites = remember(songs) { songs.filter { it.isFavorite } }
-    val forgotten = remember(favorites, stats) { favorites.filter { (statsMap[SongKey.of(it).encoded]?.lastPlayedAt ?: 0) < System.currentTimeMillis() - 90L*86400000 }.take(20) }
-    val albums = remember(songs) { songs.groupBy(::localAlbumKey).values.filter { it.first().album.isNotBlank() }.take(20) }
-    val artists = remember(songs) { songs.groupBy { it.artist }.values.filter { it.first().artist.isNotBlank() }.take(20) }
+    val most = remember(songs, stats) { songs.filter { (statsMap[songIndex.keyById[it.id]]?.playCount ?: 0) > 0 }
+        .sortedByDescending { statsMap[songIndex.keyById[it.id]]?.playCount }.take(30) }
+    val added=songIndex.added
+    val favorites=songIndex.favorites
+    val forgotten = remember(favorites, stats) { favorites.filter { (statsMap[songIndex.keyById[it.id]]?.lastPlayedAt ?: 0) < System.currentTimeMillis() - 90L*86400000 }.take(20) }
+    val albums=songIndex.albums
+    val artists=songIndex.artists
     val userLists = remember(playlists, playlistEntries, songs) { playlists.map { list ->
         HomePlaylist(list.id, list.title, playlistEntries.filter { it.playlistId == list.id }.mapNotNull { byKey[it.songKey] ?: byId[it.songKey] })
     }.filter { it.songs.isNotEmpty() } }

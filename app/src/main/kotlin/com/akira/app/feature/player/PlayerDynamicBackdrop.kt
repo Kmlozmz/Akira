@@ -31,7 +31,7 @@ internal fun rememberAmbientPhase(moving: Boolean): State<Float> {
         owner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             var last=0L
             while(true)withFrameNanos { now ->
-                if(last!=0L)phase.floatValue += ((now-last)/1_000_000_000f).coerceAtMost(.1f)*.105f
+                if(last!=0L)phase.floatValue += ((now-last)/1_000_000_000f).coerceAtMost(.1f)*.48f
                 last=now
             }
         }
@@ -43,6 +43,12 @@ internal fun rememberAmbientPhase(moving: Boolean): State<Float> {
 internal fun Modifier.playerDynamicBackdrop(colors: PlayerArtworkColors, moving: Boolean,
     opacity: () -> Float = {1f}): Modifier {
     val reduced=com.akira.app.core.design.components.LocalContentMotionReduced.current
+    val context=androidx.compose.ui.platform.LocalContext.current.applicationContext
+    val shader=remember(context) {
+        if(android.os.Build.VERSION.SDK_INT>=33)runCatching {
+            AmbientArtworkShader(context.assets.open("shaders/player_ambient.agsl").bufferedReader().use{it.readText()})
+        }.getOrNull() else null
+    }
     val phase=rememberAmbientPhase(moving)
     val duration=if(reduced)0 else 750
     val base=animateColorAsState(playerArtworkBase(colors.primary),tween(duration),label="ambientBase")
@@ -54,15 +60,20 @@ internal fun Modifier.playerDynamicBackdrop(colors: PlayerArtworkColors, moving:
         animateColorAsState(target,tween(duration),label="ambient$i")
     }
     return drawWithCache {
-        val shade=Brush.verticalGradient(listOf(Color.Black.copy(alpha=.12f),Color.Black.copy(alpha=.36f)))
+        val shade=Brush.verticalGradient(listOf(Color.Black.copy(alpha=.03f),Color.Black.copy(alpha=.12f)))
         onDrawBehind {
             val alpha=opacity().coerceIn(0f,1f)
-            drawRect(base.value,alpha=alpha)
             val t=phase.value
+            if(shader!=null && android.os.Build.VERSION.SDK_INT>=33) {
+                shader.update(size,t,base.value,palette)
+                drawRect(shader.brush,alpha=alpha)
+                return@onDrawBehind
+            }
+            drawRect(base.value,alpha=alpha)
             palette.forEachIndexed { i,color ->
                 val angle=t*(.65f+i*.13f)+i*1.27f
                 val center=Offset(size.width*(.45f+.36f*cos(angle)),size.height*(.46f+.34f*sin(angle*.91f+i)))
-                val radius=size.maxDimension*(.52f+(i%2)*.1f)
+                val radius=size.maxDimension*(.38f+(i%2)*.1f)
                 drawRect(Brush.radialGradient(listOf(color.value.copy(alpha=.66f),color.value.copy(alpha=0f)),
                     center,radius),alpha=alpha)
             }
@@ -71,5 +82,6 @@ internal fun Modifier.playerDynamicBackdrop(colors: PlayerArtworkColors, moving:
     }
 }
 
+@Suppress("UNUSED_PARAMETER")
 internal fun useMotionArtwork(fullscreen: Boolean, lyrics: Boolean, queue: Boolean, landscape: Boolean,
-    enabled: Boolean): Boolean = fullscreen && enabled && !lyrics && !queue && !landscape
+    enabled: Boolean): Boolean = fullscreen && enabled && !landscape

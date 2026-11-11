@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.sp
 import com.akira.app.core.datastore.UserPreferences
 import com.akira.app.core.datastore.UserPreferencesRepository
 import com.akira.app.core.design.icon.AkiraIcons
-import com.akira.app.core.design.theme.AkiraFontFamily
+import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 import com.akira.app.core.i18n.LocalStrings
 import com.akira.app.core.i18n.AkiraUiText
 import com.akira.app.core.model.Song
@@ -40,7 +40,7 @@ internal fun AppearanceScreen(prefs: UserPreferences, repo: UserPreferencesRepos
         "LIGHT" to com.akira.app.core.design.components.localizedText("Light", "Claro"),
         "AMOLED" to com.akira.app.core.design.components.localizedText("Dark", "Oscuro"))
     AkiraStudioScreen(strings.ui(AkiraUiText.Appearance), onBack) {
-        Column(Modifier.fillMaxWidth().verticalScroll(com.akira.app.core.design.navigation.LocalPageScrollState.current ?: rememberScrollState(), flingBehavior = com.akira.app.core.design.motion.rememberAkiraBouncingFling()).padding(top=118.dp).padding(24.dp)) {
+        Column(Modifier.fillMaxWidth().verticalScroll(com.akira.app.core.design.navigation.LocalPageScrollState.current ?: rememberScrollState(), flingBehavior = com.akira.app.core.design.motion.rememberAkiraBouncingFling()).padding(top=80.dp).padding(24.dp)) {
         SettingsGroup {
         labels.forEach { (mode,label) ->
             val selected=if(mode=="AMOLED")prefs.themeMode=="AMOLED"||prefs.themeMode=="DARK" else prefs.themeMode==mode

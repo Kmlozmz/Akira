@@ -1,0 +1,7 @@
+{
+  "source": "visual_bridge/reference_snapshot/flutter_runtime/shaders/press_glow_structured.frag",
+  "source_sha256": "9ed3dc1d1d5000f6d1261204c62e1a3a8eed2f9518bd7fd0bc420b020569b28b",
+  "android_sha256": "8f52e3647083ebd5017f9215f7eed510a9959fd723ed150d2b8d9fdefa95bd17",
+  "profile_source": "visual_bridge/reference_snapshot/flutter_runtime/lib/src/rendering/press_glow_profile.dart",
+  "profile_sha256": "0582321409cb0be6e4734d324d5b5fc51e598e28bfc7c0acce5d201abfebbfc5"
+}

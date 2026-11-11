@@ -98,7 +98,7 @@ import com.akira.app.core.design.components.LocalContentMotionReduced
                         }
                     }
                     if(lens && cell>0 && !motion.isFlat)CompositionLocalProvider(LocalAppBackdrop provides backdrop) {
-                        GlassSelectionPill(motion,fill,bar,labels,Modifier.matchParentSize().pillPlacement(center,{motion.liveSize(rest,lifted)}))
+                        GlassSelectionPill(motion,fill,bar,Modifier.matchParentSize().pillPlacement(center,{motion.liveSize(rest,lifted)}))
                     }
                 }
             }

@@ -11,9 +11,11 @@ import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
 internal object LibraryIcons {
+    val Accent = Color(0xFFFF2D4F)
     val Playlists by lazy {
         ImageVector.Builder("LibraryPlaylists", 24.dp, 24.dp, 24f, 24f).apply {
-            path(fill = SolidColor(Color.White), pathFillType = PathFillType.EvenOdd) {
+            path(fill = SolidColor(Color.White), stroke = SolidColor(Color.White), strokeLineWidth = .6f,
+                strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round, pathFillType = PathFillType.EvenOdd) {
                 moveTo(1.71f, 12.57f)
                 lineTo(1.71f, 13.14f)
                 lineTo(2.00f, 13.43f)
@@ -105,7 +107,8 @@ internal object LibraryIcons {
     }
     val Artists by lazy {
         ImageVector.Builder("LibraryArtists", 24.dp, 24.dp, 24f, 24f).apply {
-            path(fill = SolidColor(Color.White), pathFillType = PathFillType.EvenOdd) {
+            path(fill = SolidColor(Color.White), stroke = SolidColor(Color.White), strokeLineWidth = .6f,
+                strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round, pathFillType = PathFillType.EvenOdd) {
                 moveTo(13.14f, 9.14f)
                 lineTo(13.71f, 9.71f)
                 lineTo(13.71f, 10.00f)
@@ -311,7 +314,8 @@ internal object LibraryIcons {
     }
     val Albums by lazy {
         ImageVector.Builder("LibraryAlbums", 24.dp, 24.dp, 24f, 24f).apply {
-            path(fill = SolidColor(Color.White), pathFillType = PathFillType.EvenOdd) {
+            path(fill = SolidColor(Color.White), stroke = SolidColor(Color.White), strokeLineWidth = .6f,
+                strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round, pathFillType = PathFillType.EvenOdd) {
                 moveTo(5.71f, 7.14f)
                 lineTo(18.57f, 7.14f)
                 lineTo(18.86f, 7.43f)
@@ -389,7 +393,8 @@ internal object LibraryIcons {
     }
     val Songs by lazy {
         ImageVector.Builder("LibrarySongs", 24.dp, 24.dp, 24f, 24f).apply {
-            path(fill = SolidColor(Color.White), pathFillType = PathFillType.EvenOdd) {
+            path(fill = SolidColor(Color.White), stroke = SolidColor(Color.White), strokeLineWidth = .6f,
+                strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round, pathFillType = PathFillType.EvenOdd) {
                 moveTo(17.43f, 1.71f)
                 lineTo(16.57f, 1.71f)
                 lineTo(16.57f, 2.00f)
@@ -540,7 +545,7 @@ internal object LibraryIcons {
     }
     val Folders by lazy {
         ImageVector.Builder("LibraryFolders", 24.dp, 24.dp, 24f, 24f).apply {
-            path(stroke = SolidColor(Color.White), strokeLineWidth = 1.65f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+            path(stroke = SolidColor(Color.White), strokeLineWidth = 2.1f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
                 moveTo(3f, 5f); lineTo(9f, 5f); lineTo(11f, 7.5f); lineTo(21f, 7.5f)
                 lineTo(21f, 19f); quadTo(21f, 20f, 20f, 20f); lineTo(4f, 20f)
                 quadTo(3f, 20f, 3f, 19f); close()

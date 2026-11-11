@@ -1,0 +1,13 @@
+{
+  "scope": "Measured native fixtures and verified numerical primitives used by the interactive lab. Widget composition and recognizer integration have their own validation.",
+  "generator_sha256": "39fb118aea6776b30d925ea17e0804f657c45b4f37b92fc556bf2dc4be1a3e5d",
+  "sources_sha256": {
+    "flutter-probe-shell\\assets\\recovered_fixture\\fixture.json": "12f7e72cd5ce3b83a954e52fb29ac0477f4af32cc3513b348583f4cfc591840e",
+    "flutter-probe-shell\\assets\\recovered_fixture_light\\fixture.json": "05c140647f7f593378f460bcc9fa3043a6ecca275816bd4e0672222db8e71098",
+    "iconos-fuente-componentes.json": "e46308f9929468807607f79302b697e710a951e3655135ab18b7bae659855d10",
+    "vectores-unificados.json": "c433227fafc23721adad39677e4a96114608cc192ac5b98386b916042f33fbe6",
+    "reconstruction\\recovered_back_policy.dart": "50fc29233db53c9cb506be177abd8762ead82efc5ff5a325fc427ec063a58156",
+    "reconstruction\\recovered_back_velocity.dart": "db5ff6e9083a24af48d041c0de3b1f49cdea25c0dee84d80f1cb6f82cbcdcb0f",
+    "reconstruction\\recovered_underdamped_simulation.dart": "d9c6325be864040707f35aa8750a7367038d45ad2f6352f7c015826f183e330d"
+  }
+}

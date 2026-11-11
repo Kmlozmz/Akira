@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.akira.app.core.online.OnlineRepository
 import com.akira.app.core.design.components.AkiraSwitch
@@ -48,13 +49,13 @@ import kotlinx.coroutines.launch
         context.startActivity(Intent(context, YouTubeLoginActivity::class.java)
             .putExtra("themeMode", themeMode).putExtra("appearancePreset", appearance))
     }
-    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(24.dp))
-        .padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxWidth().background(com.akira.app.feature.settings.settingsSurfaceColor(), RoundedCornerShape(24.dp))
+        .padding(horizontal=16.dp,vertical=12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                Text(localizedText("Online mode", "Modo online"), style = MaterialTheme.typography.titleMedium)
+                Text(localizedText("Online mode", "Modo online"), fontSize=17.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.Normal)
                 Text(if (enabled) "YouTube Music" else localizedText("Music on this phone", "Música de este teléfono"),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize=13.sp)
             }
             AkiraSwitch(checked = enabled, onCheckedChange = { value ->
                 repository.setEnabled(value)
@@ -103,7 +104,7 @@ import kotlinx.coroutines.launch
         title = localizedText("Make it your music", "Trae tu música contigo")) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)
             .background(MaterialTheme.colorScheme.surface.copy(alpha = .96f), RoundedCornerShape(28.dp))
-            .verticalScroll(rememberScrollState()).padding(20.dp),
+            .verticalScroll(rememberScrollState()).padding(horizontal=16.dp,vertical=12.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Box(Modifier.size(64.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
                 contentAlignment = Alignment.Center) {

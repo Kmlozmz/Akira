@@ -28,6 +28,7 @@ import com.akira.app.core.design.backdrop.backdrops.layerBackdrop
 internal class StudioEntry(val id: String, val depth: Int, val scroll: androidx.compose.foundation.ScrollState) {
     var render by mutableStateOf<@Composable () -> Unit>({})
     var onBack: () -> Unit = {}
+    var title: String = ""
 }
 @Stable internal class StudioNavigationState {
     val entries = mutableStateListOf<StudioEntry>()
@@ -57,6 +58,8 @@ internal val LocalStudioNavigation = staticCompositionLocalOf<StudioNavigationSt
     val navigator = LocalStudioNavigation.current
     // The registration stays composed while another studio page covers this
     // one. Own scroll here, so returning from an editor restores its position.
+    val parentTitle = remember(navigator) { navigator?.entries?.lastOrNull()?.title }
+    val parentLabel = parentTitle?.takeIf{it.isNotBlank()} ?: com.akira.app.core.i18n.LocalStrings.current.settingsTitle
     val scroll = rememberScrollState()
     val render: @Composable () -> Unit = {
         val scrollCollapse by rememberPageCollapse(scroll)
@@ -77,7 +80,7 @@ internal val LocalStudioNavigation = staticCompositionLocalOf<StudioNavigationSt
                 CompositionLocalProvider(LocalPageScrollState provides scroll,
                     com.akira.app.core.design.glass.LocalAppBackdrop provides controlsBackdrop) { content() }
             }
-            PagePageHeader(title,onBack,collapse,Modifier.widthIn(max=720.dp).align(Alignment.TopCenter),trailing=trailing)
+            SettingsPageHeader(title,onBack,Modifier.widthIn(max=720.dp).align(Alignment.TopCenter),trailing=trailing,backLabel=parentLabel)
             com.akira.app.core.design.components.AkiraNoticeHost(Modifier.align(Alignment.BottomCenter).padding(bottom=8.dp),priority=2)
         }
         }
@@ -86,7 +89,7 @@ internal val LocalStudioNavigation = staticCompositionLocalOf<StudioNavigationSt
         Dialog(onDismissRequest=onBack,properties=DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false)) { render() }
     } else {
         val entry=remember(navigator) { StudioEntry(java.util.UUID.randomUUID().toString(),navigator.entries.size,scroll) }
-        SideEffect { entry.render=render; entry.onBack=onBack }
+        SideEffect { entry.render=render; entry.onBack=onBack; entry.title=title }
         DisposableEffect(navigator,entry) {
             navigator.entries.add(entry)
             onDispose { navigator.entries.remove(entry) }

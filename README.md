@@ -5,7 +5,7 @@
 <p align="center">A player for the music you keep and the music you have yet to discover.</p>
 
 <p align="center">
-  <a href="https://github.com/Kmlozmz/Akira/releases"><img src="https://img.shields.io/badge/version-0.3.1-FA243C?style=flat-square" alt="Version 0.3.1" /></a>
+  <a href="https://github.com/Kmlozmz/Akira/releases"><img src="https://img.shields.io/badge/version-0.4.0-FA243C?style=flat-square" alt="Version 0.4.0" /></a>
   <img src="https://img.shields.io/badge/Android-8.0%2B-242428?style=flat-square" alt="Android 8.0 or later" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-242428?style=flat-square" alt="GPL version 3" /></a>
   <img src="https://img.shields.io/badge/languages-ES%20%2F%20EN-242428?style=flat-square" alt="Spanish and English" />
@@ -22,7 +22,7 @@
 
 ## About Akira
 
-Akira is an open-source Android music player written in Kotlin. It brings together a local library, online music, synchronized lyrics and sound settings in an interface you can customize.
+Akira is an open-source Android music player with a Kotlin playback core and a shared Compose and Flutter interface. It brings together a local library, online music, synchronized lyrics and sound settings in an interface you can customize.
 
 Listen to files already on your phone without an account or internet connection. Switch to online mode to browse recommendations, search for songs or start a radio. Linking a YouTube Music account is optional and provides access to your personal content.
 
@@ -90,7 +90,7 @@ Choose framed or full-screen artwork, cover-derived colors and animated artwork 
 3. Open the APK and confirm installation in Android. If prompted, allow installation from the browser or file manager you are using.
 4. Follow the initial setup to add your music and choose preferences.
 
-**Requirements:** Android 8.0 or later. Public releases include only the regular Release APK.
+**Requirements:** Android 8.0 or later on a 64-bit ARM device. Public releases include only the regular Release APK.
 
 ### Updating in the app
 

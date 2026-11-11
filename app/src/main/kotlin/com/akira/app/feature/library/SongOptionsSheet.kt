@@ -9,8 +9,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.NorthEast
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import com.akira.app.core.design.components.*
@@ -43,27 +41,38 @@ fun SongOptionsSheet(
     val strings=akiraStrings()
     val haptics=rememberAkiraHaptics()
     var showAdd by remember { mutableStateOf(false) }
-    var showGoTo by remember { mutableStateOf(false) }
-    val quick=listOf(
-        AkiraContextAction(AkiraIcons.Queue,strings.addToQueue){haptics.click();onAddToQueue(song)},
-        AkiraContextAction(if(favorite)AkiraIcons.StarFilled else AkiraIcons.Star,strings.favorite,selected=favorite){haptics.toggle(!favorite);onToggleFavorite?.invoke(song)},
-        AkiraContextAction(AkiraIcons.Share,strings.share){haptics.click();if(onShare!=null)onShare(song)else shareSongIntent(context,song)}
-    )
-    val navigation=buildList {
-        add(AkiraContextAction(AkiraIcons.FastForward,strings.playNext){haptics.click();onPlayNext(song)})
-        if (!song.contentUri.startsWith("akira-youtube:")) add(AkiraContextAction(AkiraIcons.Queue,strings.library.addToList,opensPresentation=true){showAdd=true})
-        if(onGoToAlbum!=null || onGoToArtist!=null)add(AkiraContextAction(Icons.Rounded.NorthEast,
-            com.akira.app.core.design.components.localizedText("Go to","Ir a"),opensPresentation=true,hasSubmenu=true){showGoTo=true})
-        if(isFromPlayer&&onViewLyrics!=null)add(AkiraContextAction(AkiraIcons.Lyrics,strings.viewLyrics){onViewLyrics()})
-        if(isFromPlayer&&onSleepTimer!=null)add(AkiraContextAction(AkiraIcons.SleepTimer,strings.sleepTimer){onSleepTimer()})
-        add(AkiraContextAction(AkiraIcons.Info,strings.viewCredits,opensPresentation=true){onViewDetails(song)})
+    val online=song.contentUri.startsWith("akira-youtube:")
+    val quick=buildList {
+        if(onToggleFavorite!=null)add(AkiraContextAction(
+            if(favorite)AkiraIcons.StarFilled else AkiraIcons.Star,
+            if(favorite)localizedText("Favorited","En favoritos")else strings.favorite,selected=favorite) {
+            haptics.toggle(!favorite);onToggleFavorite(song)
+        })
+        add(AkiraContextAction(AkiraIcons.Share,strings.share){
+            if(!isFromPlayer)haptics.click();if(onShare!=null)onShare(song)else shareSongIntent(context,song)
+        })
     }
-    val destructive=if(onDelete==null || song.contentUri.startsWith("akira-youtube:"))emptyList()else listOf(AkiraContextAction(AkiraIcons.Trash,strings.delete,destructive=true,opensPresentation=true){onDelete(song)})
-    AkiraContextMenu(onDismiss=onDismiss,quickActions=quick,groups=listOf(navigation.take(2),navigation.drop(2),destructive))
-    if(showGoTo) AkiraContextMenu(onDismiss={showGoTo=false},groups=listOf(buildList {
-        if(onGoToAlbum!=null)add(AkiraContextAction(AkiraIcons.Album,strings.goToAlbum){onGoToAlbum(song);onDismiss()})
-        if(onGoToArtist!=null)add(AkiraContextAction(AkiraIcons.Artist,strings.goToArtist){onGoToArtist(song);onDismiss()})
-    }))
+    val queueActions=buildList {
+        add(AkiraContextAction(AkiraIcons.FastForward,strings.playNext){if(!isFromPlayer)haptics.click();onPlayNext(song)})
+        add(AkiraContextAction(AkiraIcons.Queue,strings.addToQueue){if(!isFromPlayer)haptics.click();onAddToQueue(song)})
+        if(!online)add(AkiraContextAction(AkiraIcons.Queue,strings.library.addToList,opensPresentation=true){showAdd=true})
+    }
+    val destinations=buildList {
+        if(onGoToAlbum!=null)add(AkiraContextAction(AkiraIcons.Album,strings.goToAlbum){onGoToAlbum(song)})
+        if(onGoToArtist!=null)add(AkiraContextAction(AkiraIcons.Artist,strings.goToArtist){onGoToArtist(song)})
+    }
+    val tools=buildList {
+        if(isFromPlayer&&onViewLyrics!=null)add(AkiraContextAction(AkiraIcons.Lyrics,strings.viewLyrics){onViewLyrics()})
+        if(isFromPlayer&&onSleepTimer!=null)add(AkiraContextAction(AkiraIcons.SleepTimer,strings.sleepTimer,
+            opensPresentation=true){onSleepTimer()})
+        add(AkiraContextAction(AkiraIcons.Info,localizedText("Track information","Información de la canción"),
+            opensPresentation=true){onViewDetails(song)})
+    }
+    val destructive=if(onDelete==null || online)emptyList()else listOf(
+        AkiraContextAction(AkiraIcons.Trash,strings.delete,destructive=true,opensPresentation=true){onDelete(song)})
+    AkiraContextMenu(onDismiss=onDismiss,quickActions=quick,dense=true,
+        groups=listOf(queueActions,destinations,tools,destructive),
+        header={AkiraContextHeader(song.title,song.artist,song.albumArtUri,AkiraIcons.Album)})
     if(showAdd) AddToPlaylistSheet(listOf(song), onDismiss = { showAdd = false }, onComplete = onDismiss)
 }
 

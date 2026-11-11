@@ -89,7 +89,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.akira.app.core.design.theme.AkiraFontFamily
+import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 import com.akira.app.core.design.theme.noRippleClickable
 import com.akira.app.core.model.Song
 import androidx.compose.ui.layout.positionInRoot
@@ -136,7 +136,7 @@ private fun synthesizeWordTimings(text: String, startMs: Long, durationMs: Long)
 /** Renderable word with optional trailing whitespace and its fill interval. */
 private data class LyricWordSpan(val text: String, val startMs: Long, val endMs: Long)
 
-private val LyricTextStyle = TextStyle(
+private val LyricTextStyle: TextStyle @Composable get() = TextStyle(
     fontFamily = AkiraFontFamily,
     fontWeight = FontWeight.ExtraBold,
     fontSize = 30.sp,

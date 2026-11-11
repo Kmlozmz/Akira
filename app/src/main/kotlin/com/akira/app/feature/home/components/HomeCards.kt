@@ -56,7 +56,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.akira.app.R
-import com.akira.app.core.design.theme.AkiraFontFamily
+import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 import androidx.compose.material3.MaterialTheme
 
 // spacing and type straight from the Figma home frames (13:11 / 14:212)
@@ -65,7 +65,7 @@ val HomeCardSpacing = 15.dp
 
 private val HomeTracking = (-0.06).em
 
-val HomeLabelStyle = TextStyle(
+val HomeLabelStyle: TextStyle @Composable get() = TextStyle(
     fontFamily = AkiraFontFamily,
     fontWeight = FontWeight.Bold,
     fontSize = 16.sp,
@@ -73,7 +73,7 @@ val HomeLabelStyle = TextStyle(
     letterSpacing = HomeTracking,
 )
 
-val HomeTitleStyle = TextStyle(
+val HomeTitleStyle: TextStyle @Composable get() = TextStyle(
     fontFamily = AkiraFontFamily,
     fontWeight = FontWeight.Bold,
     fontSize = 24.sp,
@@ -81,7 +81,7 @@ val HomeTitleStyle = TextStyle(
     letterSpacing = HomeTracking,
 )
 
-private val HomeCardTitleStyle = TextStyle(
+private val HomeCardTitleStyle: TextStyle @Composable get() = TextStyle(
     fontFamily = AkiraFontFamily,
     fontWeight = FontWeight.SemiBold,
     fontSize = 14.sp,
@@ -89,7 +89,7 @@ private val HomeCardTitleStyle = TextStyle(
     letterSpacing = (-0.03).em,
 )
 
-private val HomeCardSubtitleStyle = TextStyle(
+private val HomeCardSubtitleStyle: TextStyle @Composable get() = TextStyle(
     fontFamily = AkiraFontFamily,
     fontWeight = FontWeight.Medium,
     fontSize = 12.sp,
@@ -97,7 +97,7 @@ private val HomeCardSubtitleStyle = TextStyle(
     letterSpacing = (-0.02).em,
 )
 
-private val HomeRankStyle = TextStyle(
+private val HomeRankStyle: TextStyle @Composable get() = TextStyle(
     fontFamily = AkiraFontFamily,
     fontWeight = FontWeight.Bold,
     fontSize = 22.sp,
@@ -376,7 +376,7 @@ fun HomeTrackRow(
 // the Figma "Concert" card (20:195) is 314 x 247 on a 402 wide frame
 const val HomeVideoCardAspect = 314f / 247f
 
-private val HomeVideoTitleStyle = TextStyle(
+private val HomeVideoTitleStyle: TextStyle @Composable get() = TextStyle(
     fontFamily = AkiraFontFamily,
     fontWeight = FontWeight.SemiBold,
     fontSize = 15.sp,
@@ -384,7 +384,7 @@ private val HomeVideoTitleStyle = TextStyle(
     letterSpacing = (-0.03).em,
 )
 
-private val HomeVideoSubtitleStyle = TextStyle(
+private val HomeVideoSubtitleStyle: TextStyle @Composable get() = TextStyle(
     fontFamily = AkiraFontFamily,
     fontWeight = FontWeight.Medium,
     fontSize = 13.sp,

@@ -67,8 +67,11 @@ fun LiquidSlider(
     steps: Int = 0,
     onFinished: () -> Unit = {},
     onActiveChanged: (Boolean) -> Unit = {},
-    accent: Color = Color(0xFFFA243C)
+    accent: Color = MaterialTheme.colorScheme.primary
 ) {
+    val sharedMaterial = com.akira.app.core.design.glass.LocalSharedGlassMaterial.current
+    val glassOpacity = com.akira.app.core.design.glass.LocalLiquidGlassOpacity.current
+    val glassDiffusion = com.akira.app.core.design.glass.LocalLiquidGlassDiffusion.current
     val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(context) { MotionSettings.load(context) }
     val isDarkMode = (MaterialTheme.colorScheme.surface.luminance() < .5f)
@@ -229,32 +232,42 @@ fun LiquidSlider(
                     ),
                     shape = { Capsule },
                     effects = {
-                        val progress = dampedDragAnimation.pressProgress
-                        // At rest the thumb is an opaque white capsule (see onDrawSurface), so a blur
-                        // of what is under it would be invisible work. Only refract once pressed.
-                        if (progress > 0f) blur(8f.dp.toPx() * (1f - progress) * GlassSettings.style.blur)
-                        lens(
-                            10f.dp.toPx() * progress * GlassSettings.style.refractionHeight,
-                            14f.dp.toPx() * progress * GlassSettings.style.refractionAmount,
-                            chromaticAberration = GlassSettings.style.chromaticAberration, depthEffect = GlassSettings.style.depthEffect
-                        )
+                        if (sharedMaterial != null) {
+                            sharedMaterial.apply(this, this.density, isDarkMode,
+                                glassOpacity(), glassDiffusion(),
+                                dampedDragAnimation.pressProgress.coerceIn(0f, 1f))
+                        } else {
+                            val progress = dampedDragAnimation.pressProgress
+                            // At rest the thumb is an opaque white capsule (see onDrawSurface), so a blur
+                            // of what is under it would be invisible work. Only refract once pressed.
+                            if (progress > 0f) blur(8f.dp.toPx() * (1f - progress) * GlassSettings.style.blur)
+                            lens(
+                                10f.dp.toPx() * progress * GlassSettings.style.refractionHeight,
+                                14f.dp.toPx() * progress * GlassSettings.style.refractionAmount,
+                                chromaticAberration = GlassSettings.style.chromaticAberration, depthEffect = GlassSettings.style.depthEffect
+                            )
+                        }
                     },
                     highlight = {
-                        val progress = dampedDragAnimation.pressProgress
-                        // Alpha 0 at rest: skip it outright, so an idle thumb never builds the
-                        // highlight shader at all.
-                        if (progress <= 0f) null else Highlight.Ambient.copy(
-                            width = Highlight.Ambient.width / 1.5f,
-                            blurRadius = Highlight.Ambient.blurRadius / 1.5f,
-                            alpha = progress
-                        )
+                        if (sharedMaterial != null) null else {
+                            val progress = dampedDragAnimation.pressProgress
+                            // Alpha 0 at rest: skip it outright, so an idle thumb never builds the
+                            // highlight shader at all.
+                            if (progress <= 0f) null else Highlight.Ambient.copy(
+                                width = Highlight.Ambient.width / 1.5f,
+                                blurRadius = Highlight.Ambient.blurRadius / 1.5f,
+                                alpha = progress
+                            )
+                        }
                     },
                     shadow = {
                         Shadow(radius = 2.dp, color = Color.Black.copy(alpha = if (isLightTheme) .25f else .10f))
                     },
                     innerShadow = {
-                        val progress = dampedDragAnimation.pressProgress
-                        if (progress <= 0f) null else InnerShadow(radius = 4f.dp * progress, alpha = progress)
+                        if (sharedMaterial != null) null else {
+                            val progress = dampedDragAnimation.pressProgress
+                            if (progress <= 0f) null else InnerShadow(radius = 4f.dp * progress, alpha = progress)
+                        }
                     },
                     // Fully covered by the opaque white surface at rest â€” see LiquidToggle.
                     onDrawBackdrop = { drawBackdrop ->
@@ -266,7 +279,8 @@ fun LiquidSlider(
                     },
                     onDrawSurface = {
                         val progress = dampedDragAnimation.pressProgress
-                        drawRect(Color.White.copy(alpha = 1f - progress))
+                        drawRect(Color.White.copy(alpha = if (sharedMaterial != null &&
+                            (sharedMaterial.failed || android.os.Build.VERSION.SDK_INT < 33)) 1f else 1f - progress))
                         if (isLightTheme && progress < 1f) {
                             drawRoundRect(Color(0xFF767983).copy(alpha = .8f * (1f - progress)),
                                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2),
@@ -274,7 +288,7 @@ fun LiquidSlider(
                         }
                     }
                 )
-                .size(40f.dp, 24f.dp)
+                .size(if (sharedMaterial != null) 37.dp else 40.dp, 24.dp)
         )
     }
 }

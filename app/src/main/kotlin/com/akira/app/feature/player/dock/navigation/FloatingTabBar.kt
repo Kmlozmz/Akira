@@ -271,7 +271,8 @@ fun FloatingTabBar(
     val foldStrain=remember(fold) { { fold.strain() } }
     val foldMaterial=remember(fold) { { fold.deformation() } }
     val folding = !fold.settled(scrollConnection.isInline)
-    val navigationContact=com.akira.app.core.design.components.rememberAkiraPressResponse(false)
+    // The composite's lens supplies its own optical highlights; do not color-dodge the sampled glyphs.
+    val navigationContact=com.akira.app.core.design.components.rememberAkiraPressResponse(false,contactLighting=false)
     CompositionLocalProvider(com.akira.app.core.design.glass.LocalGlassIsDock provides true,
         LocalDockMorphActive provides folding,
         LocalDockTargetInline provides scrollConnection.isInline,
@@ -289,8 +290,8 @@ fun FloatingTabBar(
                 }, replacementProgress)
             if(dockWidth>0) LiveDockFoldSelection(scrollConnection.isInline,dockWidth,
                 compactHeight,(47f+14f*density.fontScale).dp,
-                scope.tabs.size+if(scope.standaloneTab!=null)1 else 0,
-                (scope.tabs+listOfNotNull(scope.standaloneTab)).indexOfFirst { it.key==selectedTabKey },
+                scope.expandedTabs.size,
+                scope.expandedTabs.indexOfFirst { it.key==selectedTabKey },
                 sizes.tabBarContentPadding,sizes.tabSpacing,colors.indicatorColor,folding,
                 Modifier.matchParentSize().then(navigationModifier).graphicsLayer { alpha = 1f-replacementProgress })
             AnimatedContent(
@@ -785,14 +786,15 @@ private fun SharedTransitionScope.ExpandedBar(
 
         if (hasTabGroup || standaloneTab != null) {
             Box(Modifier.fillMaxWidth().height(navigationHeight), contentAlignment = Alignment.BottomCenter) {
+            Row(Modifier.fillMaxSize().padding(horizontal=5.dp),horizontalArrangement=Arrangement.spacedBy(sizes.componentSpacing),verticalAlignment=Alignment.CenterVertically) {
             ExpandedTabs(
                 scope = scope,
-                tabs = scope.tabs + listOfNotNull(standaloneTab),
+                tabs = scope.expandedTabs,
                 selectedTabKey = selectedTabKey,
                 shapes = shapes, sizes = sizes, colors = colors, elevations = elevations,
                 animatedVisibilityScope = animatedVisibilityScope,
                 tabBarContentModifier = tabBarContentModifier,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp).then(navigationModifier)
+                modifier = Modifier.weight(1f).then(navigationModifier)
                     .graphicsLayer { alpha = 1f-(replacement?.progress ?: 0f) }
                     .then(if (replacement != null) Modifier
                         .clearAndSetSemantics { }
@@ -801,6 +803,7 @@ private fun SharedTransitionScope.ExpandedBar(
                                 .changes.forEach { it.consume() }
                         } } else Modifier)
             )
+            }
             replacement?.content?.invoke(Modifier.matchParentSize())
             }
         }
@@ -1260,6 +1263,7 @@ private class FloatingTabBarScopeImpl : FloatingTabBarScope {
     var standaloneTab: FloatingTabBarTab? by mutableStateOf(null)
         private set
     private var lastInlineTab: FloatingTabBarTab? = null
+    val expandedTabs:List<FloatingTabBarTab> get()=tabs.toList()+listOfNotNull(standaloneTab)
     var previousInlineKey: Any? = null
     fun getInlineTab(selectedKey: Any?): FloatingTabBarTab? {
         // Restore the original dock behavior: Search is independent and keeps

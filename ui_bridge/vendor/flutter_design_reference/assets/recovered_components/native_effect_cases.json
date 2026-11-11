@@ -1,0 +1,616 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "m18glow3",
+      "family": "press_glow",
+      "fields": {
+        "uSize": [
+          1220,
+          2712
+        ],
+        "uCenter": [
+          116.00066375732422,
+          246.00067138671875
+        ],
+        "uReach": 405.2857360839844,
+        "uBig": 0.7956182956695557,
+        "uLittle": 0.7956182956695557,
+        "uDodge": 4
+      },
+      "geometry": [
+        0,
+        0,
+        1220,
+        2712
+      ],
+      "draw_matrix_column_major": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        -47.35237503051758,
+        -177.3523712158203,
+        0.0,
+        1.0
+      ],
+      "input_matrix_column_major": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        -48.35237503051758,
+        -178.3523712158203,
+        0.0,
+        1.0
+      ],
+      "output_matrix_column_major": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        -1.0,
+        -1.0,
+        0.0,
+        1.0
+      ],
+      "sampling": [
+        1,
+        1
+      ],
+      "input_size": [
+        1220,
+        2712
+      ],
+      "input_format_indices": [
+        4,
+        4
+      ],
+      "extra_input_sizes": [
+        [
+          64,
+          1
+        ]
+      ],
+      "output_size": [
+        138,
+        138
+      ],
+      "original_source": {
+        "path": "instrumentacion/codex-m16-final/m18glow3/runtime.jsonl",
+        "sha256": "01ddc665563dce29beaabbd8fd741aba794b982c972bb08c084b16b0ef364f00"
+      },
+      "structured_program": {
+        "path": "reconstruction/flutter_runtime/shaders/press_glow_structured.frag",
+        "sha256": "9ed3dc1d1d5000f6d1261204c62e1a3a8eed2f9518bd7fd0bc420b020569b28b"
+      }
+    },
+    {
+      "id": "m18morph3",
+      "family": "glass_lean_morph",
+      "fields": {
+        "uSize": [
+          294,
+          143
+        ],
+        "uFrag": [
+          285.9016418457031,
+          59.016395568847656,
+          0.32786884903907776,
+          0.003921568859368563
+        ],
+        "uP": [
+          [
+            334.0577087402344,
+            82.48410034179688,
+            44.01493835449219,
+            21.365190505981445
+          ],
+          [
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "uRad": [
+          -21.365190505981445,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "uShape": [
+          1,
+          -17.633350372314453,
+          1,
+          0.32786884903907776
+        ],
+        "uWarp": [
+          -2.885496139526367,
+          22.116029739379883,
+          1,
+          0.5
+        ],
+        "uA": [
+          357.07574462890625,
+          89.153564453125,
+          9.828731536865234,
+          10.102507591247559
+        ],
+        "uDeep": [
+          0,
+          25.116029739379883,
+          0,
+          0
+        ]
+      },
+      "geometry": [
+        0,
+        0,
+        294,
+        143
+      ],
+      "draw_matrix_column_major": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1.0,
+        1.0,
+        0.0,
+        1.0
+      ],
+      "input_matrix_column_major": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        872.0,
+        180.0,
+        0.0,
+        1.0
+      ],
+      "output_matrix_column_major": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        871.0,
+        179.0,
+        0.0,
+        1.0
+      ],
+      "sampling": [
+        1
+      ],
+      "input_size": [
+        294,
+        143
+      ],
+      "input_format_indices": [
+        4
+      ],
+      "extra_input_sizes": [],
+      "output_size": [
+        296,
+        145
+      ],
+      "original_source": {
+        "path": "instrumentacion/codex-m16-final/m18morph3/runtime.jsonl",
+        "sha256": "91b18de8efba29739c3b4f948f9e164f11e21d1fe51c11a051cf29664c466d72"
+      },
+      "structured_program": {
+        "path": "reconstruction/flutter_runtime/shaders/glass_lean_morph_structured.frag",
+        "sha256": "640a43c1c6d557b925c0638ca290f82da849d028ec9919e33992285695769485"
+      }
+    },
+    {
+      "id": "m18loupe3",
+      "family": "text_loupe",
+      "fields": {
+        "uSize": [
+          1220,
+          2712
+        ],
+        "uFrag": [
+          0,
+          0,
+          0.32786884903907776,
+          0.007854573428630829
+        ],
+        "uMag": [
+          1.25,
+          -24.590164184570312,
+          -53.667503356933594
+        ],
+        "uShape": [
+          27.36994743347168,
+          200.1210174560547,
+          1.2929072380065918,
+          13.152934074401855
+        ],
+        "uCorner": [
+          1.2151442766189575,
+          0.32786884903907776
+        ],
+        "uRefr": [
+          -0.7757443189620972,
+          0.24565236270427704
+        ],
+        "uFace": [
+          0.05999999865889549,
+          1,
+          1
+        ],
+        "uHi": [
+          0,
+          1,
+          -6.123234262925839e-17,
+          1
+        ],
+        "uHi2": [
+          -0.6666666865348816,
+          -0.5,
+          -0.30000001192092896
+        ],
+        "uHi3": [
+          1,
+          1
+        ],
+        "uRing": [
+          0.07000000029802322,
+          4,
+          4,
+          12
+        ],
+        "uKf": [
+          1,
+          0.1736481785774231,
+          0,
+          0.75
+        ],
+        "uKfD": [
+          8,
+          0.6156615018844604,
+          11.333333015441895,
+          0
+        ],
+        "uKfDir": [
+          0,
+          -1,
+          1,
+          1
+        ],
+        "uVm0": [
+          1.1202000379562378,
+          -0.18940000236034393,
+          -0.01899999938905239,
+          0.14710000157356262
+        ],
+        "uVm1": [
+          -0.056299999356269836,
+          0.9871000051498413,
+          -0.019099999219179153,
+          0.14710000157356262
+        ],
+        "uVm2": [
+          -0.056299999356269836,
+          -0.18930000066757202,
+          1.1574000120162964,
+          0.14710000157356262
+        ],
+        "uAb": [
+          0.031029772013425827,
+          0.6084269285202026,
+          0.9799246788024902,
+          0.1993679404258728
+        ],
+        "uAbE": [
+          0,
+          -0.3490849435329437,
+          0,
+          1
+        ],
+        "uFlex": [
+          0.9997749328613281,
+          0.9996082782745361,
+          -0.022227615118026733,
+          0.09670920670032501
+        ],
+        "uOrigin": [
+          0,
+          0
+        ]
+      },
+      "geometry": [
+        0,
+        0,
+        1220,
+        2712
+      ],
+      "draw_matrix_column_major": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        -75.39927673339844,
+        -566.2789916992188,
+        0.0,
+        1.0
+      ],
+      "input_matrix_column_major": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        -76.39927673339844,
+        -567.2789916992188,
+        0.0,
+        1.0
+      ],
+      "output_matrix_column_major": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        -1.0,
+        -1.0,
+        0.0,
+        1.0
+      ],
+      "sampling": [
+        1
+      ],
+      "input_size": [
+        1220,
+        2712
+      ],
+      "input_format_indices": [
+        4
+      ],
+      "extra_input_sizes": [],
+      "output_size": [
+        17,
+        89
+      ],
+      "original_source": {
+        "path": "instrumentacion/codex-m16-final/m18loupe3/runtime.jsonl",
+        "sha256": "5e79ad9f8779854262c6fef9c27dbaf016f650ad5097c99117ba20594ea0693a"
+      },
+      "structured_program": {
+        "path": "reconstruction/flutter_runtime/shaders/text_loupe_structured.frag",
+        "sha256": "94a8af3f4caf338ed5548a4ec59e66925f8b2189be3294889f405689e3715e94"
+      }
+    },
+    {
+      "id": "m18bar2",
+      "family": "bar_blur_mip",
+      "fields": {
+        "uRect": [
+          -42.42640686035156,
+          -42.42640686035156,
+          134.85281372070312,
+          128.85281372070312
+        ],
+        "uMix": [
+          0,
+          0.778751015663147,
+          0.0006067961221560836,
+          0.0006345177534967661
+        ]
+      },
+      "geometry": [
+        -6.63746976852417,
+        -6.63746976852417,
+        56.63747024536133,
+        50.63747024536133
+      ],
+      "draw_matrix_column_major": [
+        2.9683444499969482,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        3.021794557571411,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        20.7022705078125,
+        21.05706787109375,
+        0.0,
+        1.0
+      ],
+      "input_matrix_column_major": [
+        2.9683444499969482,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        3.021794557571411,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        889.5201416015625,
+        179.42051696777344,
+        0.0,
+        1.0
+      ],
+      "output_matrix_column_major": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        868.81787109375,
+        158.3634490966797,
+        0.0,
+        1.0
+      ],
+      "sampling": [
+        1,
+        1
+      ],
+      "input_size": [
+        206,
+        197
+      ],
+      "input_format_indices": [
+        8,
+        8
+      ],
+      "extra_input_sizes": [
+        [
+          206,
+          197
+        ]
+      ],
+      "output_size": [
+        190,
+        176
+      ],
+      "original_source": {
+        "path": "instrumentacion/codex-m16-final/m18bar2/runtime.jsonl",
+        "sha256": "aa2968b058942f15a28f4aa19f54c5bb9bfc6ab7114c13b9e75a8a2742faa7f8"
+      },
+      "structured_program": {
+        "path": "reconstruction/flutter_runtime/shaders/bar_blur_mip_structured.frag",
+        "sha256": "3963bfc494c1c68781a674b84f7bab742e42a3f948b78e6d0bc409c6347418d8"
+      }
+    }
+  ],
+  "gpu_validation": {
+    "path": "instrumentacion/codex-m16-final/M18-closeout.json",
+    "sha256": "1ab218e3f08548f7b1f364f1e7ce9667186e4af8f5e18f9a2b5446e2aa1eadaa"
+  },
+  "scope": "Exact captured material states at the reference viewport. Image buffers remain in the research evidence, rather than inflating the reusable package.",
+  "limits": [
+    "Supply coherent images from the same rendered state and preserve their native pixel format and sampling.",
+    "Coordinates are measured instances, not an inferred responsive layout or universal widget dimensions.",
+    "See PORTING.md and the GPU-tested replay for lossless pixel upload and the automatic filter-input contract."
+  ]
+}

@@ -1,0 +1,177 @@
+{
+  "artifacts": [
+    {
+      "source": "instrumentacion\\appearance-dark-runtime\\screen.png",
+      "source_sha256": "e41de5b1920b49fc630d245f3112b38ed6238200387f1e151a001abf9e54cd30",
+      "crop_px": [
+        296,
+        561,
+        511,
+        964
+      ],
+      "asset": "preview-dark-light.png",
+      "sha256": "c6b5698a34b140ce311a8490663982d105c51300aaada52f618886d1037834ed",
+      "scope": "Decorative theme illustration only; labels, selection and controls are live widgets."
+    },
+    {
+      "source": "instrumentacion\\appearance-dark-runtime\\screen.png",
+      "source_sha256": "e41de5b1920b49fc630d245f3112b38ed6238200387f1e151a001abf9e54cd30",
+      "crop_px": [
+        709,
+        561,
+        924,
+        964
+      ],
+      "asset": "preview-dark-dark.png",
+      "sha256": "fa748abed39dca7158876312a5e18a0f02247953367ffdd0fd51fe44171f66de",
+      "scope": "Decorative theme illustration only; labels, selection and controls are live widgets."
+    },
+    {
+      "source": "instrumentacion\\appearance-light-runtime\\screen.png",
+      "source_sha256": "66f3701c57b6788bdcfd8991d0f1e0549cd3ce8edbbdb7b293670137ac5e6bd0",
+      "crop_px": [
+        296,
+        561,
+        511,
+        964
+      ],
+      "asset": "preview-light-light.png",
+      "sha256": "3a4db7a48c6167efef2394e53cd028604a049bf0e44f6397fef6947015ffe07e",
+      "scope": "Decorative theme illustration only; labels, selection and controls are live widgets."
+    },
+    {
+      "source": "instrumentacion\\appearance-light-runtime\\screen.png",
+      "source_sha256": "66f3701c57b6788bdcfd8991d0f1e0549cd3ce8edbbdb7b293670137ac5e6bd0",
+      "crop_px": [
+        709,
+        561,
+        924,
+        964
+      ],
+      "asset": "preview-light-dark.png",
+      "sha256": "ebc8d967aaa56fcbeacb25be26c216cdb74c9a63f09ca5487d2aa4becb7f786f",
+      "scope": "Decorative theme illustration only; labels, selection and controls are live widgets."
+    },
+    {
+      "source": "style-choices/screen.png",
+      "crop_px": [
+        296,
+        561,
+        511,
+        964
+      ],
+      "asset": "style-classic.png",
+      "sha256": "9acb498089a7941fa08bad7b35c7f7677efa6e4ea9ad338f7051e8f16d162503",
+      "scope": "Decorative original style illustration."
+    },
+    {
+      "source": "style-choices/screen.png",
+      "crop_px": [
+        710,
+        561,
+        925,
+        964
+      ],
+      "asset": "style-glass.png",
+      "sha256": "454ae8be3bcf21c7a3714e6d4a0863783d734376d40ccc3b358453845cd4f70c",
+      "scope": "Decorative original style illustration."
+    },
+    {
+      "source": "instrumentacion/m18-filter-fixtures5/cases.json",
+      "asset": "filters/cases.json",
+      "sha256": "29b7fb79924fbae36133c702201a89aaabef615f56769041170ebd71000d2bbf"
+    },
+    {
+      "source": "instrumentacion/m18-filter-fixtures5/m18glow3-filterin.premul8",
+      "asset": "filters/m18glow3-filterin.premul8",
+      "sha256": "a025a7e4a8b29ba208419d1764781f7e803a2a0e8a116a16d8af9999c54c6d39"
+    },
+    {
+      "source": "instrumentacion/m18-filter-fixtures5/m18glow3-filterextra.premul8",
+      "asset": "filters/m18glow3-filterextra.premul8",
+      "sha256": "8e88fb23e00f6884eadcb81e0cda17db70a9c9006ccfa01a23458531012f5492"
+    },
+    {
+      "source": "instrumentacion/m18-filter-fixtures5/m18glow3-filterout.png",
+      "asset": "filters/m18glow3-filterout.png",
+      "sha256": "1ca9505af017d70caaf2832c528dd22e0ac8e1714cb1a41fbb636dcd5f3942a8"
+    },
+    {
+      "source": "instrumentacion/m18-filter-fixtures5/m18morph3-filterin.premul8",
+      "asset": "filters/m18morph3-filterin.premul8",
+      "sha256": "c35a384dc5680d4e8c9fe52743ae5f6180ad987c289e683bfd9801c340cf96cb"
+    },
+    {
+      "source": "instrumentacion/m18-filter-fixtures5/m18morph3-filterout.png",
+      "asset": "filters/m18morph3-filterout.png",
+      "sha256": "16b8f559eae90f7c284f0c78519ea2fd6295c9afd09c40eb5403952f6fafa8ea"
+    },
+    {
+      "source": "instrumentacion/m18-filter-fixtures5/m18loupe3-filterin.premul8",
+      "asset": "filters/m18loupe3-filterin.premul8",
+      "sha256": "a1c040417401f069ef8431927f2b493a776df38ddd402704203f881683c6f90f"
+    },
+    {
+      "source": "instrumentacion/m18-filter-fixtures5/m18loupe3-filterout.png",
+      "asset": "filters/m18loupe3-filterout.png",
+      "sha256": "9aff5d0a47e0cebe39711d4b120592eee1e359d1676564e6f0ff057acc73347f"
+    },
+    {
+      "source": "instrumentacion/m18-filter-fixtures5/m18bar2-filterin.rgba32f",
+      "asset": "filters/m18bar2-filterin.rgba32f",
+      "sha256": "6f7c2953ef828287c56ee7a45676f468efa76960c9503846cfdd0f95d800f197"
+    },
+    {
+      "source": "instrumentacion/m18-filter-fixtures5/m18bar2-filterextra.rgba32f",
+      "asset": "filters/m18bar2-filterextra.rgba32f",
+      "sha256": "6f7c2953ef828287c56ee7a45676f468efa76960c9503846cfdd0f95d800f197"
+    },
+    {
+      "source": "instrumentacion/m18-filter-fixtures5/m18bar2-filterout.png",
+      "asset": "filters/m18bar2-filterout.png",
+      "sha256": "a58af192822ea50306e12b347aac1a30490222655a1a7149f99ce718882516a3"
+    },
+    {
+      "source": "instrumentacion/pixel-validation/moregpu1/sources/assets/recovered_m18_more/input.png",
+      "asset": "more/input.png",
+      "sha256": "e2c71a662f848ad568cded4f5194f357134c7f69a883067ec634e47c25c19943"
+    },
+    {
+      "source": "instrumentacion/pixel-validation/moregpu1/original.png",
+      "asset": "more/original.png",
+      "sha256": "527b10de903dee0b3ae50c40df86b6ec0d86f091510b8cc668b0400a2ad92449"
+    },
+    {
+      "source": "flutter-probe-shell/assets/recovered_lens_joint2/fixture.json",
+      "asset": "lens/fixture.json",
+      "sha256": "d5e03ab3f8b69e4113021a8b46740a615c9af3fac1c157fa3dcc7e288166ec43"
+    },
+    {
+      "source": "flutter-probe-shell/assets/recovered_lens_joint2/base.png",
+      "asset": "lens/base.png",
+      "sha256": "9748ed391c196bcbe5b9dac5ee1887a38339988ecc039f9fa255cc9560d3dd87"
+    },
+    {
+      "source": "flutter-probe-shell/assets/recovered_lens_joint2/level.png",
+      "asset": "lens/level.png",
+      "sha256": "9748ed391c196bcbe5b9dac5ee1887a38339988ecc039f9fa255cc9560d3dd87"
+    },
+    {
+      "source": "flutter-probe-shell/assets/recovered_lens_joint2/screen-background.png",
+      "asset": "lens/screen-background.png",
+      "sha256": "161b43a3624c7a12a2bb4b42203e4b1d7df4c133389e14f60c94166ebed8eb5b"
+    },
+    {
+      "source": "flutter-probe-shell/assets/recovered_lens_joint2/screen-original.png",
+      "asset": "lens/screen-original.png",
+      "sha256": "a8aa588b0371b00359a46fec9bb48029e754d3a422bff0d38b7277e5b382df41"
+    },
+    {
+      "source": "controles-nativos-runtime.json",
+      "asset": "interaction-recipes.json",
+      "sha256": "9eff286b6031ad63c6ff72df889cf681d84251a8b1189766993b18ed6d77cf80",
+      "scope": "Recorded active thumb optics and observed menu trajectory; dynamic host integration has its own validation."
+    }
+  ],
+  "purpose": "Interactive review of closed research; immutable originals retained."
+}

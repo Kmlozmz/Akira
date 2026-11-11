@@ -1,0 +1,44 @@
+name: akira_ui
+description: Akira interface components backed by application preferences.
+publish_to: none
+version: 0.1.0+1
+environment:
+  sdk: '>=3.13.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: 1.0.8
+  inotes_recovered:
+    path: ../vendor/flutter_runtime
+  inotes_design_reference:
+    path: ../vendor/flutter_design_reference
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  pigeon: 29.1.0
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: AkiraRobotoFlex
+      fonts:
+        - asset: assets/fonts/roboto_flex_regular.ttf
+          weight: 400
+        - asset: assets/fonts/roboto_flex_medium.ttf
+          weight: 500
+        - asset: assets/fonts/roboto_flex_semibold.ttf
+          weight: 600
+        - asset: assets/fonts/roboto_flex_bold.ttf
+          weight: 700
+        - asset: assets/fonts/roboto_flex_extrabold.ttf
+          weight: 800
+        - asset: assets/fonts/roboto_flex_black.ttf
+          weight: 900
+  assets:
+    - assets/review/
+    - assets/recovered_components/
+  module:
+    androidX: true
+    androidPackage: com.akira.ui
+    iosBundleIdentifier: com.akira.ui

@@ -1,0 +1,306 @@
+{
+  "provenance": {
+    "path": "instrumentacion/codex-m16-final/nativesurfaces4/backdrop-recipes-validation.json",
+    "sha256": "5d5c27dd7c268c2e318cfdb3771ea75ba56e56383ad8a9dc077893fddc84af46"
+  },
+  "recipes": [
+    {
+      "window": 4,
+      "frame": 0,
+      "node_index": 27,
+      "frame_dump_source_line": 6883,
+      "constructor_source_line": 6877,
+      "layer": "0xb40000797cccfb48",
+      "unique_id": "21453",
+      "blend_mode_byte": 3,
+      "original_graph": {
+        "root": 0,
+        "nodes": [
+          {
+            "index": 0,
+            "pointer": "0xb40000795ccb8828",
+            "vtable": "0xb03268",
+            "type": "native_compose",
+            "outer": 1,
+            "inner": 2
+          },
+          {
+            "index": 1,
+            "pointer": "0xb40000795cd61478",
+            "vtable": "0xb03098",
+            "type": "native_blur",
+            "sigma_x": 30,
+            "sigma_y": 30,
+            "tile_mode": 0,
+            "has_bounds": false,
+            "bounds": null
+          },
+          {
+            "index": 2,
+            "pointer": "0xb4000078cce23de8",
+            "vtable": "0xb03180",
+            "type": "native_color_filter_image",
+            "color_filter": {
+              "pointer": "0xb40000798cce9f48",
+              "vtable": "0xb02b18",
+              "type": "native_matrix",
+              "matrix_4x5_native": [
+                1.3899999856948853,
+                -0.5600000023841858,
+                -0.10999999940395355,
+                0,
+                0.0011764706578105688,
+                -0.3199999928474426,
+                1.1399999856948853,
+                -0.10999999940395355,
+                0,
+                0.0011764706578105688,
+                -0.3199999928474426,
+                -0.5600000023841858,
+                1.590000033378601,
+                0,
+                0.0011764706578105688,
+                0,
+                0,
+                0,
+                1,
+                0
+              ],
+              "bias_space": "Native normalized channel values; Flutter ColorFilter.matrix bias entries use byte-scale values."
+            }
+          }
+        ]
+      },
+      "api_graph": {
+        "root": 0,
+        "nodes": [
+          {
+            "index": 0,
+            "pointer": "0xb40000795ccb8828",
+            "vtable": "0xb03268",
+            "type": "native_compose",
+            "outer": 1,
+            "inner": 2
+          },
+          {
+            "index": 1,
+            "pointer": "0xb40000795cd61478",
+            "vtable": "0xb03098",
+            "type": "native_blur",
+            "sigma_x": 30,
+            "sigma_y": 30,
+            "tile_mode": 0,
+            "has_bounds": false,
+            "bounds": null
+          },
+          {
+            "index": 2,
+            "pointer": "0xb4000078cce23de8",
+            "vtable": "0xb03180",
+            "type": "native_color_filter_image",
+            "color_filter": {
+              "pointer": "0xb40000798cce9f48",
+              "vtable": "0xb02b18",
+              "type": "native_matrix",
+              "matrix_4x5_native": [
+                1.3899999856948853,
+                -0.5600000023841858,
+                -0.10999999940395355,
+                0,
+                0.0011764706578105688,
+                -0.3199999928474426,
+                1.1399999856948853,
+                -0.10999999940395355,
+                0,
+                0.0011764706578105688,
+                -0.3199999928474426,
+                -0.5600000023841858,
+                1.590000033378601,
+                0,
+                0.0011764706578105688,
+                0,
+                0,
+                0,
+                1,
+                0
+              ],
+              "bias_space": "Native normalized channel values; Flutter ColorFilter.matrix bias entries use byte-scale values.",
+              "matrix_4x5_flutter_api": [
+                1.3899999856948853,
+                -0.5600000023841858,
+                -0.10999999940395355,
+                0,
+                0.30000001192092896,
+                -0.3199999928474426,
+                1.1399999856948853,
+                -0.10999999940395355,
+                0,
+                0.30000001192092896,
+                -0.3199999928474426,
+                -0.5600000023841858,
+                1.590000033378601,
+                0,
+                0.30000001192092896,
+                0,
+                0,
+                0,
+                1,
+                0.0
+              ],
+              "bias_conversion": "Float32(nativeBias / Float32(1/255)); native normalization round-trip checked."
+            }
+          }
+        ]
+      }
+    },
+    {
+      "window": 4,
+      "frame": 1,
+      "node_index": 27,
+      "frame_dump_source_line": 6883,
+      "constructor_source_line": 6877,
+      "layer": "0xb40000797cccfb48",
+      "unique_id": "21453",
+      "blend_mode_byte": 3,
+      "original_graph": {
+        "root": 0,
+        "nodes": [
+          {
+            "index": 0,
+            "pointer": "0xb40000795ccb8828",
+            "vtable": "0xb03268",
+            "type": "native_compose",
+            "outer": 1,
+            "inner": 2
+          },
+          {
+            "index": 1,
+            "pointer": "0xb40000795cd61478",
+            "vtable": "0xb03098",
+            "type": "native_blur",
+            "sigma_x": 30,
+            "sigma_y": 30,
+            "tile_mode": 0,
+            "has_bounds": false,
+            "bounds": null
+          },
+          {
+            "index": 2,
+            "pointer": "0xb4000078cce23de8",
+            "vtable": "0xb03180",
+            "type": "native_color_filter_image",
+            "color_filter": {
+              "pointer": "0xb40000798cce9f48",
+              "vtable": "0xb02b18",
+              "type": "native_matrix",
+              "matrix_4x5_native": [
+                1.3899999856948853,
+                -0.5600000023841858,
+                -0.10999999940395355,
+                0,
+                0.0011764706578105688,
+                -0.3199999928474426,
+                1.1399999856948853,
+                -0.10999999940395355,
+                0,
+                0.0011764706578105688,
+                -0.3199999928474426,
+                -0.5600000023841858,
+                1.590000033378601,
+                0,
+                0.0011764706578105688,
+                0,
+                0,
+                0,
+                1,
+                0
+              ],
+              "bias_space": "Native normalized channel values; Flutter ColorFilter.matrix bias entries use byte-scale values."
+            }
+          }
+        ]
+      },
+      "api_graph": {
+        "root": 0,
+        "nodes": [
+          {
+            "index": 0,
+            "pointer": "0xb40000795ccb8828",
+            "vtable": "0xb03268",
+            "type": "native_compose",
+            "outer": 1,
+            "inner": 2
+          },
+          {
+            "index": 1,
+            "pointer": "0xb40000795cd61478",
+            "vtable": "0xb03098",
+            "type": "native_blur",
+            "sigma_x": 30,
+            "sigma_y": 30,
+            "tile_mode": 0,
+            "has_bounds": false,
+            "bounds": null
+          },
+          {
+            "index": 2,
+            "pointer": "0xb4000078cce23de8",
+            "vtable": "0xb03180",
+            "type": "native_color_filter_image",
+            "color_filter": {
+              "pointer": "0xb40000798cce9f48",
+              "vtable": "0xb02b18",
+              "type": "native_matrix",
+              "matrix_4x5_native": [
+                1.3899999856948853,
+                -0.5600000023841858,
+                -0.10999999940395355,
+                0,
+                0.0011764706578105688,
+                -0.3199999928474426,
+                1.1399999856948853,
+                -0.10999999940395355,
+                0,
+                0.0011764706578105688,
+                -0.3199999928474426,
+                -0.5600000023841858,
+                1.590000033378601,
+                0,
+                0.0011764706578105688,
+                0,
+                0,
+                0,
+                1,
+                0
+              ],
+              "bias_space": "Native normalized channel values; Flutter ColorFilter.matrix bias entries use byte-scale values.",
+              "matrix_4x5_flutter_api": [
+                1.3899999856948853,
+                -0.5600000023841858,
+                -0.10999999940395355,
+                0,
+                0.30000001192092896,
+                -0.3199999928474426,
+                1.1399999856948853,
+                -0.10999999940395355,
+                0,
+                0.30000001192092896,
+                -0.3199999928474426,
+                -0.5600000023841858,
+                1.590000033378601,
+                0,
+                0.30000001192092896,
+                0,
+                0,
+                0,
+                1,
+                0.0
+              ],
+              "bias_conversion": "Float32(nativeBias / Float32(1/255)); native normalization round-trip checked."
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

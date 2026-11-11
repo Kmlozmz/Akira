@@ -99,7 +99,7 @@ fun HomeNavigation(
     val reduced = com.akira.app.core.design.components.LocalContentMotionReduced.current
     val ink = com.akira.app.core.design.glass.rememberGlassInk()
     val contentColor = ink.color
-    val selectedContentColor = if(contentColor == Color.Black) Color(0xFFFF2D55) else Color(0xFFFF375F)
+    val selectedContentColor = Color(com.akira.app.core.design.system.AkiraDockSpec.accentArgb)
     val haptics = rememberHaptics()
     val currentSelect by rememberUpdatedState(onSelect)
     val currentSelected by rememberUpdatedState(selected)
@@ -107,7 +107,7 @@ fun HomeNavigation(
     val labels = listOf(localizedText("Home", "Inicio"), localizedText("Library", "Biblioteca"), localizedText("Settings", "Ajustes"), localizedText("Search", "Buscar"))
     val labelStyle = MaterialTheme.typography.labelSmall.copy(
         fontSize = 10.sp, lineHeight = 13.sp, letterSpacing = 0.sp,
-        fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif,
+        fontFamily = com.akira.app.core.design.theme.CurrentAkiraFontFamily,
         fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
     val surface: @Composable () -> Modifier = {
         Modifier.liquidGlass(rememberDockGlassShape())

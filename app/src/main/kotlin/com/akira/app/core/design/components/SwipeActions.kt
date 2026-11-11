@@ -377,8 +377,9 @@ private fun BoxScope.SwipePill(
     val density = LocalDensity.current
     val measurer = rememberTextMeasurer()
     val pillHeight = with(density) { (rowHeight.toDp() * 0.6f).coerceIn(32.dp, 38.dp).toPx() }
-    val labelWidth = remember(action.label, density) {
-        measurer.measure(action.label, SwipeLabelStyle).size.width.toFloat()
+    val labelStyle = SwipeLabelStyle.copy(fontFamily = com.akira.app.core.design.theme.CurrentAkiraFontFamily)
+    val labelWidth = remember(action.label, density, labelStyle) {
+        measurer.measure(action.label, labelStyle).size.width.toFloat()
     }
     val need = with(density) { (PillPadding * 2 + PillIconSize + PillLabelSpacing).toPx() } + labelWidth
     SideEffect { onNeed(need) }
@@ -446,7 +447,7 @@ private fun BoxScope.SwipePill(
                     Spacer(Modifier.width(PillLabelSpacing))
                     Text(
                         text = action.label,
-                        style = SwipeLabelStyle,
+                        style = labelStyle,
                         color = Color.White,
                         maxLines = 1,
                         softWrap = false,

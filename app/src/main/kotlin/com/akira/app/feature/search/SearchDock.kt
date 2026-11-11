@@ -82,7 +82,7 @@ import com.akira.app.feature.player.dock.navigation.dockMiniHeightDp
             Spacer(Modifier.width(10.dp))
             BasicTextField(session.value, { session.value = it; session.editing = true }, singleLine = true, enabled = active,
                 textStyle = MaterialTheme.typography.bodyLarge.merge(TextStyle(color = ink, fontSize = 16.sp)),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                cursorBrush = SolidColor(androidx.compose.ui.graphics.Color(com.akira.app.core.design.system.AkiraDockSpec.accentArgb)),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { onSubmit(); keyboard?.hide() }),
                 modifier = Modifier.weight(1f).focusRequester(focus)
@@ -109,7 +109,8 @@ import com.akira.app.feature.player.dock.navigation.dockMiniHeightDp
             Icon(Icons.Rounded.Close, localizedText("Cancel search", "Cancelar búsqueda"), tint = ink)
         }
     }
-    if (voiceUnavailable) AlertDialog(onDismissRequest = { voiceUnavailable = false },
+    if (voiceUnavailable) com.akira.app.core.design.components.AkiraConfirmationDialog(onDismissRequest = { voiceUnavailable = false },
+        title = { Text(localizedText("Voice search", "Búsqueda por voz")) }, dismissButton = {},
         text = { Text(localizedText("Voice search isn't available on this device.", "La búsqueda por voz no está disponible en este dispositivo.")) },
         confirmButton = { TextButton(onClick = { voiceUnavailable = false }) { Text(localizedText("OK", "Aceptar")) } })
 }

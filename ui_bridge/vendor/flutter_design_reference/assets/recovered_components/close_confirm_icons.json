@@ -1,0 +1,4271 @@
+{
+  "provenance": {
+    "path": "instrumentacion/codex-m16-final/iconmetrics4/icon-metrics-validation.json",
+    "sha256": "2850db88abebda23c3f2ec67889706ce821c4df2e76c339b6cf2d1c574527bfb"
+  },
+  "close": [
+    {
+      "label": "Close",
+      "primitive_index": 129,
+      "frame": 1,
+      "scene": "close-lines-and-confirm-glyph",
+      "native_line_source": {
+        "line": 6856,
+        "event": {
+          "kind": "native_line_primitive",
+          "unix_ms": 1793503778818,
+          "builder": "0xb400007a7ccea5d0",
+          "geometry": [
+            3.8375000953674316,
+            3.1705000400543213,
+            18.829500198364258,
+            18.162500381469727
+          ],
+          "paint": {
+            "flags_low13": 2179,
+            "argb_f32": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "color_space": 1,
+            "stroke_width": 2.0480000972747803,
+            "color_source_object_candidate": "0x0",
+            "native_dl_paint_prefix_hex": "830804c30000803f0000803f0000803f0000803f010000006f1203400000804000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "matrix_column_major": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            10.589997291564941,
+            11.442790985107422,
+            0,
+            1
+          ],
+          "site": "0x563cfc"
+        }
+      },
+      "native_primitive": {
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 1,
+        "unix_ms": 1793503780881,
+        "main_dpr_candidate": true,
+        "node": 165,
+        "display_list_unique_id": 1280,
+        "recording_source_line": 6858,
+        "opacity_product": 1.0,
+        "effect_ancestors": [
+          "pushClipPath",
+          "pushClipRect",
+          "pushClipRect"
+        ],
+        "clip_rect_ancestors": [
+          {
+            "node": 110,
+            "local_rect": [
+              0,
+              0,
+              400,
+              527.3110961914062
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              9.536743435606301e-06,
+              172.69999939809077,
+              1219.999990463257,
+              1780.9988176377274
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              9.536743435606301e-06,
+              172.69999939809077,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "node": 158,
+            "local_rect": [
+              -64,
+              -64,
+              108,
+              108
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              -146.3999881744382,
+              26.300001686909127,
+              378.2000036239627,
+              550.89999348531
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              48.80000877380398,
+              221.49999863515131,
+              0.0,
+              1.0
+            ]
+          }
+        ],
+        "known_transform_ancestry": true,
+        "shape_kind": "line",
+        "geometry": [
+          3.8375000953674316,
+          3.1705000400543213,
+          18.829500198364258,
+          18.162500381469727
+        ],
+        "matrix_column_major": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          10.589997291564941,
+          11.442790985107422,
+          0,
+          1
+        ],
+        "observed_order": 0,
+        "native_paint_pointer": "0x7fc304fbb0",
+        "native_geometry_pointer": "0x7fc304fba8",
+        "paint": {
+          "flags_low13": 2179,
+          "argb_f32": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "color_space": 1,
+          "stroke_width": 2.0480000972747803,
+          "color_source_object_candidate": "0x0"
+        },
+        "geometry_bounds_physical": [
+          92.80387511599103,
+          266.0705355650786,
+          138.5294747152571,
+          311.7961358915213
+        ],
+        "world_matrix_column_major": [
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          81.09950000810663,
+          256.40051059409416,
+          0.0,
+          1.0
+        ]
+      },
+      "semantic_source": {
+        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
+      },
+      "semantic_ordinal": 8,
+      "semantic_bounds_physical": [
+        49,
+        221,
+        183,
+        356
+      ],
+      "scope": "Native line draw within Close hit bounds; shared DisplayList and crossing-pair checks are retained."
+    },
+    {
+      "label": "Close",
+      "primitive_index": 130,
+      "frame": 1,
+      "scene": "close-lines-and-confirm-glyph",
+      "native_line_source": {
+        "line": 6857,
+        "event": {
+          "kind": "native_line_primitive",
+          "unix_ms": 1793503778818,
+          "builder": "0xb400007a7ccea5d0",
+          "geometry": [
+            3.8375000953674316,
+            18.162500381469727,
+            18.829500198364258,
+            3.1705000400543213
+          ],
+          "paint": {
+            "flags_low13": 2179,
+            "argb_f32": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "color_space": 1,
+            "stroke_width": 2.0480000972747803,
+            "color_source_object_candidate": "0x0",
+            "native_dl_paint_prefix_hex": "830804c30000803f0000803f0000803f0000803f010000006f1203400000804000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "matrix_column_major": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            10.589997291564941,
+            11.442790985107422,
+            0,
+            1
+          ],
+          "site": "0x563cfc"
+        }
+      },
+      "native_primitive": {
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 1,
+        "unix_ms": 1793503780881,
+        "main_dpr_candidate": true,
+        "node": 165,
+        "display_list_unique_id": 1280,
+        "recording_source_line": 6858,
+        "opacity_product": 1.0,
+        "effect_ancestors": [
+          "pushClipPath",
+          "pushClipRect",
+          "pushClipRect"
+        ],
+        "clip_rect_ancestors": [
+          {
+            "node": 110,
+            "local_rect": [
+              0,
+              0,
+              400,
+              527.3110961914062
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              9.536743435606301e-06,
+              172.69999939809077,
+              1219.999990463257,
+              1780.9988176377274
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              9.536743435606301e-06,
+              172.69999939809077,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "node": 158,
+            "local_rect": [
+              -64,
+              -64,
+              108,
+              108
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              -146.3999881744382,
+              26.300001686909127,
+              378.2000036239627,
+              550.89999348531
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              48.80000877380398,
+              221.49999863515131,
+              0.0,
+              1.0
+            ]
+          }
+        ],
+        "known_transform_ancestry": true,
+        "shape_kind": "line",
+        "geometry": [
+          3.8375000953674316,
+          18.162500381469727,
+          18.829500198364258,
+          3.1705000400543213
+        ],
+        "matrix_column_major": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          10.589997291564941,
+          11.442790985107422,
+          0,
+          1
+        ],
+        "observed_order": 1,
+        "native_paint_pointer": "0x7fc304fbb0",
+        "native_geometry_pointer": "0x7fc304fba8",
+        "paint": {
+          "flags_low13": 2179,
+          "argb_f32": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "color_space": 1,
+          "stroke_width": 2.0480000972747803,
+          "color_source_object_candidate": "0x0"
+        },
+        "geometry_bounds_physical": [
+          92.80387511599103,
+          266.0705355650786,
+          138.5294747152571,
+          311.7961358915213
+        ],
+        "world_matrix_column_major": [
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          81.09950000810663,
+          256.40051059409416,
+          0.0,
+          1.0
+        ]
+      },
+      "semantic_source": {
+        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
+      },
+      "semantic_ordinal": 8,
+      "semantic_bounds_physical": [
+        49,
+        221,
+        183,
+        356
+      ],
+      "scope": "Native line draw within Close hit bounds; shared DisplayList and crossing-pair checks are retained."
+    }
+  ],
+  "confirm_glyphs": [
+    {
+      "label": "Done",
+      "paragraph_index": 31,
+      "frame": 1,
+      "scene": "editor-confirm-glyph",
+      "font": {
+        "path": "reconstruction/flutter_runtime/assets/fonts/Cupertino.ttf",
+        "sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183"
+      },
+      "font_family": "packages/cupertino_icons/CupertinoIcons",
+      "codepoint": "U+F3FD",
+      "glyph_name": "uniF3FD",
+      "font_size": 25,
+      "font_units_per_em": 512,
+      "variation_location": {
+        "GRAD": 0,
+        "wght": 400,
+        "opsz": 48,
+        "FILL": 0
+      },
+      "native_advance_logical": 18.017578125,
+      "outline_axis_scope": "static font",
+      "advance_logical": 18.017578125,
+      "baseline_logical": 21.875,
+      "outline_bounds_physical": [
+        1076.4231767181773,
+        219.01325084269502,
+        1131.3767891402822,
+        273.52008592803486
+      ],
+      "font_units_to_world_matrix_column_major": [
+        0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1076.4231767181773,
+        274.8604179383301,
+        0.0,
+        1.0
+      ],
+      "native_metrics": {
+        "native_paragraph": "0xb40000798ccadba0",
+        "skia_paragraph": "0xb4000078ace7f370",
+        "alphabetic_baseline": 21.875,
+        "ideographic_baseline": 25,
+        "baseline_field_hex": "0000af410000c841",
+        "getter_offsets": [
+          "0x79720c",
+          "0x797218"
+        ],
+        "field_offsets": [
+          "0x230",
+          "0x234"
+        ],
+        "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+      },
+      "range_box": {
+        "paragraph_index": 31,
+        "paragraph_source_line": 2873,
+        "text": "\uf3fd",
+        "window": 4,
+        "scene": "editor-confirm-glyph",
+        "frame": 1,
+        "box_index": 0,
+        "box_source_line": 2944,
+        "layout_source_line": 2874,
+        "layout_width": 25,
+        "local_text_range_box": [
+          0,
+          0,
+          18.017578125,
+          25
+        ],
+        "layout_generation_matches_paint": true,
+        "paint_source_line": 2943,
+        "paint_layout_source_line": 2874,
+        "world_text_range_box_physical": [
+          1076.4231767181773,
+          208.14166898141136,
+          1131.3767891402822,
+          284.3916677893185
+        ],
+        "direction": 1,
+        "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
+      },
+      "semantic_source": {
+        "path": "instrumentacion/codex-m16-final/iconmetrics4/editor-confirm-glyph/nodes.json",
+        "sha256": "9fa390e469c12ce451f0b2eb3b646164eba4c764a8cf3c879475a557b71c0147"
+      },
+      "semantic_ordinal": 35,
+      "semantic_bounds_physical": [
+        1037,
+        179,
+        1171,
+        313
+      ],
+      "source_paragraph": {
+        "window": 4,
+        "scene": "editor-confirm-glyph",
+        "frame": 1,
+        "unix_ms": 1793503748646,
+        "main_dpr_candidate": true,
+        "node": 91,
+        "display_list_unique_id": 426,
+        "recording_source_line": 2945,
+        "opacity_product": 1.0,
+        "effect_ancestors": [
+          "pushClipRect",
+          "pushClipRect"
+        ],
+        "clip_rect_ancestors": [
+          {
+            "node": 9,
+            "local_rect": [
+              0,
+              0,
+              400,
+              889.1803588867188
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              0.0,
+              0.0,
+              1219.9999809265137,
+              2712.0000522050686
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "node": 85,
+            "local_rect": [
+              -64,
+              -64,
+              108,
+              108
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              841.7999868392944,
+              -16.39999764551885,
+              1366.3999786376953,
+              508.199994152882
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              1036.9999837875366,
+              178.79999930272334,
+              0.0,
+              1.0
+            ]
+          }
+        ],
+        "known_transform_ancestry": true,
+        "kind": "paragraph_painted",
+        "builder": "0xb400007a7cd352d0",
+        "id": 178,
+        "offset": [
+          12.925637228519038,
+          9.62021971718552
+        ],
+        "matrix_column_major": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "paragraph_wrapper": "0xb4000078ccd7d6d0",
+        "width": 25,
+        "native_paragraph_metrics": {
+          "native_paragraph": "0xb40000798ccadba0",
+          "skia_paragraph": "0xb4000078ace7f370",
+          "alphabetic_baseline": 21.875,
+          "ideographic_baseline": 25,
+          "baseline_field_hex": "0000af410000c841",
+          "getter_offsets": [
+            "0x79720c",
+            "0x797218"
+          ],
+          "field_offsets": [
+            "0x230",
+            "0x234"
+          ],
+          "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+        },
+        "paragraph_id": 178,
+        "observed_order": 0,
+        "paragraph_source_line": 2873,
+        "runs": [
+          {
+            "text": "\uf3fd",
+            "style_id": 41,
+            "style": {
+              "font_families": [
+                "packages/cupertino_icons/CupertinoIcons"
+              ],
+              "font_size": 25,
+              "letter_spacing": 0,
+              "word_spacing": 0,
+              "height": 1,
+              "has_height_override": 1,
+              "font_weight_raw": 400,
+              "font_style_raw": 0,
+              "font_features": {},
+              "font_variations": {
+                "GRAD": 0,
+                "wght": 400,
+                "opsz": 48,
+                "FILL": 0
+              },
+              "color_argb": "0xffffffff"
+            },
+            "style_source_line": 2870
+          }
+        ],
+        "text": "\uf3fd",
+        "paragraph_origin_physical": [
+          1076.4231767181773,
+          208.14166898141136
+        ],
+        "world_matrix_column_major": [
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1076.4231767181773,
+          208.14166898141136,
+          0.0,
+          1.0
+        ],
+        "layout_width_constraint": 25
+      },
+      "bounds_kind": "Exact transformed unhinted font outline; rasterized/hinted glyph pixels remain separate."
+    },
+    {
+      "label": "Bold",
+      "paragraph_index": 32,
+      "frame": 1,
+      "scene": "editor-confirm-glyph",
+      "font": {
+        "path": "reconstruction/flutter_runtime/assets/fonts/Pretendard-variable.ttf",
+        "sha256": "499ff7e76f905bd909b4640fe333022fb0f241e292b84e1b6986c7b46eb57a80"
+      },
+      "font_family": "pretenda",
+      "codepoint": "U+0042",
+      "glyph_name": "B",
+      "font_size": 21.144751381215467,
+      "font_units_per_em": 2048,
+      "variation_location": {
+        "wght": 620
+      },
+      "native_advance_logical": 13.357406616210938,
+      "outline_axis_scope": "requested axis values; effective native variation coordinates not independently read",
+      "advance_logical": 13.360013812154694,
+      "baseline_logical": 16.870811462402344,
+      "outline_bounds_physical": [
+        101.36293042837097,
+        1654.5012912721897,
+        138.49822093797152,
+        1700.098790559318
+      ],
+      "font_units_to_world_matrix_column_major": [
+        0.03419812338422347,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.031489985695530694,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        96.82813021810074,
+        1700.098790559318,
+        0.0,
+        1.0
+      ],
+      "native_metrics": {
+        "native_paragraph": "0xb40000798cced800",
+        "skia_paragraph": "0xb4000078ace8e0a0",
+        "alphabetic_baseline": 16.870811462402344,
+        "ideographic_baseline": 21.144750595092773,
+        "baseline_field_hex": "6cf786417328a941",
+        "getter_offsets": [
+          "0x79720c",
+          "0x797218"
+        ],
+        "field_offsets": [
+          "0x230",
+          "0x234"
+        ],
+        "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+      },
+      "range_box": {
+        "paragraph_index": 32,
+        "paragraph_source_line": 3456,
+        "text": "B",
+        "window": 4,
+        "scene": "editor-confirm-glyph",
+        "frame": 1,
+        "box_index": 0,
+        "box_source_line": 3459,
+        "layout_source_line": 3457,
+        "layout_width": null,
+        "local_text_range_box": [
+          0,
+          -3.406879425048828,
+          13.357406616210938,
+          21.826406478881836
+        ],
+        "layout_generation_matches_paint": true,
+        "paint_source_line": 3458,
+        "paint_layout_source_line": 3457,
+        "world_text_range_box_physical": [
+          96.82813021810074,
+          1638.2518343195077,
+          141.07186606256943,
+          1715.2133551232794
+        ],
+        "direction": 1,
+        "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
+      },
+      "semantic_source": {
+        "path": "instrumentacion/codex-m16-final/iconmetrics4/editor-confirm-glyph/nodes.json",
+        "sha256": "9fa390e469c12ce451f0b2eb3b646164eba4c764a8cf3c879475a557b71c0147"
+      },
+      "semantic_ordinal": 37,
+      "semantic_bounds_physical": [
+        46,
+        1619,
+        192,
+        1735
+      ],
+      "source_paragraph": {
+        "window": 4,
+        "scene": "editor-confirm-glyph",
+        "frame": 1,
+        "unix_ms": 1793503749198,
+        "main_dpr_candidate": true,
+        "node": 112,
+        "display_list_unique_id": 575,
+        "recording_source_line": 3460,
+        "opacity_product": 1.0,
+        "effect_ancestors": [
+          "pushClipRect",
+          "pushClipRect",
+          "pushClipRSuperellipse",
+          "pushClipRect"
+        ],
+        "clip_rect_ancestors": [
+          {
+            "node": 9,
+            "local_rect": [
+              0,
+              0,
+              400,
+              889.1803588867188
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              0.0,
+              0.0,
+              1219.9999809265137,
+              2712.0000522050686
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "node": 95,
+            "local_rect": [
+              -64,
+              -64,
+              444,
+              112
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              -164.69999742507935,
+              1408.900045111921,
+              1384.699978351593,
+              1945.700036719587
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              30.499999523162842,
+              1604.100042060163,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "node": 103,
+            "local_rect": [
+              0,
+              0,
+              370,
+              38
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              45.74999928474426,
+              1619.3500418217445,
+              1174.2499816417694,
+              1735.2500400097633
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              45.74999928474426,
+              1619.3500418217445,
+              0.0,
+              1.0
+            ]
+          }
+        ],
+        "known_transform_ancestry": true,
+        "kind": "paragraph_painted",
+        "builder": "0xb400007a7cd2ef10",
+        "id": 183,
+        "offset": [
+          -6.678703308105469,
+          3.1041885375976577
+        ],
+        "matrix_column_major": [
+          1.0859999656677246,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          24,
+          6.5,
+          0,
+          1
+        ],
+        "paragraph_wrapper": "0xb4000078cce13290",
+        "width": null,
+        "native_paragraph_metrics": {
+          "native_paragraph": "0xb40000798cced800",
+          "skia_paragraph": "0xb4000078ace8e0a0",
+          "alphabetic_baseline": 16.870811462402344,
+          "ideographic_baseline": 21.144750595092773,
+          "baseline_field_hex": "6cf786417328a941",
+          "getter_offsets": [
+            "0x79720c",
+            "0x797218"
+          ],
+          "field_offsets": [
+            "0x230",
+            "0x234"
+          ],
+          "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+        },
+        "paragraph_id": 183,
+        "observed_order": 0,
+        "paragraph_source_line": 3456,
+        "runs": [
+          {
+            "text": "B",
+            "style_id": 40,
+            "style": {
+              "font_families": [
+                "pretenda"
+              ],
+              "font_size": 21.144751381215467,
+              "letter_spacing": 0,
+              "word_spacing": 0,
+              "height": 1,
+              "has_height_override": 1,
+              "font_weight_raw": 600,
+              "font_style_raw": 0,
+              "font_features": {},
+              "font_variations": {
+                "wght": 620
+              },
+              "color_argb": "0xffffffff"
+            },
+            "style_source_line": 2789
+          }
+        ],
+        "text": "B",
+        "paragraph_origin_physical": [
+          96.82813021810074,
+          1648.642816403454
+        ],
+        "world_matrix_column_major": [
+          3.3122998435020463,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          96.82813021810074,
+          1648.642816403454,
+          0.0,
+          1.0
+        ],
+        "layout_width_constraint": null
+      },
+      "bounds_kind": "Transformed requested-axis outline candidate; native advance and range box are measured separately."
+    },
+    {
+      "label": "Done",
+      "paragraph_index": 68,
+      "frame": 3,
+      "scene": "editor-confirm-glyph",
+      "font": {
+        "path": "reconstruction/flutter_runtime/assets/fonts/Cupertino.ttf",
+        "sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183"
+      },
+      "font_family": "packages/cupertino_icons/CupertinoIcons",
+      "codepoint": "U+F3FD",
+      "glyph_name": "uniF3FD",
+      "font_size": 25,
+      "font_units_per_em": 512,
+      "variation_location": {
+        "GRAD": 0,
+        "wght": 400,
+        "opsz": 48,
+        "FILL": 0
+      },
+      "native_advance_logical": 18.017578125,
+      "outline_axis_scope": "static font",
+      "advance_logical": 18.017578125,
+      "baseline_logical": 21.875,
+      "outline_bounds_physical": [
+        1076.4231767181773,
+        219.01325084269502,
+        1131.3767891402822,
+        273.52008592803486
+      ],
+      "font_units_to_world_matrix_column_major": [
+        0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1076.4231767181773,
+        274.8604179383301,
+        0.0,
+        1.0
+      ],
+      "native_metrics": {
+        "native_paragraph": "0xb40000798ccadba0",
+        "skia_paragraph": "0xb4000078ace7f370",
+        "alphabetic_baseline": 21.875,
+        "ideographic_baseline": 25,
+        "baseline_field_hex": "0000af410000c841",
+        "getter_offsets": [
+          "0x79720c",
+          "0x797218"
+        ],
+        "field_offsets": [
+          "0x230",
+          "0x234"
+        ],
+        "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+      },
+      "range_box": {
+        "paragraph_index": 68,
+        "paragraph_source_line": 2873,
+        "text": "\uf3fd",
+        "window": 4,
+        "scene": "editor-confirm-glyph",
+        "frame": 3,
+        "box_index": 0,
+        "box_source_line": 2944,
+        "layout_source_line": 2874,
+        "layout_width": 25,
+        "local_text_range_box": [
+          0,
+          0,
+          18.017578125,
+          25
+        ],
+        "layout_generation_matches_paint": true,
+        "paint_source_line": 2943,
+        "paint_layout_source_line": 2874,
+        "world_text_range_box_physical": [
+          1076.4231767181773,
+          208.14166898141136,
+          1131.3767891402822,
+          284.3916677893185
+        ],
+        "direction": 1,
+        "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
+      },
+      "semantic_source": {
+        "path": "instrumentacion/codex-m16-final/iconmetrics4/editor-confirm-glyph/nodes.json",
+        "sha256": "9fa390e469c12ce451f0b2eb3b646164eba4c764a8cf3c879475a557b71c0147"
+      },
+      "semantic_ordinal": 35,
+      "semantic_bounds_physical": [
+        1037,
+        179,
+        1171,
+        313
+      ],
+      "source_paragraph": {
+        "window": 4,
+        "scene": "editor-confirm-glyph",
+        "frame": 3,
+        "unix_ms": 1793503748646,
+        "main_dpr_candidate": true,
+        "node": 91,
+        "display_list_unique_id": 426,
+        "recording_source_line": 2945,
+        "opacity_product": 1.0,
+        "effect_ancestors": [
+          "pushClipRect",
+          "pushClipRect"
+        ],
+        "clip_rect_ancestors": [
+          {
+            "node": 9,
+            "local_rect": [
+              0,
+              0,
+              400,
+              889.1803588867188
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              0.0,
+              0.0,
+              1219.9999809265137,
+              2712.0000522050686
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "node": 85,
+            "local_rect": [
+              -64,
+              -64,
+              108,
+              108
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              841.7999868392944,
+              -16.39999764551885,
+              1366.3999786376953,
+              508.199994152882
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              1036.9999837875366,
+              178.79999930272334,
+              0.0,
+              1.0
+            ]
+          }
+        ],
+        "known_transform_ancestry": true,
+        "kind": "paragraph_painted",
+        "builder": "0xb400007a7cd352d0",
+        "id": 178,
+        "offset": [
+          12.925637228519038,
+          9.62021971718552
+        ],
+        "matrix_column_major": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "paragraph_wrapper": "0xb4000078ccd7d6d0",
+        "width": 25,
+        "native_paragraph_metrics": {
+          "native_paragraph": "0xb40000798ccadba0",
+          "skia_paragraph": "0xb4000078ace7f370",
+          "alphabetic_baseline": 21.875,
+          "ideographic_baseline": 25,
+          "baseline_field_hex": "0000af410000c841",
+          "getter_offsets": [
+            "0x79720c",
+            "0x797218"
+          ],
+          "field_offsets": [
+            "0x230",
+            "0x234"
+          ],
+          "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+        },
+        "paragraph_id": 178,
+        "observed_order": 0,
+        "paragraph_source_line": 2873,
+        "runs": [
+          {
+            "text": "\uf3fd",
+            "style_id": 41,
+            "style": {
+              "font_families": [
+                "packages/cupertino_icons/CupertinoIcons"
+              ],
+              "font_size": 25,
+              "letter_spacing": 0,
+              "word_spacing": 0,
+              "height": 1,
+              "has_height_override": 1,
+              "font_weight_raw": 400,
+              "font_style_raw": 0,
+              "font_features": {},
+              "font_variations": {
+                "GRAD": 0,
+                "wght": 400,
+                "opsz": 48,
+                "FILL": 0
+              },
+              "color_argb": "0xffffffff"
+            },
+            "style_source_line": 2870
+          }
+        ],
+        "text": "\uf3fd",
+        "paragraph_origin_physical": [
+          1076.4231767181773,
+          208.14166898141136
+        ],
+        "world_matrix_column_major": [
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1076.4231767181773,
+          208.14166898141136,
+          0.0,
+          1.0
+        ],
+        "layout_width_constraint": 25
+      },
+      "bounds_kind": "Exact transformed unhinted font outline; rasterized/hinted glyph pixels remain separate."
+    },
+    {
+      "label": "Bold",
+      "paragraph_index": 69,
+      "frame": 3,
+      "scene": "editor-confirm-glyph",
+      "font": {
+        "path": "reconstruction/flutter_runtime/assets/fonts/Pretendard-variable.ttf",
+        "sha256": "499ff7e76f905bd909b4640fe333022fb0f241e292b84e1b6986c7b46eb57a80"
+      },
+      "font_family": "pretenda",
+      "codepoint": "U+0042",
+      "glyph_name": "B",
+      "font_size": 21.144751381215467,
+      "font_units_per_em": 2048,
+      "variation_location": {
+        "wght": 620
+      },
+      "native_advance_logical": 13.357406616210938,
+      "outline_axis_scope": "requested axis values; effective native variation coordinates not independently read",
+      "advance_logical": 13.360013812154694,
+      "baseline_logical": 16.870811462402344,
+      "outline_bounds_physical": [
+        101.36293042837097,
+        1654.5012912721897,
+        138.49822093797152,
+        1700.098790559318
+      ],
+      "font_units_to_world_matrix_column_major": [
+        0.03419812338422347,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.031489985695530694,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        96.82813021810074,
+        1700.098790559318,
+        0.0,
+        1.0
+      ],
+      "native_metrics": {
+        "native_paragraph": "0xb40000798cced800",
+        "skia_paragraph": "0xb4000078ace8e0a0",
+        "alphabetic_baseline": 16.870811462402344,
+        "ideographic_baseline": 21.144750595092773,
+        "baseline_field_hex": "6cf786417328a941",
+        "getter_offsets": [
+          "0x79720c",
+          "0x797218"
+        ],
+        "field_offsets": [
+          "0x230",
+          "0x234"
+        ],
+        "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+      },
+      "range_box": {
+        "paragraph_index": 69,
+        "paragraph_source_line": 3456,
+        "text": "B",
+        "window": 4,
+        "scene": "editor-confirm-glyph",
+        "frame": 3,
+        "box_index": 0,
+        "box_source_line": 3459,
+        "layout_source_line": 3457,
+        "layout_width": null,
+        "local_text_range_box": [
+          0,
+          -3.406879425048828,
+          13.357406616210938,
+          21.826406478881836
+        ],
+        "layout_generation_matches_paint": true,
+        "paint_source_line": 3458,
+        "paint_layout_source_line": 3457,
+        "world_text_range_box_physical": [
+          96.82813021810074,
+          1638.2518343195077,
+          141.07186606256943,
+          1715.2133551232794
+        ],
+        "direction": 1,
+        "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
+      },
+      "semantic_source": {
+        "path": "instrumentacion/codex-m16-final/iconmetrics4/editor-confirm-glyph/nodes.json",
+        "sha256": "9fa390e469c12ce451f0b2eb3b646164eba4c764a8cf3c879475a557b71c0147"
+      },
+      "semantic_ordinal": 37,
+      "semantic_bounds_physical": [
+        46,
+        1619,
+        192,
+        1735
+      ],
+      "source_paragraph": {
+        "window": 4,
+        "scene": "editor-confirm-glyph",
+        "frame": 3,
+        "unix_ms": 1793503749198,
+        "main_dpr_candidate": true,
+        "node": 112,
+        "display_list_unique_id": 575,
+        "recording_source_line": 3460,
+        "opacity_product": 1.0,
+        "effect_ancestors": [
+          "pushClipRect",
+          "pushClipRect",
+          "pushClipRSuperellipse",
+          "pushClipRect"
+        ],
+        "clip_rect_ancestors": [
+          {
+            "node": 9,
+            "local_rect": [
+              0,
+              0,
+              400,
+              889.1803588867188
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              0.0,
+              0.0,
+              1219.9999809265137,
+              2712.0000522050686
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "node": 95,
+            "local_rect": [
+              -64,
+              -64,
+              444,
+              112
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              -164.69999742507935,
+              1408.900045111921,
+              1384.699978351593,
+              1945.700036719587
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              30.499999523162842,
+              1604.100042060163,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "node": 103,
+            "local_rect": [
+              0,
+              0,
+              370,
+              38
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              45.74999928474426,
+              1619.3500418217445,
+              1174.2499816417694,
+              1735.2500400097633
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              45.74999928474426,
+              1619.3500418217445,
+              0.0,
+              1.0
+            ]
+          }
+        ],
+        "known_transform_ancestry": true,
+        "kind": "paragraph_painted",
+        "builder": "0xb400007a7cd2ef10",
+        "id": 183,
+        "offset": [
+          -6.678703308105469,
+          3.1041885375976577
+        ],
+        "matrix_column_major": [
+          1.0859999656677246,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          24,
+          6.5,
+          0,
+          1
+        ],
+        "paragraph_wrapper": "0xb4000078cce13290",
+        "width": null,
+        "native_paragraph_metrics": {
+          "native_paragraph": "0xb40000798cced800",
+          "skia_paragraph": "0xb4000078ace8e0a0",
+          "alphabetic_baseline": 16.870811462402344,
+          "ideographic_baseline": 21.144750595092773,
+          "baseline_field_hex": "6cf786417328a941",
+          "getter_offsets": [
+            "0x79720c",
+            "0x797218"
+          ],
+          "field_offsets": [
+            "0x230",
+            "0x234"
+          ],
+          "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+        },
+        "paragraph_id": 183,
+        "observed_order": 0,
+        "paragraph_source_line": 3456,
+        "runs": [
+          {
+            "text": "B",
+            "style_id": 40,
+            "style": {
+              "font_families": [
+                "pretenda"
+              ],
+              "font_size": 21.144751381215467,
+              "letter_spacing": 0,
+              "word_spacing": 0,
+              "height": 1,
+              "has_height_override": 1,
+              "font_weight_raw": 600,
+              "font_style_raw": 0,
+              "font_features": {},
+              "font_variations": {
+                "wght": 620
+              },
+              "color_argb": "0xffffffff"
+            },
+            "style_source_line": 2789
+          }
+        ],
+        "text": "B",
+        "paragraph_origin_physical": [
+          96.82813021810074,
+          1648.642816403454
+        ],
+        "world_matrix_column_major": [
+          3.3122998435020463,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          96.82813021810074,
+          1648.642816403454,
+          0.0,
+          1.0
+        ],
+        "layout_width_constraint": null
+      },
+      "bounds_kind": "Transformed requested-axis outline candidate; native advance and range box are measured separately."
+    },
+    {
+      "label": "Done",
+      "paragraph_index": 107,
+      "frame": 1,
+      "scene": "close-lines-and-confirm-glyph",
+      "font": {
+        "path": "reconstruction/flutter_runtime/assets/fonts/Cupertino.ttf",
+        "sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183"
+      },
+      "font_family": "packages/cupertino_icons/CupertinoIcons",
+      "codepoint": "U+F3FD",
+      "glyph_name": "uniF3FD",
+      "font_size": 25,
+      "font_units_per_em": 512,
+      "variation_location": {
+        "GRAD": 0,
+        "wght": 400,
+        "opsz": 48,
+        "FILL": 0
+      },
+      "native_advance_logical": 18.017578125,
+      "outline_axis_scope": "static font",
+      "advance_logical": 18.017578125,
+      "baseline_logical": 21.875,
+      "outline_bounds_physical": [
+        1076.4231862549207,
+        261.713250175123,
+        1131.3767986770256,
+        316.22008526046284
+      ],
+      "font_units_to_world_matrix_column_major": [
+        0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1076.4231862549207,
+        317.5604172707581,
+        0.0,
+        1.0
+      ],
+      "native_metrics": {
+        "native_paragraph": "0xb40000798ccdc3d0",
+        "skia_paragraph": "0xb4000078aceadd80",
+        "alphabetic_baseline": 21.875,
+        "ideographic_baseline": 25,
+        "baseline_field_hex": "0000af410000c841",
+        "getter_offsets": [
+          "0x79720c",
+          "0x797218"
+        ],
+        "field_offsets": [
+          "0x230",
+          "0x234"
+        ],
+        "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+      },
+      "range_box": {
+        "paragraph_index": 107,
+        "paragraph_source_line": 6821,
+        "text": "\uf3fd",
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 1,
+        "box_index": 0,
+        "box_source_line": 6860,
+        "layout_source_line": 6822,
+        "layout_width": 25,
+        "local_text_range_box": [
+          0,
+          0,
+          18.017578125,
+          25
+        ],
+        "layout_generation_matches_paint": true,
+        "paint_source_line": 6859,
+        "paint_layout_source_line": 6822,
+        "world_text_range_box_physical": [
+          1076.4231862549207,
+          250.84166831383934,
+          1131.3767986770256,
+          327.09166712174647
+        ],
+        "direction": 1,
+        "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
+      },
+      "semantic_source": {
+        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
+      },
+      "semantic_ordinal": 9,
+      "semantic_bounds_physical": [
+        1037,
+        221,
+        1171,
+        356
+      ],
+      "source_paragraph": {
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 1,
+        "unix_ms": 1793503778819,
+        "main_dpr_candidate": true,
+        "node": 173,
+        "display_list_unique_id": 1281,
+        "recording_source_line": 6861,
+        "opacity_product": 1.0,
+        "effect_ancestors": [
+          "pushClipPath",
+          "pushClipRect",
+          "pushClipRect"
+        ],
+        "clip_rect_ancestors": [
+          {
+            "node": 110,
+            "local_rect": [
+              0,
+              0,
+              400,
+              527.3110961914062
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              9.536743435606301e-06,
+              172.69999939809077,
+              1219.999990463257,
+              1780.9988176377274
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              9.536743435606301e-06,
+              172.69999939809077,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "node": 167,
+            "local_rect": [
+              -64,
+              -64,
+              108,
+              108
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              841.7999963760378,
+              26.300001686909127,
+              1366.3999881744387,
+              550.89999348531
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              1036.99999332428,
+              221.49999863515131,
+              0.0,
+              1.0
+            ]
+          }
+        ],
+        "known_transform_ancestry": true,
+        "kind": "paragraph_painted",
+        "builder": "0xb400007a7ccea5d0",
+        "id": 216,
+        "offset": [
+          12.925637228519038,
+          9.62021971718552
+        ],
+        "matrix_column_major": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "paragraph_wrapper": "0xb4000078cce23310",
+        "width": 25,
+        "native_paragraph_metrics": {
+          "native_paragraph": "0xb40000798ccdc3d0",
+          "skia_paragraph": "0xb4000078aceadd80",
+          "alphabetic_baseline": 21.875,
+          "ideographic_baseline": 25,
+          "baseline_field_hex": "0000af410000c841",
+          "getter_offsets": [
+            "0x79720c",
+            "0x797218"
+          ],
+          "field_offsets": [
+            "0x230",
+            "0x234"
+          ],
+          "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+        },
+        "paragraph_id": 216,
+        "observed_order": 0,
+        "paragraph_source_line": 6821,
+        "runs": [
+          {
+            "text": "\uf3fd",
+            "style_id": 46,
+            "style": {
+              "font_families": [
+                "packages/cupertino_icons/CupertinoIcons"
+              ],
+              "font_size": 25,
+              "letter_spacing": 0,
+              "word_spacing": 0,
+              "height": 1,
+              "has_height_override": 1,
+              "font_weight_raw": 400,
+              "font_style_raw": 0,
+              "font_features": {},
+              "font_variations": {
+                "GRAD": 0,
+                "wght": 400,
+                "opsz": 48,
+                "FILL": 0
+              },
+              "color_argb": "0xff838385"
+            },
+            "style_source_line": 6818
+          }
+        ],
+        "text": "\uf3fd",
+        "paragraph_origin_physical": [
+          1076.4231862549207,
+          250.84166831383934
+        ],
+        "world_matrix_column_major": [
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1076.4231862549207,
+          250.84166831383934,
+          0.0,
+          1.0
+        ],
+        "layout_width_constraint": 25
+      },
+      "bounds_kind": "Exact transformed unhinted font outline; rasterized/hinted glyph pixels remain separate."
+    },
+    {
+      "label": "Done",
+      "paragraph_index": 141,
+      "frame": 3,
+      "scene": "close-lines-and-confirm-glyph",
+      "font": {
+        "path": "reconstruction/flutter_runtime/assets/fonts/Cupertino.ttf",
+        "sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183"
+      },
+      "font_family": "packages/cupertino_icons/CupertinoIcons",
+      "codepoint": "U+F3FD",
+      "glyph_name": "uniF3FD",
+      "font_size": 25,
+      "font_units_per_em": 512,
+      "variation_location": {
+        "GRAD": 0,
+        "wght": 400,
+        "opsz": 48,
+        "FILL": 0
+      },
+      "native_advance_logical": 18.017578125,
+      "outline_axis_scope": "static font",
+      "advance_logical": 18.017578125,
+      "baseline_logical": 21.875,
+      "outline_bounds_physical": [
+        1076.4231862549207,
+        261.713250175123,
+        1131.3767986770256,
+        316.22008526046284
+      ],
+      "font_units_to_world_matrix_column_major": [
+        0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1076.4231862549207,
+        317.5604172707581,
+        0.0,
+        1.0
+      ],
+      "native_metrics": {
+        "native_paragraph": "0xb40000798ccdc3d0",
+        "skia_paragraph": "0xb4000078aceadd80",
+        "alphabetic_baseline": 21.875,
+        "ideographic_baseline": 25,
+        "baseline_field_hex": "0000af410000c841",
+        "getter_offsets": [
+          "0x79720c",
+          "0x797218"
+        ],
+        "field_offsets": [
+          "0x230",
+          "0x234"
+        ],
+        "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+      },
+      "range_box": {
+        "paragraph_index": 141,
+        "paragraph_source_line": 6821,
+        "text": "\uf3fd",
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 3,
+        "box_index": 0,
+        "box_source_line": 6860,
+        "layout_source_line": 6822,
+        "layout_width": 25,
+        "local_text_range_box": [
+          0,
+          0,
+          18.017578125,
+          25
+        ],
+        "layout_generation_matches_paint": true,
+        "paint_source_line": 6859,
+        "paint_layout_source_line": 6822,
+        "world_text_range_box_physical": [
+          1076.4231862549207,
+          250.84166831383934,
+          1131.3767986770256,
+          327.09166712174647
+        ],
+        "direction": 1,
+        "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
+      },
+      "semantic_source": {
+        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
+      },
+      "semantic_ordinal": 9,
+      "semantic_bounds_physical": [
+        1037,
+        221,
+        1171,
+        356
+      ],
+      "source_paragraph": {
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 3,
+        "unix_ms": 1793503778819,
+        "main_dpr_candidate": true,
+        "node": 173,
+        "display_list_unique_id": 1281,
+        "recording_source_line": 6861,
+        "opacity_product": 1.0,
+        "effect_ancestors": [
+          "pushClipPath",
+          "pushClipRect",
+          "pushClipRect"
+        ],
+        "clip_rect_ancestors": [
+          {
+            "node": 110,
+            "local_rect": [
+              0,
+              0,
+              400,
+              527.3110961914062
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              9.536743435606301e-06,
+              172.69999939809077,
+              1219.999990463257,
+              1780.9988176377274
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              9.536743435606301e-06,
+              172.69999939809077,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "node": 167,
+            "local_rect": [
+              -64,
+              -64,
+              108,
+              108
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              841.7999963760378,
+              26.300001686909127,
+              1366.3999881744387,
+              550.89999348531
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              1036.99999332428,
+              221.49999863515131,
+              0.0,
+              1.0
+            ]
+          }
+        ],
+        "known_transform_ancestry": true,
+        "kind": "paragraph_painted",
+        "builder": "0xb400007a7ccea5d0",
+        "id": 216,
+        "offset": [
+          12.925637228519038,
+          9.62021971718552
+        ],
+        "matrix_column_major": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "paragraph_wrapper": "0xb4000078cce23310",
+        "width": 25,
+        "native_paragraph_metrics": {
+          "native_paragraph": "0xb40000798ccdc3d0",
+          "skia_paragraph": "0xb4000078aceadd80",
+          "alphabetic_baseline": 21.875,
+          "ideographic_baseline": 25,
+          "baseline_field_hex": "0000af410000c841",
+          "getter_offsets": [
+            "0x79720c",
+            "0x797218"
+          ],
+          "field_offsets": [
+            "0x230",
+            "0x234"
+          ],
+          "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+        },
+        "paragraph_id": 216,
+        "observed_order": 0,
+        "paragraph_source_line": 6821,
+        "runs": [
+          {
+            "text": "\uf3fd",
+            "style_id": 46,
+            "style": {
+              "font_families": [
+                "packages/cupertino_icons/CupertinoIcons"
+              ],
+              "font_size": 25,
+              "letter_spacing": 0,
+              "word_spacing": 0,
+              "height": 1,
+              "has_height_override": 1,
+              "font_weight_raw": 400,
+              "font_style_raw": 0,
+              "font_features": {},
+              "font_variations": {
+                "GRAD": 0,
+                "wght": 400,
+                "opsz": 48,
+                "FILL": 0
+              },
+              "color_argb": "0xff838385"
+            },
+            "style_source_line": 6818
+          }
+        ],
+        "text": "\uf3fd",
+        "paragraph_origin_physical": [
+          1076.4231862549207,
+          250.84166831383934
+        ],
+        "world_matrix_column_major": [
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1076.4231862549207,
+          250.84166831383934,
+          0.0,
+          1.0
+        ],
+        "layout_width_constraint": 25
+      },
+      "bounds_kind": "Exact transformed unhinted font outline; rasterized/hinted glyph pixels remain separate."
+    },
+    {
+      "label": "Done",
+      "paragraph_index": 175,
+      "frame": 5,
+      "scene": "close-lines-and-confirm-glyph",
+      "font": {
+        "path": "reconstruction/flutter_runtime/assets/fonts/Cupertino.ttf",
+        "sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183"
+      },
+      "font_family": "packages/cupertino_icons/CupertinoIcons",
+      "codepoint": "U+F3FD",
+      "glyph_name": "uniF3FD",
+      "font_size": 25,
+      "font_units_per_em": 512,
+      "variation_location": {
+        "GRAD": 0,
+        "wght": 400,
+        "opsz": 48,
+        "FILL": 0
+      },
+      "native_advance_logical": 18.017578125,
+      "outline_axis_scope": "static font",
+      "advance_logical": 18.017578125,
+      "baseline_logical": 21.875,
+      "outline_bounds_physical": [
+        1076.4231862549207,
+        261.713250175123,
+        1131.3767986770256,
+        316.22008526046284
+      ],
+      "font_units_to_world_matrix_column_major": [
+        0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1076.4231862549207,
+        317.5604172707581,
+        0.0,
+        1.0
+      ],
+      "native_metrics": {
+        "native_paragraph": "0xb40000798ccdc3d0",
+        "skia_paragraph": "0xb4000078aceadd80",
+        "alphabetic_baseline": 21.875,
+        "ideographic_baseline": 25,
+        "baseline_field_hex": "0000af410000c841",
+        "getter_offsets": [
+          "0x79720c",
+          "0x797218"
+        ],
+        "field_offsets": [
+          "0x230",
+          "0x234"
+        ],
+        "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+      },
+      "range_box": {
+        "paragraph_index": 175,
+        "paragraph_source_line": 6821,
+        "text": "\uf3fd",
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 5,
+        "box_index": 0,
+        "box_source_line": 6860,
+        "layout_source_line": 6822,
+        "layout_width": 25,
+        "local_text_range_box": [
+          0,
+          0,
+          18.017578125,
+          25
+        ],
+        "layout_generation_matches_paint": true,
+        "paint_source_line": 6859,
+        "paint_layout_source_line": 6822,
+        "world_text_range_box_physical": [
+          1076.4231862549207,
+          250.84166831383934,
+          1131.3767986770256,
+          327.09166712174647
+        ],
+        "direction": 1,
+        "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
+      },
+      "semantic_source": {
+        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
+      },
+      "semantic_ordinal": 9,
+      "semantic_bounds_physical": [
+        1037,
+        221,
+        1171,
+        356
+      ],
+      "source_paragraph": {
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 5,
+        "unix_ms": 1793503778819,
+        "main_dpr_candidate": true,
+        "node": 173,
+        "display_list_unique_id": 1281,
+        "recording_source_line": 6861,
+        "opacity_product": 1.0,
+        "effect_ancestors": [
+          "pushClipPath",
+          "pushClipRect",
+          "pushClipRect"
+        ],
+        "clip_rect_ancestors": [
+          {
+            "node": 110,
+            "local_rect": [
+              0,
+              0,
+              400,
+              527.3110961914062
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              9.536743435606301e-06,
+              172.69999939809077,
+              1219.999990463257,
+              1780.9988176377274
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              9.536743435606301e-06,
+              172.69999939809077,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "node": 167,
+            "local_rect": [
+              -64,
+              -64,
+              108,
+              108
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              841.7999963760378,
+              26.300001686909127,
+              1366.3999881744387,
+              550.89999348531
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              1036.99999332428,
+              221.49999863515131,
+              0.0,
+              1.0
+            ]
+          }
+        ],
+        "known_transform_ancestry": true,
+        "kind": "paragraph_painted",
+        "builder": "0xb400007a7ccea5d0",
+        "id": 216,
+        "offset": [
+          12.925637228519038,
+          9.62021971718552
+        ],
+        "matrix_column_major": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "paragraph_wrapper": "0xb4000078cce23310",
+        "width": 25,
+        "native_paragraph_metrics": {
+          "native_paragraph": "0xb40000798ccdc3d0",
+          "skia_paragraph": "0xb4000078aceadd80",
+          "alphabetic_baseline": 21.875,
+          "ideographic_baseline": 25,
+          "baseline_field_hex": "0000af410000c841",
+          "getter_offsets": [
+            "0x79720c",
+            "0x797218"
+          ],
+          "field_offsets": [
+            "0x230",
+            "0x234"
+          ],
+          "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+        },
+        "paragraph_id": 216,
+        "observed_order": 0,
+        "paragraph_source_line": 6821,
+        "runs": [
+          {
+            "text": "\uf3fd",
+            "style_id": 46,
+            "style": {
+              "font_families": [
+                "packages/cupertino_icons/CupertinoIcons"
+              ],
+              "font_size": 25,
+              "letter_spacing": 0,
+              "word_spacing": 0,
+              "height": 1,
+              "has_height_override": 1,
+              "font_weight_raw": 400,
+              "font_style_raw": 0,
+              "font_features": {},
+              "font_variations": {
+                "GRAD": 0,
+                "wght": 400,
+                "opsz": 48,
+                "FILL": 0
+              },
+              "color_argb": "0xff838385"
+            },
+            "style_source_line": 6818
+          }
+        ],
+        "text": "\uf3fd",
+        "paragraph_origin_physical": [
+          1076.4231862549207,
+          250.84166831383934
+        ],
+        "world_matrix_column_major": [
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1076.4231862549207,
+          250.84166831383934,
+          0.0,
+          1.0
+        ],
+        "layout_width_constraint": 25
+      },
+      "bounds_kind": "Exact transformed unhinted font outline; rasterized/hinted glyph pixels remain separate."
+    },
+    {
+      "label": "Done",
+      "paragraph_index": 209,
+      "frame": 7,
+      "scene": "close-lines-and-confirm-glyph",
+      "font": {
+        "path": "reconstruction/flutter_runtime/assets/fonts/Cupertino.ttf",
+        "sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183"
+      },
+      "font_family": "packages/cupertino_icons/CupertinoIcons",
+      "codepoint": "U+F3FD",
+      "glyph_name": "uniF3FD",
+      "font_size": 25,
+      "font_units_per_em": 512,
+      "variation_location": {
+        "GRAD": 0,
+        "wght": 400,
+        "opsz": 48,
+        "FILL": 0
+      },
+      "native_advance_logical": 18.017578125,
+      "outline_axis_scope": "static font",
+      "advance_logical": 18.017578125,
+      "baseline_logical": 21.875,
+      "outline_bounds_physical": [
+        1076.4231862549207,
+        261.713250175123,
+        1131.3767986770256,
+        316.22008526046284
+      ],
+      "font_units_to_world_matrix_column_major": [
+        0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1076.4231862549207,
+        317.5604172707581,
+        0.0,
+        1.0
+      ],
+      "native_metrics": {
+        "native_paragraph": "0xb40000798ccdc3d0",
+        "skia_paragraph": "0xb4000078aceadd80",
+        "alphabetic_baseline": 21.875,
+        "ideographic_baseline": 25,
+        "baseline_field_hex": "0000af410000c841",
+        "getter_offsets": [
+          "0x79720c",
+          "0x797218"
+        ],
+        "field_offsets": [
+          "0x230",
+          "0x234"
+        ],
+        "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+      },
+      "range_box": {
+        "paragraph_index": 209,
+        "paragraph_source_line": 6821,
+        "text": "\uf3fd",
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 7,
+        "box_index": 0,
+        "box_source_line": 6860,
+        "layout_source_line": 6822,
+        "layout_width": 25,
+        "local_text_range_box": [
+          0,
+          0,
+          18.017578125,
+          25
+        ],
+        "layout_generation_matches_paint": true,
+        "paint_source_line": 6859,
+        "paint_layout_source_line": 6822,
+        "world_text_range_box_physical": [
+          1076.4231862549207,
+          250.84166831383934,
+          1131.3767986770256,
+          327.09166712174647
+        ],
+        "direction": 1,
+        "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
+      },
+      "semantic_source": {
+        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
+      },
+      "semantic_ordinal": 9,
+      "semantic_bounds_physical": [
+        1037,
+        221,
+        1171,
+        356
+      ],
+      "source_paragraph": {
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 7,
+        "unix_ms": 1793503778819,
+        "main_dpr_candidate": true,
+        "node": 173,
+        "display_list_unique_id": 1281,
+        "recording_source_line": 6861,
+        "opacity_product": 1.0,
+        "effect_ancestors": [
+          "pushClipPath",
+          "pushClipRect",
+          "pushClipRect"
+        ],
+        "clip_rect_ancestors": [
+          {
+            "node": 110,
+            "local_rect": [
+              0,
+              0,
+              400,
+              527.3110961914062
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              9.536743435606301e-06,
+              172.69999939809077,
+              1219.999990463257,
+              1780.9988176377274
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              9.536743435606301e-06,
+              172.69999939809077,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "node": 167,
+            "local_rect": [
+              -64,
+              -64,
+              108,
+              108
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              841.7999963760378,
+              26.300001686909127,
+              1366.3999881744387,
+              550.89999348531
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              1036.99999332428,
+              221.49999863515131,
+              0.0,
+              1.0
+            ]
+          }
+        ],
+        "known_transform_ancestry": true,
+        "kind": "paragraph_painted",
+        "builder": "0xb400007a7ccea5d0",
+        "id": 216,
+        "offset": [
+          12.925637228519038,
+          9.62021971718552
+        ],
+        "matrix_column_major": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "paragraph_wrapper": "0xb4000078cce23310",
+        "width": 25,
+        "native_paragraph_metrics": {
+          "native_paragraph": "0xb40000798ccdc3d0",
+          "skia_paragraph": "0xb4000078aceadd80",
+          "alphabetic_baseline": 21.875,
+          "ideographic_baseline": 25,
+          "baseline_field_hex": "0000af410000c841",
+          "getter_offsets": [
+            "0x79720c",
+            "0x797218"
+          ],
+          "field_offsets": [
+            "0x230",
+            "0x234"
+          ],
+          "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+        },
+        "paragraph_id": 216,
+        "observed_order": 0,
+        "paragraph_source_line": 6821,
+        "runs": [
+          {
+            "text": "\uf3fd",
+            "style_id": 46,
+            "style": {
+              "font_families": [
+                "packages/cupertino_icons/CupertinoIcons"
+              ],
+              "font_size": 25,
+              "letter_spacing": 0,
+              "word_spacing": 0,
+              "height": 1,
+              "has_height_override": 1,
+              "font_weight_raw": 400,
+              "font_style_raw": 0,
+              "font_features": {},
+              "font_variations": {
+                "GRAD": 0,
+                "wght": 400,
+                "opsz": 48,
+                "FILL": 0
+              },
+              "color_argb": "0xff838385"
+            },
+            "style_source_line": 6818
+          }
+        ],
+        "text": "\uf3fd",
+        "paragraph_origin_physical": [
+          1076.4231862549207,
+          250.84166831383934
+        ],
+        "world_matrix_column_major": [
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1076.4231862549207,
+          250.84166831383934,
+          0.0,
+          1.0
+        ],
+        "layout_width_constraint": 25
+      },
+      "bounds_kind": "Exact transformed unhinted font outline; rasterized/hinted glyph pixels remain separate."
+    },
+    {
+      "label": "Done",
+      "paragraph_index": 243,
+      "frame": 9,
+      "scene": "close-lines-and-confirm-glyph",
+      "font": {
+        "path": "reconstruction/flutter_runtime/assets/fonts/Cupertino.ttf",
+        "sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183"
+      },
+      "font_family": "packages/cupertino_icons/CupertinoIcons",
+      "codepoint": "U+F3FD",
+      "glyph_name": "uniF3FD",
+      "font_size": 25,
+      "font_units_per_em": 512,
+      "variation_location": {
+        "GRAD": 0,
+        "wght": 400,
+        "opsz": 48,
+        "FILL": 0
+      },
+      "native_advance_logical": 18.017578125,
+      "outline_axis_scope": "static font",
+      "advance_logical": 18.017578125,
+      "baseline_logical": 21.875,
+      "outline_bounds_physical": [
+        1076.4231862549207,
+        261.713250175123,
+        1131.3767986770256,
+        316.22008526046284
+      ],
+      "font_units_to_world_matrix_column_major": [
+        0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1076.4231862549207,
+        317.5604172707581,
+        0.0,
+        1.0
+      ],
+      "native_metrics": {
+        "native_paragraph": "0xb40000798ccdc3d0",
+        "skia_paragraph": "0xb4000078aceadd80",
+        "alphabetic_baseline": 21.875,
+        "ideographic_baseline": 25,
+        "baseline_field_hex": "0000af410000c841",
+        "getter_offsets": [
+          "0x79720c",
+          "0x797218"
+        ],
+        "field_offsets": [
+          "0x230",
+          "0x234"
+        ],
+        "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+      },
+      "range_box": {
+        "paragraph_index": 243,
+        "paragraph_source_line": 6821,
+        "text": "\uf3fd",
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 9,
+        "box_index": 0,
+        "box_source_line": 6860,
+        "layout_source_line": 6822,
+        "layout_width": 25,
+        "local_text_range_box": [
+          0,
+          0,
+          18.017578125,
+          25
+        ],
+        "layout_generation_matches_paint": true,
+        "paint_source_line": 6859,
+        "paint_layout_source_line": 6822,
+        "world_text_range_box_physical": [
+          1076.4231862549207,
+          250.84166831383934,
+          1131.3767986770256,
+          327.09166712174647
+        ],
+        "direction": 1,
+        "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
+      },
+      "semantic_source": {
+        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
+      },
+      "semantic_ordinal": 9,
+      "semantic_bounds_physical": [
+        1037,
+        221,
+        1171,
+        356
+      ],
+      "source_paragraph": {
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 9,
+        "unix_ms": 1793503778819,
+        "main_dpr_candidate": true,
+        "node": 173,
+        "display_list_unique_id": 1281,
+        "recording_source_line": 6861,
+        "opacity_product": 1.0,
+        "effect_ancestors": [
+          "pushClipPath",
+          "pushClipRect",
+          "pushClipRect"
+        ],
+        "clip_rect_ancestors": [
+          {
+            "node": 110,
+            "local_rect": [
+              0,
+              0,
+              400,
+              527.3110961914062
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              9.536743435606301e-06,
+              172.69999939809077,
+              1219.999990463257,
+              1780.9988176377274
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              9.536743435606301e-06,
+              172.69999939809077,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "node": 167,
+            "local_rect": [
+              -64,
+              -64,
+              108,
+              108
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              841.7999963760378,
+              26.300001686909127,
+              1366.3999881744387,
+              550.89999348531
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              1036.99999332428,
+              221.49999863515131,
+              0.0,
+              1.0
+            ]
+          }
+        ],
+        "known_transform_ancestry": true,
+        "kind": "paragraph_painted",
+        "builder": "0xb400007a7ccea5d0",
+        "id": 216,
+        "offset": [
+          12.925637228519038,
+          9.62021971718552
+        ],
+        "matrix_column_major": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "paragraph_wrapper": "0xb4000078cce23310",
+        "width": 25,
+        "native_paragraph_metrics": {
+          "native_paragraph": "0xb40000798ccdc3d0",
+          "skia_paragraph": "0xb4000078aceadd80",
+          "alphabetic_baseline": 21.875,
+          "ideographic_baseline": 25,
+          "baseline_field_hex": "0000af410000c841",
+          "getter_offsets": [
+            "0x79720c",
+            "0x797218"
+          ],
+          "field_offsets": [
+            "0x230",
+            "0x234"
+          ],
+          "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+        },
+        "paragraph_id": 216,
+        "observed_order": 0,
+        "paragraph_source_line": 6821,
+        "runs": [
+          {
+            "text": "\uf3fd",
+            "style_id": 46,
+            "style": {
+              "font_families": [
+                "packages/cupertino_icons/CupertinoIcons"
+              ],
+              "font_size": 25,
+              "letter_spacing": 0,
+              "word_spacing": 0,
+              "height": 1,
+              "has_height_override": 1,
+              "font_weight_raw": 400,
+              "font_style_raw": 0,
+              "font_features": {},
+              "font_variations": {
+                "GRAD": 0,
+                "wght": 400,
+                "opsz": 48,
+                "FILL": 0
+              },
+              "color_argb": "0xff838385"
+            },
+            "style_source_line": 6818
+          }
+        ],
+        "text": "\uf3fd",
+        "paragraph_origin_physical": [
+          1076.4231862549207,
+          250.84166831383934
+        ],
+        "world_matrix_column_major": [
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1076.4231862549207,
+          250.84166831383934,
+          0.0,
+          1.0
+        ],
+        "layout_width_constraint": 25
+      },
+      "bounds_kind": "Exact transformed unhinted font outline; rasterized/hinted glyph pixels remain separate."
+    },
+    {
+      "label": "Done",
+      "paragraph_index": 277,
+      "frame": 11,
+      "scene": "close-lines-and-confirm-glyph",
+      "font": {
+        "path": "reconstruction/flutter_runtime/assets/fonts/Cupertino.ttf",
+        "sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183"
+      },
+      "font_family": "packages/cupertino_icons/CupertinoIcons",
+      "codepoint": "U+F3FD",
+      "glyph_name": "uniF3FD",
+      "font_size": 25,
+      "font_units_per_em": 512,
+      "variation_location": {
+        "GRAD": 0,
+        "wght": 400,
+        "opsz": 48,
+        "FILL": 0
+      },
+      "native_advance_logical": 18.017578125,
+      "outline_axis_scope": "static font",
+      "advance_logical": 18.017578125,
+      "baseline_logical": 21.875,
+      "outline_bounds_physical": [
+        1076.4231862549207,
+        261.713250175123,
+        1131.3767986770256,
+        316.22008526046284
+      ],
+      "font_units_to_world_matrix_column_major": [
+        0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1076.4231862549207,
+        317.5604172707581,
+        0.0,
+        1.0
+      ],
+      "native_metrics": {
+        "native_paragraph": "0xb40000798ccdc3d0",
+        "skia_paragraph": "0xb4000078aceadd80",
+        "alphabetic_baseline": 21.875,
+        "ideographic_baseline": 25,
+        "baseline_field_hex": "0000af410000c841",
+        "getter_offsets": [
+          "0x79720c",
+          "0x797218"
+        ],
+        "field_offsets": [
+          "0x230",
+          "0x234"
+        ],
+        "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+      },
+      "range_box": {
+        "paragraph_index": 277,
+        "paragraph_source_line": 6821,
+        "text": "\uf3fd",
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 11,
+        "box_index": 0,
+        "box_source_line": 6860,
+        "layout_source_line": 6822,
+        "layout_width": 25,
+        "local_text_range_box": [
+          0,
+          0,
+          18.017578125,
+          25
+        ],
+        "layout_generation_matches_paint": true,
+        "paint_source_line": 6859,
+        "paint_layout_source_line": 6822,
+        "world_text_range_box_physical": [
+          1076.4231862549207,
+          250.84166831383934,
+          1131.3767986770256,
+          327.09166712174647
+        ],
+        "direction": 1,
+        "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
+      },
+      "semantic_source": {
+        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
+      },
+      "semantic_ordinal": 9,
+      "semantic_bounds_physical": [
+        1037,
+        221,
+        1171,
+        356
+      ],
+      "source_paragraph": {
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 11,
+        "unix_ms": 1793503778819,
+        "main_dpr_candidate": true,
+        "node": 173,
+        "display_list_unique_id": 1281,
+        "recording_source_line": 6861,
+        "opacity_product": 1.0,
+        "effect_ancestors": [
+          "pushClipPath",
+          "pushClipRect",
+          "pushClipRect"
+        ],
+        "clip_rect_ancestors": [
+          {
+            "node": 110,
+            "local_rect": [
+              0,
+              0,
+              400,
+              527.3110961914062
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              9.536743435606301e-06,
+              172.69999939809077,
+              1219.999990463257,
+              1780.9988176377274
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              9.536743435606301e-06,
+              172.69999939809077,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "node": 167,
+            "local_rect": [
+              -64,
+              -64,
+              108,
+              108
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              841.7999963760378,
+              26.300001686909127,
+              1366.3999881744387,
+              550.89999348531
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              1036.99999332428,
+              221.49999863515131,
+              0.0,
+              1.0
+            ]
+          }
+        ],
+        "known_transform_ancestry": true,
+        "kind": "paragraph_painted",
+        "builder": "0xb400007a7ccea5d0",
+        "id": 216,
+        "offset": [
+          12.925637228519038,
+          9.62021971718552
+        ],
+        "matrix_column_major": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "paragraph_wrapper": "0xb4000078cce23310",
+        "width": 25,
+        "native_paragraph_metrics": {
+          "native_paragraph": "0xb40000798ccdc3d0",
+          "skia_paragraph": "0xb4000078aceadd80",
+          "alphabetic_baseline": 21.875,
+          "ideographic_baseline": 25,
+          "baseline_field_hex": "0000af410000c841",
+          "getter_offsets": [
+            "0x79720c",
+            "0x797218"
+          ],
+          "field_offsets": [
+            "0x230",
+            "0x234"
+          ],
+          "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+        },
+        "paragraph_id": 216,
+        "observed_order": 0,
+        "paragraph_source_line": 6821,
+        "runs": [
+          {
+            "text": "\uf3fd",
+            "style_id": 46,
+            "style": {
+              "font_families": [
+                "packages/cupertino_icons/CupertinoIcons"
+              ],
+              "font_size": 25,
+              "letter_spacing": 0,
+              "word_spacing": 0,
+              "height": 1,
+              "has_height_override": 1,
+              "font_weight_raw": 400,
+              "font_style_raw": 0,
+              "font_features": {},
+              "font_variations": {
+                "GRAD": 0,
+                "wght": 400,
+                "opsz": 48,
+                "FILL": 0
+              },
+              "color_argb": "0xff838385"
+            },
+            "style_source_line": 6818
+          }
+        ],
+        "text": "\uf3fd",
+        "paragraph_origin_physical": [
+          1076.4231862549207,
+          250.84166831383934
+        ],
+        "world_matrix_column_major": [
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1076.4231862549207,
+          250.84166831383934,
+          0.0,
+          1.0
+        ],
+        "layout_width_constraint": 25
+      },
+      "bounds_kind": "Exact transformed unhinted font outline; rasterized/hinted glyph pixels remain separate."
+    },
+    {
+      "label": "Done",
+      "paragraph_index": 303,
+      "frame": 12,
+      "scene": "close-lines-and-confirm-glyph",
+      "font": {
+        "path": "reconstruction/flutter_runtime/assets/fonts/Cupertino.ttf",
+        "sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183"
+      },
+      "font_family": "packages/cupertino_icons/CupertinoIcons",
+      "codepoint": "U+F3FD",
+      "glyph_name": "uniF3FD",
+      "font_size": 25,
+      "font_units_per_em": 512,
+      "variation_location": {
+        "GRAD": 0,
+        "wght": 400,
+        "opsz": 48,
+        "FILL": 0
+      },
+      "native_advance_logical": 18.017578125,
+      "outline_axis_scope": "static font",
+      "advance_logical": 18.017578125,
+      "baseline_logical": 21.875,
+      "outline_bounds_physical": [
+        1076.4231862549207,
+        261.713250175123,
+        1131.3767986770256,
+        316.22008526046284
+      ],
+      "font_units_to_world_matrix_column_major": [
+        0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1076.4231862549207,
+        317.5604172707581,
+        0.0,
+        1.0
+      ],
+      "native_metrics": {
+        "native_paragraph": "0xb40000798ccdc3d0",
+        "skia_paragraph": "0xb4000078aceadd80",
+        "alphabetic_baseline": 21.875,
+        "ideographic_baseline": 25,
+        "baseline_field_hex": "0000af410000c841",
+        "getter_offsets": [
+          "0x79720c",
+          "0x797218"
+        ],
+        "field_offsets": [
+          "0x230",
+          "0x234"
+        ],
+        "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+      },
+      "range_box": {
+        "paragraph_index": 303,
+        "paragraph_source_line": 6821,
+        "text": "\uf3fd",
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 12,
+        "box_index": 0,
+        "box_source_line": 6860,
+        "layout_source_line": 6822,
+        "layout_width": 25,
+        "local_text_range_box": [
+          0,
+          0,
+          18.017578125,
+          25
+        ],
+        "layout_generation_matches_paint": true,
+        "paint_source_line": 6859,
+        "paint_layout_source_line": 6822,
+        "world_text_range_box_physical": [
+          1076.4231862549207,
+          250.84166831383934,
+          1131.3767986770256,
+          327.09166712174647
+        ],
+        "direction": 1,
+        "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
+      },
+      "semantic_source": {
+        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
+      },
+      "semantic_ordinal": 9,
+      "semantic_bounds_physical": [
+        1037,
+        221,
+        1171,
+        356
+      ],
+      "source_paragraph": {
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 12,
+        "unix_ms": 1793503778819,
+        "main_dpr_candidate": true,
+        "node": 173,
+        "display_list_unique_id": 1281,
+        "recording_source_line": 6861,
+        "opacity_product": 1.0,
+        "effect_ancestors": [
+          "pushClipPath",
+          "pushClipRect",
+          "pushClipRect"
+        ],
+        "clip_rect_ancestors": [
+          {
+            "node": 110,
+            "local_rect": [
+              0,
+              0,
+              400,
+              527.3110961914062
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              9.536743435606301e-06,
+              172.69999939809077,
+              1219.999990463257,
+              1780.9988176377274
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              9.536743435606301e-06,
+              172.69999939809077,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "node": 167,
+            "local_rect": [
+              -64,
+              -64,
+              108,
+              108
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              841.7999963760378,
+              26.300001686909127,
+              1366.3999881744387,
+              550.89999348531
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              1036.99999332428,
+              221.49999863515131,
+              0.0,
+              1.0
+            ]
+          }
+        ],
+        "known_transform_ancestry": true,
+        "kind": "paragraph_painted",
+        "builder": "0xb400007a7ccea5d0",
+        "id": 216,
+        "offset": [
+          12.925637228519038,
+          9.62021971718552
+        ],
+        "matrix_column_major": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "paragraph_wrapper": "0xb4000078cce23310",
+        "width": 25,
+        "native_paragraph_metrics": {
+          "native_paragraph": "0xb40000798ccdc3d0",
+          "skia_paragraph": "0xb4000078aceadd80",
+          "alphabetic_baseline": 21.875,
+          "ideographic_baseline": 25,
+          "baseline_field_hex": "0000af410000c841",
+          "getter_offsets": [
+            "0x79720c",
+            "0x797218"
+          ],
+          "field_offsets": [
+            "0x230",
+            "0x234"
+          ],
+          "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+        },
+        "paragraph_id": 216,
+        "observed_order": 0,
+        "paragraph_source_line": 6821,
+        "runs": [
+          {
+            "text": "\uf3fd",
+            "style_id": 46,
+            "style": {
+              "font_families": [
+                "packages/cupertino_icons/CupertinoIcons"
+              ],
+              "font_size": 25,
+              "letter_spacing": 0,
+              "word_spacing": 0,
+              "height": 1,
+              "has_height_override": 1,
+              "font_weight_raw": 400,
+              "font_style_raw": 0,
+              "font_features": {},
+              "font_variations": {
+                "GRAD": 0,
+                "wght": 400,
+                "opsz": 48,
+                "FILL": 0
+              },
+              "color_argb": "0xff838385"
+            },
+            "style_source_line": 6818
+          }
+        ],
+        "text": "\uf3fd",
+        "paragraph_origin_physical": [
+          1076.4231862549207,
+          250.84166831383934
+        ],
+        "world_matrix_column_major": [
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1076.4231862549207,
+          250.84166831383934,
+          0.0,
+          1.0
+        ],
+        "layout_width_constraint": 25
+      },
+      "bounds_kind": "Exact transformed unhinted font outline; rasterized/hinted glyph pixels remain separate."
+    },
+    {
+      "label": "Done",
+      "paragraph_index": 345,
+      "frame": 15,
+      "scene": "close-lines-and-confirm-glyph",
+      "font": {
+        "path": "reconstruction/flutter_runtime/assets/fonts/Cupertino.ttf",
+        "sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183"
+      },
+      "font_family": "packages/cupertino_icons/CupertinoIcons",
+      "codepoint": "U+F3FD",
+      "glyph_name": "uniF3FD",
+      "font_size": 25,
+      "font_units_per_em": 512,
+      "variation_location": {
+        "GRAD": 0,
+        "wght": 400,
+        "opsz": 48,
+        "FILL": 0
+      },
+      "native_advance_logical": 18.017578125,
+      "outline_axis_scope": "static font",
+      "advance_logical": 18.017578125,
+      "baseline_logical": 21.875,
+      "outline_bounds_physical": [
+        1076.4231862549207,
+        261.713250175123,
+        1131.3767986770256,
+        316.22008526046284
+      ],
+      "font_units_to_world_matrix_column_major": [
+        0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1076.4231862549207,
+        317.5604172707581,
+        0.0,
+        1.0
+      ],
+      "native_metrics": {
+        "native_paragraph": "0xb40000798ccdc3d0",
+        "skia_paragraph": "0xb4000078aceadd80",
+        "alphabetic_baseline": 21.875,
+        "ideographic_baseline": 25,
+        "baseline_field_hex": "0000af410000c841",
+        "getter_offsets": [
+          "0x79720c",
+          "0x797218"
+        ],
+        "field_offsets": [
+          "0x230",
+          "0x234"
+        ],
+        "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+      },
+      "range_box": {
+        "paragraph_index": 345,
+        "paragraph_source_line": 6821,
+        "text": "\uf3fd",
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 15,
+        "box_index": 0,
+        "box_source_line": 6860,
+        "layout_source_line": 6822,
+        "layout_width": 25,
+        "local_text_range_box": [
+          0,
+          0,
+          18.017578125,
+          25
+        ],
+        "layout_generation_matches_paint": true,
+        "paint_source_line": 6859,
+        "paint_layout_source_line": 6822,
+        "world_text_range_box_physical": [
+          1076.4231862549207,
+          250.84166831383934,
+          1131.3767986770256,
+          327.09166712174647
+        ],
+        "direction": 1,
+        "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
+      },
+      "semantic_source": {
+        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
+      },
+      "semantic_ordinal": 9,
+      "semantic_bounds_physical": [
+        1037,
+        221,
+        1171,
+        356
+      ],
+      "source_paragraph": {
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 15,
+        "unix_ms": 1793503778819,
+        "main_dpr_candidate": true,
+        "node": 173,
+        "display_list_unique_id": 1281,
+        "recording_source_line": 6861,
+        "opacity_product": 1.0,
+        "effect_ancestors": [
+          "pushClipPath",
+          "pushClipRect",
+          "pushClipRect"
+        ],
+        "clip_rect_ancestors": [
+          {
+            "node": 110,
+            "local_rect": [
+              0,
+              0,
+              400,
+              527.3110961914062
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              9.536743435606301e-06,
+              172.69999939809077,
+              1219.999990463257,
+              1780.9988176377274
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              9.536743435606301e-06,
+              172.69999939809077,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "node": 167,
+            "local_rect": [
+              -64,
+              -64,
+              108,
+              108
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              841.7999963760378,
+              26.300001686909127,
+              1366.3999881744387,
+              550.89999348531
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              1036.99999332428,
+              221.49999863515131,
+              0.0,
+              1.0
+            ]
+          }
+        ],
+        "known_transform_ancestry": true,
+        "kind": "paragraph_painted",
+        "builder": "0xb400007a7ccea5d0",
+        "id": 216,
+        "offset": [
+          12.925637228519038,
+          9.62021971718552
+        ],
+        "matrix_column_major": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "paragraph_wrapper": "0xb4000078cce23310",
+        "width": 25,
+        "native_paragraph_metrics": {
+          "native_paragraph": "0xb40000798ccdc3d0",
+          "skia_paragraph": "0xb4000078aceadd80",
+          "alphabetic_baseline": 21.875,
+          "ideographic_baseline": 25,
+          "baseline_field_hex": "0000af410000c841",
+          "getter_offsets": [
+            "0x79720c",
+            "0x797218"
+          ],
+          "field_offsets": [
+            "0x230",
+            "0x234"
+          ],
+          "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+        },
+        "paragraph_id": 216,
+        "observed_order": 0,
+        "paragraph_source_line": 6821,
+        "runs": [
+          {
+            "text": "\uf3fd",
+            "style_id": 46,
+            "style": {
+              "font_families": [
+                "packages/cupertino_icons/CupertinoIcons"
+              ],
+              "font_size": 25,
+              "letter_spacing": 0,
+              "word_spacing": 0,
+              "height": 1,
+              "has_height_override": 1,
+              "font_weight_raw": 400,
+              "font_style_raw": 0,
+              "font_features": {},
+              "font_variations": {
+                "GRAD": 0,
+                "wght": 400,
+                "opsz": 48,
+                "FILL": 0
+              },
+              "color_argb": "0xff838385"
+            },
+            "style_source_line": 6818
+          }
+        ],
+        "text": "\uf3fd",
+        "paragraph_origin_physical": [
+          1076.4231862549207,
+          250.84166831383934
+        ],
+        "world_matrix_column_major": [
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1076.4231862549207,
+          250.84166831383934,
+          0.0,
+          1.0
+        ],
+        "layout_width_constraint": 25
+      },
+      "bounds_kind": "Exact transformed unhinted font outline; rasterized/hinted glyph pixels remain separate."
+    },
+    {
+      "label": "Done",
+      "paragraph_index": 379,
+      "frame": 17,
+      "scene": "close-lines-and-confirm-glyph",
+      "font": {
+        "path": "reconstruction/flutter_runtime/assets/fonts/Cupertino.ttf",
+        "sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183"
+      },
+      "font_family": "packages/cupertino_icons/CupertinoIcons",
+      "codepoint": "U+F3FD",
+      "glyph_name": "uniF3FD",
+      "font_size": 25,
+      "font_units_per_em": 512,
+      "variation_location": {
+        "GRAD": 0,
+        "wght": 400,
+        "opsz": 48,
+        "FILL": 0
+      },
+      "native_advance_logical": 18.017578125,
+      "outline_axis_scope": "static font",
+      "advance_logical": 18.017578125,
+      "baseline_logical": 21.875,
+      "outline_bounds_physical": [
+        1076.4231862549207,
+        261.713250175123,
+        1131.3767986770256,
+        316.22008526046284
+      ],
+      "font_units_to_world_matrix_column_major": [
+        0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.14892577892169356,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1076.4231862549207,
+        317.5604172707581,
+        0.0,
+        1.0
+      ],
+      "native_metrics": {
+        "native_paragraph": "0xb40000798ccdc3d0",
+        "skia_paragraph": "0xb4000078aceadd80",
+        "alphabetic_baseline": 21.875,
+        "ideographic_baseline": 25,
+        "baseline_field_hex": "0000af410000c841",
+        "getter_offsets": [
+          "0x79720c",
+          "0x797218"
+        ],
+        "field_offsets": [
+          "0x230",
+          "0x234"
+        ],
+        "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+      },
+      "range_box": {
+        "paragraph_index": 379,
+        "paragraph_source_line": 6821,
+        "text": "\uf3fd",
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 17,
+        "box_index": 0,
+        "box_source_line": 6860,
+        "layout_source_line": 6822,
+        "layout_width": 25,
+        "local_text_range_box": [
+          0,
+          0,
+          18.017578125,
+          25
+        ],
+        "layout_generation_matches_paint": true,
+        "paint_source_line": 6859,
+        "paint_layout_source_line": 6822,
+        "world_text_range_box_physical": [
+          1076.4231862549207,
+          250.84166831383934,
+          1131.3767986770256,
+          327.09166712174647
+        ],
+        "direction": 1,
+        "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
+      },
+      "semantic_source": {
+        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
+      },
+      "semantic_ordinal": 9,
+      "semantic_bounds_physical": [
+        1037,
+        221,
+        1171,
+        356
+      ],
+      "source_paragraph": {
+        "window": 8,
+        "scene": "close-lines-and-confirm-glyph",
+        "frame": 17,
+        "unix_ms": 1793503778819,
+        "main_dpr_candidate": true,
+        "node": 173,
+        "display_list_unique_id": 1281,
+        "recording_source_line": 6861,
+        "opacity_product": 1.0,
+        "effect_ancestors": [
+          "pushClipPath",
+          "pushClipRect",
+          "pushClipRect"
+        ],
+        "clip_rect_ancestors": [
+          {
+            "node": 110,
+            "local_rect": [
+              0,
+              0,
+              400,
+              527.3110961914062
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              9.536743435606301e-06,
+              172.69999939809077,
+              1219.999990463257,
+              1780.9988176377274
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              9.536743435606301e-06,
+              172.69999939809077,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "node": 167,
+            "local_rect": [
+              -64,
+              -64,
+              108,
+              108
+            ],
+            "behavior": 1,
+            "world_bounds_physical": [
+              841.7999963760378,
+              26.300001686909127,
+              1366.3999881744387,
+              550.89999348531
+            ],
+            "world_matrix_column_major": [
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              3.049999952316284,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              1036.99999332428,
+              221.49999863515131,
+              0.0,
+              1.0
+            ]
+          }
+        ],
+        "known_transform_ancestry": true,
+        "kind": "paragraph_painted",
+        "builder": "0xb400007a7ccea5d0",
+        "id": 216,
+        "offset": [
+          12.925637228519038,
+          9.62021971718552
+        ],
+        "matrix_column_major": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "paragraph_wrapper": "0xb4000078cce23310",
+        "width": 25,
+        "native_paragraph_metrics": {
+          "native_paragraph": "0xb40000798ccdc3d0",
+          "skia_paragraph": "0xb4000078aceadd80",
+          "alphabetic_baseline": 21.875,
+          "ideographic_baseline": 25,
+          "baseline_field_hex": "0000af410000c841",
+          "getter_offsets": [
+            "0x79720c",
+            "0x797218"
+          ],
+          "field_offsets": [
+            "0x230",
+            "0x234"
+          ],
+          "scope": "Original stored first-line baselines at paint; glyph positions and range-box alignment remain separate."
+        },
+        "paragraph_id": 216,
+        "observed_order": 0,
+        "paragraph_source_line": 6821,
+        "runs": [
+          {
+            "text": "\uf3fd",
+            "style_id": 46,
+            "style": {
+              "font_families": [
+                "packages/cupertino_icons/CupertinoIcons"
+              ],
+              "font_size": 25,
+              "letter_spacing": 0,
+              "word_spacing": 0,
+              "height": 1,
+              "has_height_override": 1,
+              "font_weight_raw": 400,
+              "font_style_raw": 0,
+              "font_features": {},
+              "font_variations": {
+                "GRAD": 0,
+                "wght": 400,
+                "opsz": 48,
+                "FILL": 0
+              },
+              "color_argb": "0xff838385"
+            },
+            "style_source_line": 6818
+          }
+        ],
+        "text": "\uf3fd",
+        "paragraph_origin_physical": [
+          1076.4231862549207,
+          250.84166831383934
+        ],
+        "world_matrix_column_major": [
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          3.049999952316284,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1076.4231862549207,
+          250.84166831383934,
+          0.0,
+          1.0
+        ],
+        "layout_width_constraint": 25
+      },
+      "bounds_kind": "Exact transformed unhinted font outline; rasterized/hinted glyph pixels remain separate."
+    }
+  ],
+  "limits": [
+    "Source observations resolve these icon recipes, not all original widget classes.",
+    "Font outline bounds are independent of AA/hinting and do not establish screenshot pixel equivalence.",
+    "The observed Add Link Done icon is disabled; its captured gray color is not an active-state default."
+  ]
+}

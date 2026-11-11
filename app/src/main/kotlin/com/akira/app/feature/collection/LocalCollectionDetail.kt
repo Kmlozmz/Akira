@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.*
 import coil.compose.AsyncImage
 import com.akira.app.R
 import com.akira.app.core.model.Song
-import com.akira.app.core.design.theme.AkiraFontFamily
+import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 import com.akira.app.core.design.components.*
 import com.akira.app.core.design.navigation.*
 import com.akira.app.core.design.rendering.*
@@ -185,7 +185,8 @@ fun LocalCollectionDetail(initial: DetailPage, library: List<Song>, current: Son
     val artworkBackdrop=rememberLayerBackdrop()
     val elastic=rememberAkiraBouncingEffect()
     val scope=rememberCoroutineScope()
-    CompositionLocalProvider(LocalAppBackdrop provides pageBackdrop) {
+    CompositionLocalProvider(LocalAppBackdrop provides pageBackdrop,
+        com.akira.app.core.design.navigation.LocalPageHeaderBackdrop provides artworkBackdrop) {
     Box(Modifier.fillMaxSize().containerTransformTarget(page.transitionKey,48.dp).background(background.value)) {
         Box(Modifier.fillMaxSize().glassRoot(glass){morph.value>.01f}.layerBackdrop(pageBackdrop).background(background.value)) {
             // Record only the background, before the controls. Sampling the page
@@ -239,29 +240,16 @@ fun LocalCollectionDetail(initial: DetailPage, library: List<Song>, current: Son
                     .putExtra(android.content.Intent.EXTRA_TEXT,page.title)
                 context.startActivity(android.content.Intent.createChooser(intent,page.title))
             },onMore={showArtistMenu=true}){scope.launch{state.animateScrollToItem(0)}}
-        if(showArtistMenu) com.akira.app.core.design.components.AkiraContextMenu(
-            onDismiss={showArtistMenu=false},groups=listOf(listOf(
-                com.akira.app.core.design.components.AkiraContextAction(com.akira.app.core.design.icon.AkiraIcons.Play,
-                    localizedText("Play top songs","Reproducir canciones destacadas")){
-                    if(tracks.any{it.id==current?.id})onToggle()else lead?.let{onPlay(it,tracks)}
-                },
-                com.akira.app.core.design.components.AkiraContextAction(
-                    if(favorite)com.akira.app.core.design.icon.AkiraIcons.StarFilled else com.akira.app.core.design.icon.AkiraIcons.Star,
-                    if(favorite)localizedText("Remove from Favorites","Quitar de favoritos")else localizedText("Favorite artist","Artista favorito")){
-                    scope.launch {artistRepo.setArtistFavorite(page.title,!favorite)}
-                },
-                com.akira.app.core.design.components.AkiraContextAction(com.akira.app.core.design.icon.AkiraIcons.Album,
-                    localizedText("Browse albums","Ver álbumes")) {if(albums.isNotEmpty())scope.launch{state.animateScrollToItem(3+tracks.take(5).size)}},
-                com.akira.app.core.design.components.AkiraContextAction(com.akira.app.core.design.icon.AkiraIcons.Artist,
-                    localizedText("Artist information","Información del artista"),opensPresentation=true){showArtistInfo=true},
-                com.akira.app.core.design.components.AkiraContextAction(com.akira.app.core.design.icon.AkiraIcons.Shuffle,
-                    localizedText("Shuffle","Aleatorio")){tracks.shuffled().let{q->q.firstOrNull()?.let{onPlay(it,q)}}},
-                com.akira.app.core.design.components.AkiraContextAction(com.akira.app.core.design.icon.AkiraIcons.Share,
-                    localizedText("Share artist","Compartir artista")) {
-                    context.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
-                        .putExtra(android.content.Intent.EXTRA_TEXT,page.title),page.title))
-                }
-            )))
+        if(showArtistMenu) ArtistOptionsMenu(page.title,
+            localizedText("${tracks.size} songs in your library","${tracks.size} canciones en tu biblioteca"),
+            favorite,onDismiss={showArtistMenu=false},onPlay={lead?.let{onPlay(it,tracks)}},
+            onShuffle={tracks.shuffled().let{q->q.firstOrNull()?.let{onPlay(it,q)}}},
+            onFavorite={scope.launch{artistRepo.setArtistFavorite(page.title,!favorite)}},
+            onAlbums=if(albums.isEmpty())null else ({scope.launch{state.animateScrollToItem(3+tracks.take(5).size)}}),
+            onInformation={showArtistInfo=true},onShare={
+                context.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
+                    .putExtra(android.content.Intent.EXTRA_TEXT,page.title),page.title))
+            })
         if(showArtistInfo) ArtistInformationSheet(page.title, lead?.albumArtUri, background.value,
             localizedText("${tracks.size} songs · ${albums.size} albums in your library", "${tracks.size} canciones · ${albums.size} álbumes en tu biblioteca"),
             localizedText("${tracks.sumOf{it.durationMs}/60000} minutes of music in your collection.",
@@ -333,6 +321,10 @@ private val LocalDetailDepth = staticCompositionLocalOf { 1 }
 }
 @Composable internal fun DetailHeaderControl(icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null) {
+    if (icon == R.drawable.ic_navigation_back) {
+        com.akira.app.core.design.navigation.PageBackButton(onClick, modifier, onLongClick=onLongClick)
+        return
+    }
     val menuSource=rememberAkiraMenuSource(hasOwnSurface=true)
     val haptics = com.akira.app.core.design.util.rememberAkiraHaptics()
     Box(modifier.then(if(icon==R.drawable.ic_more_horizontal)menuSource.modifier else Modifier).size(40.dp).clip(CircleShape)

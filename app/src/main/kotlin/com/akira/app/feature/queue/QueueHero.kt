@@ -82,7 +82,7 @@ import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.akira.app.core.design.components.AkiraIconButton
 import com.akira.app.core.design.icon.AkiraIcons
-import com.akira.app.core.design.theme.AkiraFontFamily
+import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 import com.akira.app.core.design.util.rememberAkiraHaptics
 import com.akira.app.core.i18n.LocalStrings
 import com.akira.app.core.model.Song

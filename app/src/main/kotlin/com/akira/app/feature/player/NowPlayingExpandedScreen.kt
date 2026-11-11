@@ -134,7 +134,7 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.util.UnstableApi
 import coil.compose.AsyncImage
 import com.akira.app.core.datastore.UserPreferencesRepository
-import com.akira.app.core.design.theme.AkiraFontFamily
+import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 import com.akira.app.core.design.theme.noRippleClickable
 import com.akira.app.core.media.MusicServiceConnection
 import com.akira.app.core.media.SleepTimerBus
@@ -172,7 +172,6 @@ private fun AnimatedControlButton(
     content: @Composable () -> Unit
 ) {
     var isPressed by remember { mutableStateOf(false) }
-    val haptics = rememberAkiraHaptics()
     var boosting by remember { mutableStateOf(false) }
     val reduced=com.akira.app.core.design.components.LocalContentMotionReduced.current
     val scale by animateFloatAsState(
@@ -192,7 +191,7 @@ private fun AnimatedControlButton(
             .clip(CircleShape)
             .akiraTransportPress(onClick,onHoldStart,
                 onPressedChanged={isPressed=it;onContactChanged(it)},
-                onBoostChanged={if(boosting!=it) {boosting=it;onBoostChanged(it);if(it)haptics.tick()}}),
+                onBoostChanged={if(boosting!=it) {boosting=it;onBoostChanged(it)}}),
         contentAlignment = Alignment.Center
     ) {
         if (haloAlpha > 0.01f) {
@@ -393,10 +392,9 @@ internal fun NowPlayingExpandedScreen(
     val fullBleedArtwork=fullscreenArtwork && !landscape
     val motionAllowed=useMotionArtwork(fullscreenArtwork,isLyricsOpen,isQueueOpen,landscape,
         userPrefs?.animatedPlayerArtwork != false && !playerMotionReduced)
-    val playerSettled by remember(playerExpansionProgress) {derivedStateOf {playerExpansionProgress.value>=.999f}}
     var motionArtwork by remember(song.id,song.album,song.artist) {mutableStateOf<MotionArtwork?>(null)}
-    LaunchedEffect(song.id,song.album,song.artist,motionAllowed,playerSettled) {
-        if(motionAllowed && playerSettled) {
+    LaunchedEffect(song.id,song.album,song.artist,motionAllowed) {
+        if(motionAllowed) {
             motionArtwork=MotionArtworkRepository.find(context,song)
             if(com.akira.app.BuildConfig.DEBUG) android.util.Log.d("AkiraHomeArtwork", "player motion matched=${motionArtwork != null}")
         }
@@ -763,7 +761,7 @@ internal fun NowPlayingExpandedScreen(
         // The video is a native AndroidView. Keep it beneath metadata and controls:
         // a visually transparent part of its texture still owns pointer hit testing.
         PlayerArtworkSurface(artworkMotion,song,playerExpansionProgress,config.screenWidthDp*density.density,
-            motionArtwork=motionArtwork.takeIf {motionAllowed && playerSettled},isPlaying=isPlaying)
+            motionArtwork=motionArtwork.takeIf {motionAllowed})
 
         // Page changes share one artwork owner and one transport.
         AkiraExpandedPlayerLayout(wide=landscape,
@@ -822,7 +820,6 @@ internal fun NowPlayingExpandedScreen(
                                 repeatState = repeatState,
                                 isAutoplayActive = isAutoplayActive,
                                 onCoverClick = {
-                                    playHapticFeedback()
                                     isQueueOpen = false
                                 },
                                 onToggleFavorite = {
@@ -830,7 +827,6 @@ internal fun NowPlayingExpandedScreen(
                                     onToggleFavorite(it)
                                 },
                                 onOptionsClick = {
-                                    playHapticFeedback()
                                     showOptionsSheet = true
                                 },
                                 onToggleShuffle = onToggleShuffle,
@@ -940,11 +936,9 @@ internal fun NowPlayingExpandedScreen(
                             onToggleFavorite(song)
                         },
                         onOptionsClick = {
-                            playHapticFeedback()
                             showOptionsSheet = true
                         },
                         onCoverClick = {
-                            playHapticFeedback()
                             isLyricsOpen = false
                         },
                         onUserScroll = scroll@{ delta ->
@@ -1032,15 +1026,15 @@ internal fun NowPlayingExpandedScreen(
                                 com.akira.app.core.design.components.AkiraPlayerMarquee(
                                     text = currentSongTarget.title, fontSize = if(compactPortrait)18.sp else 20.sp, lineHeight = 25.sp,
                                     fontWeight = FontWeight.SemiBold, color = playerInk,
-                                    fontFamily = if(referencePortrait)androidx.compose.ui.text.font.FontFamily.SansSerif else AkiraFontFamily)
+                                    fontFamily = AkiraFontFamily)
                                 Spacer(modifier = Modifier.height(2.dp))
                                 com.akira.app.core.design.components.AkiraPlayerMarquee(
                                     text = currentSongTarget.artist, fontSize = if(compactPortrait)16.sp else if(referencePortrait)20.sp else 18.sp,
                                     fontWeight = FontWeight.Normal, color = playerInk.copy(alpha = .65f),
                                     modifier=Modifier.heightIn(min=if(compactPortrait)24.dp else 32.dp).clickable(enabled=onGoToArtist!=null,role=androidx.compose.ui.semantics.Role.Button) {
-                                        haptics.light();onGoToArtist?.invoke(currentSongTarget)
+                                        onGoToArtist?.invoke(currentSongTarget)
                                     },
-                                    fontFamily = if(referencePortrait)androidx.compose.ui.text.font.FontFamily.SansSerif else AkiraFontFamily)
+                                    fontFamily = AkiraFontFamily)
                             }
                         }
                     }
@@ -1096,7 +1090,7 @@ internal fun NowPlayingExpandedScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                            PlayerTimestamp(formatDuration(currentPositionMs), referencePortrait, playerArtworkBase(artworkColors.left))
+                            PlayerTimestamp(formatDuration(currentPositionMs), referencePortrait)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         qualityInfo?.let { AudioQualityBadge(song, it, onOpenAudioSettings) }
@@ -1130,8 +1124,7 @@ internal fun NowPlayingExpandedScreen(
                         }
                         }
                         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                            PlayerTimestamp(strings.ui(com.akira.app.core.i18n.AkiraUiText.S2, formatDuration(remainingMs)), referencePortrait,
-                                playerArtworkBase(artworkColors.right))
+                            PlayerTimestamp(strings.ui(com.akira.app.core.i18n.AkiraUiText.S2, formatDuration(remainingMs)), referencePortrait)
                         }
                     }
                 }
@@ -1145,7 +1138,6 @@ internal fun NowPlayingExpandedScreen(
                 ) {
                     AnimatedControlButton(
                         onClick = {
-                            haptics.transport()
                             previousGlyphPulse++
                             onPrev()
                         },
@@ -1161,7 +1153,6 @@ internal fun NowPlayingExpandedScreen(
 
                     AnimatedControlButton(
                         onClick = {
-                            haptics.transport()
                             onTogglePlay()
                         },
                         size = if(compactPortrait)60.dp else if(landscape)52.dp else 84.dp,
@@ -1176,7 +1167,6 @@ internal fun NowPlayingExpandedScreen(
 
                     AnimatedControlButton(
                         onClick = {
-                            haptics.transport()
                             nextGlyphPulse++
                             onNext()
                         },
@@ -1259,7 +1249,6 @@ internal fun NowPlayingExpandedScreen(
                             .then(lyricsResponse.modifier)
                             .clip(RoundedCornerShape(14.dp))
                             .clickable(interactionSource=lyricsTouch,indication=null) {
-                                playHapticFeedback()
                                 if (isLyricsOpen) {
                                     isLyricsOpen = false
                                 } else {
@@ -1295,7 +1284,6 @@ internal fun NowPlayingExpandedScreen(
                             .then(outputResponse.modifier)
                             .clip(RoundedCornerShape(14.dp))
                             .clickable(interactionSource=outputTouch,indication=null) {
-                                playHapticFeedback()
                                 outputSource.open { showAudioOutputSheet = true }
                             },
                         contentAlignment = Alignment.Center
@@ -1324,7 +1312,6 @@ internal fun NowPlayingExpandedScreen(
                             .then(queueResponse.modifier)
                             .clip(RoundedCornerShape(14.dp))
                             .clickable(interactionSource=queueTouch,indication=null) {
-                                playHapticFeedback()
                                 if (isQueueOpen) {
                                     isQueueOpen = false
                                 } else {

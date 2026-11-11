@@ -50,6 +50,12 @@ data class UserPreferences(
     val animatedPlayerArtwork: Boolean = true,
     val favoriteArtists: Set<String> = emptySet(),
     val themeMode: String = "SYSTEM", // "SYSTEM", "DARK", "AMOLED"
+    val appearanceRevision: Long = 0L,
+    val appearanceFont: String = "system",
+    val appearanceFontName: String = "Custom",
+    val appearanceFontId: String = "",
+    val appearanceSizeIndex: Int = 3,
+    val appearanceReduceTransparency: Boolean = false,
     val appearancePreset: String = "MIDNIGHT",
     val accentColor: String = "PRESET",
     val spaceMode: Boolean = false,
@@ -99,6 +105,12 @@ class UserPreferencesRepository(private val context: Context) {
     }
 
     private object Keys {
+        val APPEARANCE_REVISION = longPreferencesKey("pref_appearance_revision")
+        val APPEARANCE_FONT = stringPreferencesKey("pref_appearance_font")
+        val APPEARANCE_FONT_NAME = stringPreferencesKey("pref_appearance_font_name")
+        val APPEARANCE_FONT_ID = stringPreferencesKey("pref_appearance_font_id")
+        val APPEARANCE_SIZE = intPreferencesKey("pref_appearance_size")
+        val APPEARANCE_REDUCE_TRANSPARENCY = booleanPreferencesKey("pref_appearance_reduce_transparency")
         val SHUFFLE = booleanPreferencesKey("pref_shuffle")
         val REPEAT_MODE = intPreferencesKey("pref_repeat_mode")
         val LAST_SONG_ID = stringPreferencesKey("pref_last_song_id")
@@ -192,6 +204,12 @@ class UserPreferencesRepository(private val context: Context) {
             animatedPlayerArtwork = prefs[Keys.ANIMATED_PLAYER_ARTWORK] ?: true,
             favoriteArtists = prefs[Keys.FAVORITE_ARTISTS] ?: emptySet(),
             themeMode = prefs[Keys.THEME_MODE] ?: "SYSTEM",
+            appearanceRevision = prefs[Keys.APPEARANCE_REVISION] ?: 0L,
+            appearanceFont = "system",
+            appearanceFontName = "",
+            appearanceFontId = "",
+            appearanceSizeIndex = 3,
+            appearanceReduceTransparency = prefs[Keys.APPEARANCE_REDUCE_TRANSPARENCY] ?: false,
             appearancePreset = baseAppearance,
             spaceMode = baseAppearance in spaceThemes,
             spaceEnabledThemes = spaceThemes,
@@ -299,7 +317,7 @@ class UserPreferencesRepository(private val context: Context) {
     }
 
     suspend fun setLanguage(language: String) {
-        context.dataStore.edit { it[Keys.LANGUAGE] = language }
+        editAppearance { it[Keys.LANGUAGE] = language }
     }
 
     suspend fun setShuffle(enabled: Boolean) {
@@ -416,20 +434,50 @@ class UserPreferencesRepository(private val context: Context) {
         context.dataStore.edit { it[Keys.HI_RES_AUDIO] = enabled }
     }
 
+    fun libraryCategoryLayout(scope:String):Flow<LibraryCategoryLayout> {
+        require(scope in setOf("local","online","guest"))
+        val key=stringPreferencesKey("pref_library_category_layout_$scope")
+        return context.dataStore.data.catch { error ->
+            if(error is IOException)emit(emptyPreferences())else throw error
+        }.map { prefs ->
+            runCatching {
+                val json=org.json.JSONObject(prefs[key] ?: "{}")
+                val order=json.optJSONArray("order") ?: org.json.JSONArray()
+                val hidden=json.optJSONArray("hidden") ?: org.json.JSONArray()
+                LibraryCategoryLayout((0 until order.length()).map{order.getString(it)},
+                    (0 until hidden.length()).map{hidden.getString(it)}.toSet())
+            }.getOrDefault(LibraryCategoryLayout())
+        }
+    }
+
+    suspend fun setLibraryCategoryLayout(scope:String,layout:LibraryCategoryLayout) {
+        require(scope in setOf("local","online","guest"))
+        val json=org.json.JSONObject().put("order",org.json.JSONArray(layout.order))
+            .put("hidden",org.json.JSONArray(layout.hidden.toList()))
+        context.dataStore.edit { it[stringPreferencesKey("pref_library_category_layout_$scope")]=json.toString() }
+    }
+
     suspend fun setLibraryHeaderStyle(style: String) {
         context.dataStore.edit { it[Keys.LIBRARY_HEADER_STYLE] = style }
     }
 
-    suspend fun setLiquidGlassEnabled(enabled: Boolean) { context.dataStore.edit { it[Keys.LIQUID_GLASS] = enabled } }
-    suspend fun setDockLiquidGlassEnabled(enabled: Boolean) { context.dataStore.edit { it[Keys.DOCK_LIQUID_GLASS] = enabled } }
+    private suspend fun editAppearance(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
+        context.dataStore.edit { prefs ->
+            block(prefs)
+            prefs[Keys.APPEARANCE_REVISION] = (prefs[Keys.APPEARANCE_REVISION] ?: 0L) + 1L
+        }
+    }
+
+    suspend fun setLiquidGlassEnabled(enabled: Boolean) { editAppearance { it[Keys.LIQUID_GLASS] = enabled } }
+    suspend fun setDockLiquidGlassEnabled(enabled: Boolean) { editAppearance { it[Keys.DOCK_LIQUID_GLASS] = enabled } }
     suspend fun setLiquidGlassOpacity(value: Float) {
-        context.dataStore.edit { it[Keys.LIQUID_GLASS_OPACITY] = value.takeIf { it.isFinite() }?.coerceIn(0f,1f) ?: AkiraGlassDefaults.Opacity }
+        editAppearance { it[Keys.LIQUID_GLASS_OPACITY] = value.takeIf { it.isFinite() }?.coerceIn(0f,1f) ?: AkiraGlassDefaults.Opacity }
     }
     suspend fun setLiquidGlassDiffusion(value: Float) {
-        context.dataStore.edit { it[Keys.LIQUID_GLASS_DIFFUSION] = value.takeIf { it.isFinite() }?.coerceIn(0f,24f) ?: AkiraGlassDefaults.Diffusion }
+        editAppearance { it[Keys.LIQUID_GLASS_DIFFUSION] = value.takeIf { it.isFinite() }?.coerceIn(0f,24f) ?: AkiraGlassDefaults.Diffusion }
     }
-    suspend fun setFullscreenPlayerArtwork(enabled: Boolean) { context.dataStore.edit { it[Keys.FULLSCREEN_PLAYER_ARTWORK] = enabled } }
-    suspend fun setAnimatedPlayerArtwork(enabled: Boolean) { context.dataStore.edit { it[Keys.ANIMATED_PLAYER_ARTWORK] = enabled } }
+    suspend fun setFullscreenPlayerArtwork(enabled: Boolean) { editAppearance { it[Keys.FULLSCREEN_PLAYER_ARTWORK] = enabled } }
+    suspend fun setAnimatedPlayerArtwork(enabled: Boolean) { editAppearance { it[Keys.ANIMATED_PLAYER_ARTWORK] = enabled } }
     suspend fun setArtistFavorite(name: String, enabled: Boolean) { context.dataStore.edit {
         val key=name.trim().lowercase(java.util.Locale.ROOT)
         val current=it[Keys.FAVORITE_ARTISTS] ?: emptySet()
@@ -437,12 +485,41 @@ class UserPreferencesRepository(private val context: Context) {
     } }
 
     suspend fun setThemeMode(mode: String) {
-        context.dataStore.edit { it[Keys.THEME_MODE] = mode }
+        context.dataStore.edit {
+            it[Keys.THEME_MODE] = mode
+            it[Keys.APPEARANCE_REVISION] = (it[Keys.APPEARANCE_REVISION] ?: 0L) + 1L
+        }
+    }
+
+    suspend fun applyAppearance(value: AppearanceEdit) {
+        require(value.theme in setOf("LIGHT", "DARK", "SYSTEM"))
+        require(value.font in setOf("system", "serif", "custom"))
+        require(value.sizeIndex in 0..6)
+        require(value.opacity.isFinite() && value.opacity in 0f..1f)
+        require(value.diffusion.isFinite() && value.diffusion in 0f..24f)
+        require(value.fontId == null || Regex("[0-9a-f]{64}").matches(value.fontId))
+        context.dataStore.edit { prefs ->
+            check((prefs[Keys.APPEARANCE_REVISION] ?: 0L) == value.revision) { "stale-preferences" }
+            prefs[Keys.THEME_MODE] = value.theme
+            prefs[Keys.ACCENT_COLOR] = String.format(java.util.Locale.ROOT, "#%06X", value.accentArgb and 0xffffff)
+            prefs[Keys.LIQUID_GLASS] = value.glass
+            prefs[Keys.APPEARANCE_FONT] = value.font
+            prefs[Keys.APPEARANCE_FONT_NAME] = value.fontName.take(120)
+            prefs[Keys.APPEARANCE_FONT_ID] = value.fontId ?: ""
+            prefs[Keys.APPEARANCE_SIZE] = value.sizeIndex
+            prefs[Keys.APPEARANCE_REDUCE_TRANSPARENCY] = value.reduceTransparency
+            prefs[Keys.FULLSCREEN_PLAYER_ARTWORK] = value.fullscreenArtwork
+            prefs[Keys.ANIMATED_PLAYER_ARTWORK] = value.animatedArtwork
+            prefs[Keys.LIQUID_GLASS_OPACITY] = value.opacity
+            prefs[Keys.LIQUID_GLASS_DIFFUSION] = value.diffusion
+            prefs[Keys.DOCK_LIQUID_GLASS] = value.dockDiffusion
+            prefs[Keys.APPEARANCE_REVISION] = value.revision + 1L
+        }
     }
 
     suspend fun setAccentColor(value: String) {
         if (value == "PRESET" || Regex("#[0-9a-fA-F]{6}").matches(value))
-            context.dataStore.edit { it[Keys.ACCENT_COLOR] = value.uppercase() }
+            editAppearance { it[Keys.ACCENT_COLOR] = value.uppercase() }
     }
 
     suspend fun setAppearancePreset(id: String) {

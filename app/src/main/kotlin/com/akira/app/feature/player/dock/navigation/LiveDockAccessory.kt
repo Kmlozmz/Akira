@@ -90,7 +90,12 @@ internal fun LiveDockNavigationGlass(inline: Boolean, width: Int, compactHeight:
         if(LocalContentMotionReduced.current)snap() else DockBoundsSpec,label="dockNavigationBounds")
     val searchBounds = with(density) { Rect(0f, -compactHeight.toPx(), compactHeight.toPx(), 0f) }
     val bounds = androidx.compose.ui.geometry.lerp(foldBounds, searchBounds, replacementProgress)
-    CompositionLocalProvider(LocalGlassExport provides backdrop) {
+    val contact=LocalDockSurfaceContact.current
+    val inheritedStrain=com.akira.app.core.design.glass.LocalGlassStrain.current
+    val inheritedAmount=LocalGlassDeformation.current
+    CompositionLocalProvider(LocalGlassExport provides backdrop,
+        com.akira.app.core.design.glass.LocalGlassStrain provides { inheritedStrain()+(contact?.strain?.invoke() ?: androidx.compose.ui.geometry.Offset.Zero) },
+        LocalGlassDeformation provides { (inheritedAmount()+(contact?.amount?.invoke() ?: 0f)*.35f).coerceIn(0f,1f) }) {
         Layout(modifier=modifier,content={Box((LocalDockSurfaceContact.current?.visualModifier ?: Modifier).then(surface()))}) { children,constraints ->
             val child=children.single().measure(Constraints.fixed(bounds.width.roundToInt().coerceAtLeast(1),
                 bounds.height.roundToInt().coerceAtLeast(1)))
@@ -207,9 +212,11 @@ internal fun rememberDockFoldMotion(inline: Boolean): DockFoldMotion {
 @Composable
 internal fun rememberDockGlassShape(): com.akira.app.core.design.motion.ElasticGlassShape {
     val density=androidx.compose.ui.platform.LocalDensity.current
-    return remember(density) {
+    val strain=com.akira.app.core.design.glass.LocalGlassStrain.current
+    val enabled=com.akira.app.core.design.glass.LocalLiquidGlassEnabled.current && !LocalContentMotionReduced.current
+    return remember(density,strain,enabled) {
         com.akira.app.core.design.motion.ElasticGlassShape({Float.MAX_VALUE},{0f},
-            { androidx.compose.ui.geometry.Offset.Zero },density,preserveCapsuleEnds=true)
+            { if(enabled)strain() else androidx.compose.ui.geometry.Offset.Zero },density,preserveCapsuleEnds=true)
     }
 }
 

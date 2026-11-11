@@ -1,0 +1,762 @@
+{
+  "scope": "Observed component font/codepoint pairs verified against extracted original font cmaps; SDK names are labels, not original widget names.",
+  "source_sha256": "3863960cef31ec4d1019ab07f4c4833aebc4145418b6a02774a393bc92002a5e",
+  "generator_sha256": "5c490f85e91bf2ec8eba27394111fe68fe3b97eb3f35c145f72398ff6c41a0bd",
+  "sdk_labels": {
+    "path": "package:flutter/src/cupertino/icons.dart",
+    "sha256": "b2dac9815fab468d797a7105d4928936a248b273cdf147466dceb1cda1f346e0"
+  },
+  "icons": [
+    {
+      "font_families": [
+        "MaterialIcons"
+      ],
+      "codepoint": "U+E156",
+      "scenes": [
+        "appearance-from-font",
+        "appearance-from-style",
+        "color-presets",
+        "color-presets-closed",
+        "custom-color-closed",
+        "custom-color-grid",
+        "font-size",
+        "style",
+        "toward-folders-0"
+      ],
+      "sizes": [
+        15,
+        24
+      ],
+      "glyph_name": "check_baseline",
+      "original_font_sha256": "107b96d838cb8edb861f9391d9995e28f1eae1d5e38d72d417ecd5c7699b57d3",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Material.otf",
+      "sdk_names": [],
+      "flutter_family_alias": "packages/inotes_recovered/InotesMaterial"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F3FD",
+      "scenes": [
+        "color-presets",
+        "custom-color-closed",
+        "custom-color-grid",
+        "editor-keyboard",
+        "folder-customize",
+        "folder-draft-discarded",
+        "folder-draft-restored",
+        "folder-emoji",
+        "folder-icons",
+        "folder-icons-scroll-0",
+        "folder-icons-scroll-1",
+        "folder-icons-scroll-2",
+        "format-sheet",
+        "list-style-dismissed",
+        "list-style-menu",
+        "new-folder-dialog"
+      ],
+      "sizes": [
+        25
+      ],
+      "glyph_name": "uniF3FD",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "check_mark",
+        "checkmark"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "MaterialIcons"
+      ],
+      "codepoint": "U+F05AE",
+      "scenes": [
+        "folder-customize",
+        "folder-draft-discarded",
+        "folder-draft-restored",
+        "folder-emoji",
+        "folder-icons",
+        "folder-icons-scroll-0",
+        "folder-icons-scroll-1",
+        "folder-icons-scroll-2",
+        "new-folder-dialog",
+        "settings",
+        "startup-back-0",
+        "toward-folders-1",
+        "toward-folders-2"
+      ],
+      "sizes": [
+        18.2,
+        24,
+        26
+      ],
+      "glyph_name": "workspace_premium_baseline",
+      "original_font_sha256": "107b96d838cb8edb861f9391d9995e28f1eae1d5e38d72d417ecd5c7699b57d3",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Material.otf",
+      "sdk_names": [],
+      "flutter_family_alias": "packages/inotes_recovered/InotesMaterial"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F906",
+      "scenes": [
+        "settings",
+        "toward-folders-1"
+      ],
+      "sizes": [
+        18.2
+      ],
+      "glyph_name": "uniF906",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "sort_down"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F4A5",
+      "scenes": [
+        "folder-customize",
+        "folder-draft-discarded",
+        "folder-draft-restored",
+        "folder-emoji",
+        "folder-icons",
+        "folder-icons-scroll-0",
+        "folder-icons-scroll-1",
+        "folder-icons-scroll-2",
+        "new-folder-dialog",
+        "search-focused",
+        "startup-back-0",
+        "toward-folders-2"
+      ],
+      "sizes": [
+        20.7
+      ],
+      "glyph_name": "uniF4A5",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "search"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F81F",
+      "scenes": [
+        "folder-customize",
+        "folder-icons"
+      ],
+      "sizes": [
+        22.799999999999997
+      ],
+      "glyph_name": "uniF81F",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "star"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F822",
+      "scenes": [
+        "folder-customize",
+        "folder-icons"
+      ],
+      "sizes": [
+        22.799999999999997
+      ],
+      "glyph_name": "uniF822",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "star_fill"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F442",
+      "scenes": [
+        "folder-customize",
+        "folder-icons"
+      ],
+      "sizes": [
+        25.922400000000003
+      ],
+      "glyph_name": "uniF442",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "heart"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "MaterialIcons"
+      ],
+      "codepoint": "U+E03A",
+      "scenes": [
+        "folder-emoji"
+      ],
+      "sizes": [
+        24
+      ],
+      "glyph_name": "access_time_baseline",
+      "original_font_sha256": "107b96d838cb8edb861f9391d9995e28f1eae1d5e38d72d417ecd5c7699b57d3",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Material.otf",
+      "sdk_names": [],
+      "flutter_family_alias": "packages/inotes_recovered/InotesMaterial"
+    },
+    {
+      "font_families": [
+        "MaterialIcons"
+      ],
+      "codepoint": "U+E641",
+      "scenes": [
+        "folder-emoji"
+      ],
+      "sizes": [
+        24
+      ],
+      "glyph_name": "tag_faces_baseline",
+      "original_font_sha256": "107b96d838cb8edb861f9391d9995e28f1eae1d5e38d72d417ecd5c7699b57d3",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Material.otf",
+      "sdk_names": [],
+      "flutter_family_alias": "packages/inotes_recovered/InotesMaterial"
+    },
+    {
+      "font_families": [
+        "MaterialIcons"
+      ],
+      "codepoint": "U+E4A1",
+      "scenes": [
+        "folder-emoji"
+      ],
+      "sizes": [
+        24
+      ],
+      "glyph_name": "pets_baseline",
+      "original_font_sha256": "107b96d838cb8edb861f9391d9995e28f1eae1d5e38d72d417ecd5c7699b57d3",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Material.otf",
+      "sdk_names": [],
+      "flutter_family_alias": "packages/inotes_recovered/InotesMaterial"
+    },
+    {
+      "font_families": [
+        "MaterialIcons"
+      ],
+      "codepoint": "U+E25A",
+      "scenes": [
+        "folder-emoji"
+      ],
+      "sizes": [
+        24
+      ],
+      "glyph_name": "fastfood_baseline",
+      "original_font_sha256": "107b96d838cb8edb861f9391d9995e28f1eae1d5e38d72d417ecd5c7699b57d3",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Material.otf",
+      "sdk_names": [],
+      "flutter_family_alias": "packages/inotes_recovered/InotesMaterial"
+    },
+    {
+      "font_families": [
+        "MaterialIcons"
+      ],
+      "codepoint": "U+E3A8",
+      "scenes": [
+        "folder-emoji"
+      ],
+      "sizes": [
+        24
+      ],
+      "glyph_name": "location_city_baseline",
+      "original_font_sha256": "107b96d838cb8edb861f9391d9995e28f1eae1d5e38d72d417ecd5c7699b57d3",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Material.otf",
+      "sdk_names": [],
+      "flutter_family_alias": "packages/inotes_recovered/InotesMaterial"
+    },
+    {
+      "font_families": [
+        "MaterialIcons"
+      ],
+      "codepoint": "U+E1DC",
+      "scenes": [
+        "folder-emoji"
+      ],
+      "sizes": [
+        24
+      ],
+      "glyph_name": "directions_run_baseline",
+      "original_font_sha256": "107b96d838cb8edb861f9391d9995e28f1eae1d5e38d72d417ecd5c7699b57d3",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Material.otf",
+      "sdk_names": [],
+      "flutter_family_alias": "packages/inotes_recovered/InotesMaterial"
+    },
+    {
+      "font_families": [
+        "MaterialIcons"
+      ],
+      "codepoint": "U+E37C",
+      "scenes": [
+        "folder-emoji"
+      ],
+      "sizes": [
+        24
+      ],
+      "glyph_name": "lightbulb_outline_baseline",
+      "original_font_sha256": "107b96d838cb8edb861f9391d9995e28f1eae1d5e38d72d417ecd5c7699b57d3",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Material.otf",
+      "sdk_names": [],
+      "flutter_family_alias": "packages/inotes_recovered/InotesMaterial"
+    },
+    {
+      "font_families": [
+        "MaterialIcons"
+      ],
+      "codepoint": "U+E232",
+      "scenes": [
+        "folder-emoji"
+      ],
+      "sizes": [
+        24
+      ],
+      "glyph_name": "emoji_symbols_baseline",
+      "original_font_sha256": "107b96d838cb8edb861f9391d9995e28f1eae1d5e38d72d417ecd5c7699b57d3",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Material.otf",
+      "sdk_names": [],
+      "flutter_family_alias": "packages/inotes_recovered/InotesMaterial"
+    },
+    {
+      "font_families": [
+        "MaterialIcons"
+      ],
+      "codepoint": "U+E28E",
+      "scenes": [
+        "folder-emoji"
+      ],
+      "sizes": [
+        24
+      ],
+      "glyph_name": "flag_baseline",
+      "original_font_sha256": "107b96d838cb8edb861f9391d9995e28f1eae1d5e38d72d417ecd5c7699b57d3",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Material.otf",
+      "sdk_names": [],
+      "flutter_family_alias": "packages/inotes_recovered/InotesMaterial"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F443",
+      "scenes": [
+        "folder-icons-scroll-0"
+      ],
+      "sizes": [
+        25.922400000000003
+      ],
+      "glyph_name": "uniF443",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "heart_solid",
+        "heart_fill"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F6BC",
+      "scenes": [
+        "folder-icons-scroll-0"
+      ],
+      "sizes": [
+        24.276000000000003
+      ],
+      "glyph_name": "uniF6BC",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "heart_circle"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F447",
+      "scenes": [
+        "folder-icons-scroll-0"
+      ],
+      "sizes": [
+        22.368000000000002
+      ],
+      "glyph_name": "uniF447",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "home",
+        "house"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F6CA",
+      "scenes": [
+        "folder-icons-scroll-0"
+      ],
+      "sizes": [
+        22.368000000000002
+      ],
+      "glyph_name": "uniF6CA",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "house_fill"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F47D",
+      "scenes": [
+        "folder-icons-scroll-0"
+      ],
+      "sizes": [
+        27.5952
+      ],
+      "glyph_name": "uniF47D",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "person"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F47E",
+      "scenes": [
+        "folder-icons-scroll-0",
+        "folder-icons-scroll-1"
+      ],
+      "sizes": [
+        28.4496
+      ],
+      "glyph_name": "uniF47E",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "person_solid",
+        "person_fill"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F4B8",
+      "scenes": [
+        "folder-icons-scroll-0",
+        "folder-icons-scroll-1"
+      ],
+      "sizes": [
+        24
+      ],
+      "glyph_name": "uniF4B8",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "phone"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F4B9",
+      "scenes": [
+        "folder-icons-scroll-1"
+      ],
+      "sizes": [
+        24
+      ],
+      "glyph_name": "uniF4B9",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "phone_solid",
+        "phone_fill"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F5A1",
+      "scenes": [
+        "folder-icons-scroll-1",
+        "folder-icons-scroll-2"
+      ],
+      "sizes": [
+        23.9568
+      ],
+      "glyph_name": "uniF5A1",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "briefcase"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F5A2",
+      "scenes": [
+        "folder-icons-scroll-1",
+        "folder-icons-scroll-2"
+      ],
+      "sizes": [
+        24.1416
+      ],
+      "glyph_name": "uniF5A2",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "briefcase_fill"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F3E7",
+      "scenes": [
+        "folder-icons-scroll-2"
+      ],
+      "sizes": [
+        25.845599999999997
+      ],
+      "glyph_name": "uniF3E7",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "book"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F3E8",
+      "scenes": [
+        "folder-icons-scroll-2"
+      ],
+      "sizes": [
+        26.239199999999997
+      ],
+      "glyph_name": "uniF3E8",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "book_solid",
+        "book_fill"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F3E9",
+      "scenes": [
+        "folder-icons-scroll-2"
+      ],
+      "sizes": [
+        24.503999999999998
+      ],
+      "glyph_name": "uniF3E9",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "bookmark"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F3EA",
+      "scenes": [
+        "folder-icons-scroll-2"
+      ],
+      "sizes": [
+        24.503999999999998
+      ],
+      "glyph_name": "uniF3EA",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "bookmark_solid",
+        "bookmark_fill"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F6E8",
+      "scenes": [
+        "list-style-dismissed",
+        "list-style-menu"
+      ],
+      "sizes": [
+        27.428571428571427
+      ],
+      "glyph_name": "uniF6E8",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "list_bullet"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F6EB",
+      "scenes": [
+        "list-style-dismissed",
+        "list-style-menu"
+      ],
+      "sizes": [
+        27.428571428571427
+      ],
+      "glyph_name": "uniF6EB",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "list_dash"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F6EC",
+      "scenes": [
+        "list-style-dismissed",
+        "list-style-menu"
+      ],
+      "sizes": [
+        27.428571428571427
+      ],
+      "glyph_name": "uniF6EC",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "list_number"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F70F",
+      "scenes": [
+        "list-style-dismissed",
+        "list-style-menu"
+      ],
+      "sizes": [
+        27.428571428571427
+      ],
+      "glyph_name": "uniF70F",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "minus"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F63B",
+      "scenes": [
+        "editor-more"
+      ],
+      "sizes": [
+        21
+      ],
+      "glyph_name": "uniF63B",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "doc_text_viewfinder"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    },
+    {
+      "font_families": [
+        "packages/cupertino_icons/CupertinoIcons"
+      ],
+      "codepoint": "U+F3D3",
+      "scenes": [
+        "editor-more"
+      ],
+      "sizes": [
+        17
+      ],
+      "glyph_name": "uniF3D3",
+      "original_font_sha256": "058a822ac9c11cf0643e3d6f33e6102bfb63cac7641854fb0cc3053cd7860183",
+      "asset": "reconstruction\\flutter_runtime\\assets\\fonts\\Cupertino.ttf",
+      "sdk_names": [
+        "right_chevron",
+        "chevron_right"
+      ],
+      "flutter_family_alias": "packages/inotes_recovered/InotesCupertino"
+    }
+  ],
+  "count": 37
+}

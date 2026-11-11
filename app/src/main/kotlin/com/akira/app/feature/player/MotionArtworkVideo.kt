@@ -24,7 +24,7 @@ import androidx.media3.exoplayer.ExoPlayer
 
 /** A video-only decoder. It owns neither the music session nor audio focus.
  * TextureView participates in the same clipped artwork/mask as the sleeve.
- * Disposing this owner (lyrics, queue, mini, background) releases its decoder. */
+ * Player subpages retain this owner; disposal releases its decoder. */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 internal fun MotionArtworkVideo(artwork: MotionArtwork,isPlaying: Boolean,modifier: Modifier=Modifier,
@@ -79,9 +79,9 @@ internal fun MotionArtworkVideo(artwork: MotionArtwork,isPlaying: Boolean,modifi
             val visible=visiblePlaybackAllowed()
             if(visible && !failed && player.playbackState==Player.STATE_IDLE && player.mediaItemCount>0)player.prepare()
             player.playWhenReady=playing && !failed && visible
-            // Visible multiwindow content keeps drawing when another window gains focus.
-            // ON_STOP still frees codecs and stops buffering when the app is hidden.
-            if(event==Lifecycle.Event.ON_STOP)player.stop()
+            // A transient focus/lifecycle loss pauses the same prepared decoder.
+            // Re-entering the player must not refetch or rewind the editorial loop.
+            if(event==Lifecycle.Event.ON_STOP)player.pause()
         }
         player.addListener(listener);lifecycle.addObserver(observer);onPlayer?.invoke(player)
         onDispose {

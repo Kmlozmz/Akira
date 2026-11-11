@@ -20,7 +20,7 @@ internal fun InteractionSettingsScreen(onBack: () -> Unit) {
     AkiraStudioScreen(localizedText("Interaction", "Interacción"), onBack) {
         Column(Modifier.fillMaxWidth().verticalScroll(
             com.akira.app.core.design.navigation.LocalPageScrollState.current ?: rememberScrollState())
-            .padding(top = 118.dp).padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            .padding(top = 80.dp).padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             SettingsGroup {
                 InteractionOption(localizedText("Haptic feedback", "Respuesta háptica"),
                     localizedText("Feel slider steps and control changes.", "Siente los pasos de los sliders y los cambios de los controles."),

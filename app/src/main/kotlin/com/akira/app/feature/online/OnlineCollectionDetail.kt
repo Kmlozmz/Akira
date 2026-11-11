@@ -161,7 +161,8 @@ import kotlinx.coroutines.CancellationException
     fun share() { context.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND)
         .setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, artist.shareLink), artist.title)) }
     fun play() { if (queue.any { it.id == current?.id }) onToggle() else queue.firstOrNull()?.let { onPlay(it, queue) } }
-    CompositionLocalProvider(LocalAppBackdrop provides backdrop) {
+    CompositionLocalProvider(LocalAppBackdrop provides backdrop,
+        com.akira.app.core.design.navigation.LocalPageHeaderBackdrop provides artworkBackdrop) {
         Box(Modifier.fillMaxSize().containerTransformTarget(transitionKey, 68.5.dp).background(background.value)) {
             Box(Modifier.fillMaxSize().glassRoot(glass) { progress > .01f }.layerBackdrop(backdrop)) {
                 Box(Modifier.fillMaxSize().layerBackdrop(artworkBackdrop).background(background.value)) {
@@ -199,28 +200,18 @@ import kotlinx.coroutines.CancellationException
                 onMore = { showMenu = true }, onTitle = { scope.launch { state.animateScrollToItem(0) } })
         }
     }
-    if (showMenu) AkiraContextMenu(onDismiss = { showMenu = false }, groups = listOf(
-        listOf(AkiraContextAction(AkiraIcons.Play, localizedText("Play top songs", "Reproducir canciones destacadas")) { play() },
-            AkiraContextAction(AkiraIcons.Shuffle, localizedText("Shuffle", "Aleatorio")) {
-                queue.shuffled().let { q -> q.firstOrNull()?.let { onPlay(it, q) } }
-            },
-            AkiraContextAction(Icons.Rounded.Radio, localizedText("Start artist radio", "Iniciar radio del artista")) { scope.launch {
-                try {
-                    val q = OnlineRepository.get(context).artistRadio(artist, queue.firstOrNull())
-                    q.firstOrNull()?.let { onPlay(it, q) } ?: AkiraNotices.show(radioError)
-                } catch (cancelled: CancellationException) { throw cancelled }
-                catch (_: Exception) { AkiraNotices.show(radioError) }
-            } }),
-        buildList {
-            add(AkiraContextAction(if (favorite) AkiraIcons.StarFilled else AkiraIcons.Star,
-                if (favorite) localizedText("Remove from Favorites", "Quitar de favoritos") else localizedText("Favorite artist", "Artista favorito")) {
-                scope.launch { prefsRepo.setArtistFavorite(artist.title, !favorite) }
-            })
-            if (albumSection >= 0) add(AkiraContextAction(AkiraIcons.Album, localizedText("Browse albums", "Ver Ã¡lbumes")) { albums() })
-            add(AkiraContextAction(AkiraIcons.Info, localizedText("Artist information", "InformaciÃ³n del artista"), opensPresentation = true) { showInfo = true })
-        },
-        listOf(AkiraContextAction(AkiraIcons.Share, localizedText("Share artist", "Compartir artista")) { share() })
-    ))
+    if (showMenu) com.akira.app.feature.collection.ArtistOptionsMenu(artist.title,collection.stats ?: "YouTube Music",favorite,
+        onDismiss={showMenu=false},onPlay={queue.firstOrNull()?.let{onPlay(it,queue)}},
+        onShuffle={queue.shuffled().let{q->q.firstOrNull()?.let{onPlay(it,q)}}},
+        onFavorite={scope.launch{prefsRepo.setArtistFavorite(artist.title,!favorite)}},
+        onAlbums=if(albumSection<0)null else ::albums,onInformation={showInfo=true},onShare=::share,
+        onRadio={scope.launch {
+            try {
+                val q=OnlineRepository.get(context).artistRadio(artist,queue.firstOrNull())
+                q.firstOrNull()?.let{onPlay(it,q)} ?: AkiraNotices.show(radioError)
+            } catch(cancelled:CancellationException){throw cancelled}
+            catch(_:Exception){AkiraNotices.show(radioError)}
+        }})
     if (showInfo) ArtistInformationSheet(artist.title, image, background.value, collection.stats,
         biography ?: localizedText("YouTube Music hasn't provided a biography for this artist.", "YouTube Music no ha proporcionado una biografÃ­a para este artista."),
         onDismiss = { showInfo = false })

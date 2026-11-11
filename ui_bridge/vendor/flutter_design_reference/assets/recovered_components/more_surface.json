@@ -1,0 +1,583 @@
+{
+  "schema_version": 1,
+  "id": "more_background_captured",
+  "input_size": [
+    305,
+    576
+  ],
+  "levels": [
+    {
+      "index": 0,
+      "output_size": [
+        153,
+        288
+      ],
+      "program": "glass_mip",
+      "fields": {
+        "uSize": [
+          305,
+          576
+        ],
+        "uSrc": [
+          0,
+          0,
+          305,
+          576
+        ],
+        "uDst": [
+          0,
+          0,
+          153,
+          288
+        ]
+      },
+      "sampling": 1,
+      "native_source_line": 3713,
+      "native_source_id": 1214,
+      "uniform_raw_hex": "008098430000104400000000000000000080984300001044000000000000000000001943000090430080984300001044"
+    },
+    {
+      "index": 1,
+      "output_size": [
+        77,
+        144
+      ],
+      "program": "glass_mip",
+      "fields": {
+        "uSize": [
+          153,
+          288
+        ],
+        "uSrc": [
+          0,
+          0,
+          153,
+          288
+        ],
+        "uDst": [
+          0,
+          0,
+          77,
+          144
+        ]
+      },
+      "sampling": 1,
+      "native_source_line": 3714,
+      "native_source_id": 1215,
+      "uniform_raw_hex": "000019430000904300000000000000000000194300009043000000000000000000009a42000010430000803f0000803f"
+    },
+    {
+      "index": 2,
+      "output_size": [
+        39,
+        72
+      ],
+      "program": "glass_mip",
+      "fields": {
+        "uSize": [
+          77,
+          144
+        ],
+        "uSrc": [
+          0,
+          0,
+          77,
+          144
+        ],
+        "uDst": [
+          0,
+          0,
+          39,
+          72
+        ]
+      },
+      "sampling": 1,
+      "native_source_line": 3715,
+      "native_source_id": 1216,
+      "uniform_raw_hex": "00009a4200001043000000000000000000009a4200001043000000000000000000001c42000090420000803f0000803f"
+    },
+    {
+      "index": 3,
+      "output_size": [
+        20,
+        36
+      ],
+      "program": "glass_mip",
+      "fields": {
+        "uSize": [
+          39,
+          72
+        ],
+        "uSrc": [
+          0,
+          0,
+          39,
+          72
+        ],
+        "uDst": [
+          0,
+          0,
+          20,
+          36
+        ]
+      },
+      "sampling": 1,
+      "native_source_line": 3716,
+      "native_source_id": 1217,
+      "uniform_raw_hex": "00001c4200009042000000000000000000001c420000904200000000000000000000a041000010420000803f0000803f"
+    },
+    {
+      "index": 4,
+      "output_size": [
+        10,
+        18
+      ],
+      "program": "glass_mip",
+      "fields": {
+        "uSize": [
+          20,
+          36
+        ],
+        "uSrc": [
+          0,
+          0,
+          20,
+          36
+        ],
+        "uDst": [
+          0,
+          0,
+          10,
+          18
+        ]
+      },
+      "sampling": 1,
+      "native_source_line": 3717,
+      "native_source_id": 1218,
+      "uniform_raw_hex": "0000a0410000104200000000000000000000a04100001042000000000000000000002041000090410000803f0000803f"
+    },
+    {
+      "index": 5,
+      "output_size": [
+        5,
+        9
+      ],
+      "program": "glass_mip",
+      "fields": {
+        "uSize": [
+          10,
+          18
+        ],
+        "uSrc": [
+          0,
+          0,
+          10,
+          18
+        ],
+        "uDst": [
+          0,
+          0,
+          5,
+          9
+        ]
+      },
+      "sampling": 1,
+      "native_source_line": 3718,
+      "native_source_id": 1219,
+      "uniform_raw_hex": "00002041000090410000000000000000000020410000904100000000000000000000a040000010410000803f0000803f"
+    }
+  ],
+  "material": {
+    "program": "glass_lean",
+    "fields": {
+      "uFrag": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "uBd": [
+        0,
+        0,
+        0.0024999999441206455,
+        0.001323784701526165
+      ],
+      "uP": [
+        [
+          259,
+          274.1229553222656,
+          125,
+          215.5
+        ],
+        [
+          335.5,
+          128.99795532226562,
+          5.5,
+          5.5
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "uRad": [
+        -32,
+        -5.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uShape": [
+        2,
+        0,
+        1,
+        0.32786884903907776
+      ],
+      "uRefr": [
+        1,
+        8,
+        0.75,
+        0.5245901942253113
+      ],
+      "uTr": [
+        0.125,
+        0.125,
+        0.125,
+        -60
+      ],
+      "uTg": [
+        0.2610749900341034,
+        0.26106250286102295,
+        0.2610749900341034,
+        20
+      ],
+      "uTb": [
+        -0.30000001192092896,
+        0.5,
+        0,
+        1
+      ],
+      "uLight": [
+        6.123234262925839e-17,
+        0,
+        0.5224985480308533,
+        11.333333015441895
+      ],
+      "uShadow": [
+        0.18000000715255737,
+        12,
+        8,
+        0
+      ],
+      "uFace": [
+        0.258819043636322,
+        0.5,
+        1,
+        0
+      ],
+      "uRingS": [
+        8,
+        0,
+        0,
+        0
+      ],
+      "uTap": [
+        0.012820512987673283,
+        0.0069444444961845875,
+        1,
+        -0.30000001192092896
+      ],
+      "uRing": [
+        0.05999999865889549,
+        5,
+        4,
+        1
+      ],
+      "uDelta": [
+        0,
+        0,
+        0,
+        1.2999999523162842
+      ],
+      "uBlurP": [
+        1.2200000286102295,
+        1,
+        -125,
+        -1
+      ],
+      "uBlurV": [
+        4,
+        2,
+        2.5,
+        1
+      ],
+      "uBleed": [
+        0.46894532442092896,
+        1,
+        0.375,
+        87.5
+      ],
+      "uFaceM": [
+        0.125,
+        1.125,
+        1.2999999523162842,
+        0
+      ],
+      "uFaceX": [
+        0.6499999761581421,
+        0.125,
+        -0.800000011920929,
+        1
+      ],
+      "uVm0": [
+        1.1202000379562378,
+        -0.18940000236034393,
+        -0.01899999938905239,
+        0.14710000157356262
+      ],
+      "uVm1": [
+        -0.056299999356269836,
+        0.9871000051498413,
+        -0.019099999219179153,
+        0.14710000157356262
+      ],
+      "uVm2": [
+        -0.056299999356269836,
+        -0.18930000066757202,
+        1.1574000120162964,
+        0.14710000157356262
+      ],
+      "uTintA": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uTintO": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uTintS": [
+        0,
+        10,
+        0,
+        0
+      ],
+      "uPlainF": [
+        0.125,
+        0.125,
+        0.125,
+        0
+      ],
+      "uPlainL": [
+        0.2610749900341034,
+        0.26106250286102295,
+        0.2610749900341034,
+        0
+      ]
+    },
+    "samplers": [
+      {
+        "slot": 0,
+        "sampler_name": "uLevel",
+        "chain_level": 2,
+        "sampling": 1,
+        "native_deferred_image": {
+          "key_bits": "0xc",
+          "result_index": 2,
+          "declared_size": [
+            39,
+            72
+          ]
+        }
+      },
+      {
+        "slot": 1,
+        "sampler_name": "uSharp",
+        "chain_level": 0,
+        "sampling": 1,
+        "native_deferred_image": {
+          "key_bits": "0xc",
+          "result_index": 0,
+          "declared_size": [
+            153,
+            288
+          ]
+        }
+      },
+      {
+        "slot": 2,
+        "sampler_name": "uNext",
+        "chain_level": 1,
+        "sampling": 1,
+        "native_deferred_image": {
+          "key_bits": "0xc",
+          "result_index": 1,
+          "declared_size": [
+            77,
+            144
+          ]
+        }
+      },
+      {
+        "slot": 3,
+        "sampler_name": "uBleedL",
+        "chain_level": 5,
+        "sampling": 1,
+        "native_deferred_image": {
+          "key_bits": "0xc",
+          "result_index": 5,
+          "declared_size": [
+            5,
+            9
+          ]
+        }
+      }
+    ],
+    "shape_kind": "rect",
+    "rect": [
+      88.00000762939453,
+      12.62295150756836,
+      430,
+      535.6229248046875
+    ],
+    "matrix_column_major": [
+      3.049999952316284,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      3.049999952316284,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      -231.00001525878906,
+      -1.0,
+      0.0,
+      1.0
+    ],
+    "paint": {
+      "flags_low13": 2051,
+      "argb_f32": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "color_space": 1,
+      "stroke_width": 0
+    },
+    "native_source_line": 3720,
+    "uniform_raw_hex": "00000000000000000000803f0000803f00000000000000000ad7233bd882ad3a00808143bd0f89430000fa420080574300c0a7437aff00430000b0400000b040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c20000b0c000000000000000000000000000000000000000000000000000000040000000000000803f6ddea73e0000803f000000410000403f8b4b063f0000003e0000003e0000003e000070c29fab853efca9853e9fab853e0000a0419a9999be0000003f000000000000803f32318d240000000077c2053f55553541ec51383e000040410000004100000000ee83843e0000003f0000803f0000000000000041000000000000000000000000210d523c398ee33b0000803f9a9999be8fc2753d0000a040000080400000803f0000000000000000000000006666a63ff6289c3f0000803f0000fac2000080bf0000804000000040000020400000803f9a19f03e0000803f0000c03e0000af420000003e0000903f6666a63f000000006666263f0000003ecdcc4cbf0000803fb7628f3f13f241bee3a59bbc62a1163ed49a66bd96b27c3f9a779cbc62a1163ed49a66bddcd741beaf25943f62a1163e0000000000000000000000000000000000000000000000000000000000000000000000000000204100000000000000000000003e0000003e0000003e000000009fab853efca9853e9fab853e0000000000001c4200009042000019430000904300009a42000010430000a04000001041"
+  },
+  "output_size": [
+    1118,
+    1670
+  ],
+  "target_pixel_format_index": 0,
+  "presentation": {
+    "source_rect": [
+      0,
+      0,
+      1118,
+      1670
+    ],
+    "destination_rect": [
+      75.73770904541016,
+      0.32786884903907776,
+      442.2950744628906,
+      547.8688354492188
+    ],
+    "sampling": 0,
+    "world_matrix_column_major": [
+      3.049999952316284,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      3.049999952316284,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "provenance": {
+    "graph": {
+      "path": "instrumentacion/codex-m16-final/m18more1/image-pass-graph.json",
+      "sha256": "2b21824eea53403e8fc988dd5227ccfd519130864c751bc1c6c0796ab8737130"
+    },
+    "source": {
+      "path": "instrumentacion/codex-m16-final/m18more1/runtime.jsonl",
+      "sha256": "ae2599aab5a7d7207984e7098b3c4c4a1b42adcb45bf7e6d22258ce77d237d3c"
+    },
+    "generator": {
+      "path": "instrumentacion/codex_more_surface_export.py",
+      "sha256": "2f3e865dc89b01184c78b2a63672c1b32f897c344725cfc760222ae0d80d9e18"
+    },
+    "base_image_source_id": 39,
+    "output_image_source_id": 40,
+    "chain_key": "0xc",
+    "recording_source_line": 3722,
+    "sampler_reflection": {
+      "path": "flutter-probe/compiled/glass_lean-reflection.json",
+      "sha256": "3c9d1cab36d72a6a6048429a192c577876186d18a6861463e0a5b542c95da486"
+    }
+  },
+  "scope": "Captured background surface inputs for this reference viewport and state. The caller supplies its own correctly captured background image.",
+  "limits": [
+    "The foreground RSuperellipse content clip is separate from the expanded background image.",
+    "This is a measured recipe, not a responsive layout inferred from one viewport.",
+    "In nativesurfaces8 only, the Scene source field named target_format_argument is a mislabeled opaque output-handle fragment; it is ignored. Picture target_format_argument is the actual format index."
+  ],
+  "gpu_validation": {
+    "path": "instrumentacion/codex-m16-final/M18-more-closeout.json",
+    "sha256": "27cfe867429e5e36f51aae6f0b330346b5b2b4c24626b108ebbf739b789ce6c9"
+  }
+}

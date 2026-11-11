@@ -36,10 +36,20 @@ class YouTubeLoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        setContent { AkiraTheme(themeMode = intent.getStringExtra("themeMode") ?: "SYSTEM",
-            appearancePreset = intent.getStringExtra("appearancePreset") ?: "MIDNIGHT") {
-            Surface(Modifier.fillMaxSize()) { LoginContent() }
-        } }
+        setContent {
+            val repository = remember { com.akira.app.core.datastore.UserPreferencesRepository(applicationContext) }
+            val preferences by repository.userPreferences.collectAsState(initial = com.akira.app.core.datastore.UserPreferences())
+            AkiraTheme(themeMode = preferences.themeMode, appearancePreset = preferences.appearancePreset,
+                accentColor = preferences.accentColor, appearanceFont = preferences.appearanceFont,
+                appearanceFontId = preferences.appearanceFontId, appearanceSizeIndex = preferences.appearanceSizeIndex) {
+                com.akira.app.core.design.glass.ProvideGlassPreferences(preferences) {
+                    CompositionLocalProvider(com.akira.app.core.design.glass.LocalSharedGlassMaterial provides
+                        com.akira.app.core.design.glass.rememberSharedGlassMaterial()) {
+                        Surface(Modifier.fillMaxSize()) { LoginContent() }
+                    }
+                }
+            }
+        }
     }
     @SuppressLint("SetJavaScriptEnabled")
     @Composable private fun LoginContent() {

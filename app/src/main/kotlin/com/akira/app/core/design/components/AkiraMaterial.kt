@@ -13,8 +13,8 @@ enum class AkiraMaterialRole { Control, Panel, AudioOutput }
 
 @Composable
 fun Modifier.akiraMaterial(shape: CornerBasedShape, role: AkiraMaterialRole = AkiraMaterialRole.Control,
-    backdrop: Backdrop? = null): Modifier = liquidGlass(shape, backdrop,
-        readableContent = role != AkiraMaterialRole.Control)
+    backdrop: Backdrop? = null, presence: () -> Float = { 1f }): Modifier = liquidGlass(shape, backdrop,
+        readableContent = role != AkiraMaterialRole.Control, presence = presence)
 
 @Composable
 fun AkiraMaterialSurface(shape: CornerBasedShape, modifier: Modifier = Modifier,

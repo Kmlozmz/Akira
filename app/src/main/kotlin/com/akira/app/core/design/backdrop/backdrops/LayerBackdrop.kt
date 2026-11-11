@@ -85,7 +85,7 @@ class LayerBackdrop internal constructor(
             }
         }.getOrNull()
         withTransform({
-            if (layerBlock != null) {
+            if (mapping == null && layerBlock != null) {
                 with(obtainInverseLayerScope()) { inverseTransform(density, layerBlock) }
             }
             if(mapping!=null)transform(mapping) else {

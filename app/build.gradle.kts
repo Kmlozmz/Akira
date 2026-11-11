@@ -83,6 +83,8 @@ android {
         }
     }
 
+    packaging.jniLibs.useLegacyPackaging = true
+
     testOptions {
         unitTests {
             isReturnDefaultValues = true
@@ -110,6 +112,7 @@ ksp {
 }
 
 dependencies {
+    implementation("com.akira.ui:flutter_release:1.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
     implementation(project(":providers:innertube"))
     implementation("io.ktor:ktor-client-core:3.4.0")
@@ -159,6 +162,7 @@ dependencies {
 
     // Testing
     testImplementation(libs.junit)
+    testImplementation("com.google.code.gson:gson:2.11.0")
     testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.test.ext)
     androidTestImplementation(libs.androidx.test.espresso)

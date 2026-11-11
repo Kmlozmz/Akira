@@ -35,7 +35,7 @@ import kotlinx.coroutines.launch
 /** Batch exceptions explain which rule hid each file before changing library visibility. */
 @Composable internal fun LibraryFilterReview(songs: List<Song>, prefs: UserPreferences,
     repo: UserPreferencesRepository, modifier: Modifier = Modifier, listState: LazyListState = rememberLazyListState(),
-    fontFamily: FontFamily = com.akira.app.core.design.theme.AkiraFontFamily, onDone: (() -> Unit)? = null) {
+    fontFamily: FontFamily = com.akira.app.core.design.theme.CurrentAkiraFontFamily, onDone: (() -> Unit)? = null) {
     var showRestored by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     var selected by rememberSaveable { mutableStateOf(emptyList<String>()) }
@@ -111,7 +111,7 @@ import kotlinx.coroutines.launch
         } else LazyColumn(Modifier.weight(1f), state = listState, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             itemsIndexed(visible, key = { _, song -> song.id }) { index, song ->
                 val chosen = song.id in selected
-                Row(Modifier.fillMaxWidth().clip(settingsSegmentShape(index, visible.size))
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
                     .background(if(chosen) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
                     .toggleable(chosen, enabled = !saving, role = Role.Checkbox, onValueChange = {
                         haptics.click(); selected = if(it) selected + song.id else selected - song.id

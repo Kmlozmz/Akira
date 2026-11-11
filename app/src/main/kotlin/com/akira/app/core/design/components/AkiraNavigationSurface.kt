@@ -14,15 +14,18 @@ import com.akira.app.core.design.glass.liquidGlass
 
 internal object AkiraNavigationMetrics {
     val Gutter = 20.dp
-    val Target = 48.dp
-    val BackSurface = 40.dp
-    val AvatarSurface = 44.dp
+    val Target = com.akira.app.core.design.system.AkiraNavigationSpec.target.dp
+    val BackSurface = com.akira.app.core.design.system.AkiraNavigationSpec.face.dp
+    val AvatarSurface = com.akira.app.core.design.system.AkiraNavigationSpec.face.dp
     val HeaderTop = 16.dp
     val GroupGap = 12.dp
 }
 
 /** A small elevation separates navigation from a page of the same color. */
 @Composable internal fun Modifier.akiraNavigationSurface(shape: CornerBasedShape, backdrop: Backdrop? = null): Modifier {
+    if (com.akira.app.core.design.glass.LocalSharedGlassMaterial.current != null) {
+        return liquidGlass(shape, backdropOverride=backdrop)
+    }
     val light = MaterialTheme.colorScheme.background.luminance() > .5f
     return this
         .then(if (light) Modifier.shadow(10.dp, shape, clip = false,

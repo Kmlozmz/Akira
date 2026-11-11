@@ -64,7 +64,7 @@ internal fun presentationProgress(current: Rect, source: Rect, destination: Rect
     return if (departure + arrival < .001f) 1f else departure / (departure + arrival)
 }
 
-internal data class PresentationContentTransform(val scale: Float, val offset: Offset)
+internal data class PresentationContentTransform(val scale: Float, val offset: Offset, val scaleY:Float=scale)
 
 internal fun presentationContentTransform(viewport: Size, content: Size,
     progress: Float): PresentationContentTransform {

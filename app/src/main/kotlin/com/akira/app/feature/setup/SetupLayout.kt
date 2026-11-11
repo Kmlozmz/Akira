@@ -57,7 +57,7 @@ internal fun SetupLayout(title: String, subtitle: String, onBack: (() -> Unit)? 
     val scroll = key(step) { rememberScrollState() }
     CompositionLocalProvider(LocalContentColor provides colors.onBackground,
         LocalAppBackdrop provides backdrop, LocalPageHeaderBackdrop provides backdrop,
-        LocalLiquidGlassEnabled provides prefs.liquidGlassEnabled,
+        LocalLiquidGlassEnabled provides (prefs.liquidGlassEnabled && !prefs.appearanceReduceTransparency),
         LocalDockBackgroundDiffusion provides prefs.dockLiquidGlassEnabled,
         LocalLiquidGlassOpacity provides { GlassOpacityPreview.value ?: prefs.liquidGlassOpacity },
         LocalLiquidGlassDiffusion provides { GlassDiffusionPreview.value ?: prefs.liquidGlassDiffusion }) {
@@ -111,8 +111,7 @@ internal fun SetupLayout(title: String, subtitle: String, onBack: (() -> Unit)? 
                         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (onBack != null) {
                                 CompositionLocalProvider(LocalPageHeaderBackdrop provides backdrop) {
-                                    PageBackButton(onBack, Modifier.size(44.dp).shadow(8.dp, CircleShape, clip = false,
-                                        ambientColor = Color.Black.copy(alpha = .18f), spotColor = Color.Black.copy(alpha = .22f)))
+                                    PageBackButton(onBack)
                                 }
                                 Spacer(Modifier.width(14.dp))
                             } else {

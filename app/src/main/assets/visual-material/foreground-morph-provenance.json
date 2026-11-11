@@ -1,0 +1,6 @@
+{
+  "source": "visual_bridge/reference_snapshot/flutter_runtime/shaders/glass_lean_morph_structured.frag",
+  "source_sha256": "640a43c1c6d557b925c0638ca290f82da849d028ec9919e33992285695769485",
+  "android_sha256": "e60bd9aa2149c94543839fef0872adc99c8429bedac82660ac7304b81050c86b",
+  "android_sampling": "Clamp foreground sampling to physical texel centers; the RenderEffect input uses a transparent exterior."
+}

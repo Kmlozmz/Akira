@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.akira.app.core.design.brand.AkiraBrand
 import com.akira.app.core.design.components.rememberAkiraMenuSource
 import kotlin.math.round
+import kotlin.math.roundToInt
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.input.pointer.pointerInput
@@ -102,7 +103,7 @@ internal fun Modifier.audioControlsEnabled(enabled: Boolean, description: String
     if(inline) Row(Modifier.fillMaxWidth().heightIn(min=52.dp),verticalAlignment=Alignment.CenterVertically,
         horizontalArrangement=Arrangement.spacedBy(8.dp)) {
         Text(label,Modifier.width(58.dp),style=MaterialTheme.typography.bodyMedium)
-        AudioSlider(value,::change,range,label,Modifier.weight(1f),enabled=enabled,tint=audioAccent(),
+        AudioSlider(value,::change,range,label,Modifier.weight(1f),enabled=enabled,tint=audioAccent(),steps=((range.endInclusive-range.start)/step).roundToInt().coerceAtLeast(1)-1,
             onFinished={dragging=false;commit(value)})
         Box(Modifier.widthIn(min=64.dp),contentAlignment=Alignment.CenterEnd) {number()}
     } else {
@@ -113,6 +114,7 @@ internal fun Modifier.audioControlsEnabled(enabled: Boolean, description: String
             number()
         }
         AudioSlider(value, ::change, range, label, Modifier.fillMaxWidth(), enabled = enabled,
+            steps=((range.endInclusive-range.start)/step).roundToInt().coerceAtLeast(1)-1,
             tint = audioAccent(), onFinished = { dragging = false; commit(value) })
     }
     }

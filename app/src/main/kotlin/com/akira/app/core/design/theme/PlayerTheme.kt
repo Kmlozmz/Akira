@@ -22,6 +22,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import java.io.File
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -35,6 +41,10 @@ val AkiraFontFamily = FontFamily(
     Font(R.font.roboto_flex_extrabold, FontWeight.ExtraBold),
     Font(R.font.roboto_flex_black, FontWeight.Black)
 )
+
+val LocalAkiraFontFamily = staticCompositionLocalOf { AkiraFontFamily }
+val CurrentAkiraFontFamily: FontFamily
+    @Composable get() = LocalAkiraFontFamily.current
 
 val PlayerTypography = Typography(
     displayLarge = TextStyle(
@@ -109,22 +119,88 @@ fun AkiraTheme(
     accentColor: String = "PRESET",
     spaceMode: Boolean = false,
     spaceStyle: String = "SPACE",
+    appearanceFont: String = "system",
+    appearanceFontId: String = "",
+    appearanceSizeIndex: Int = 3,
     content: @Composable () -> Unit
 ) {
     val dark = isSystemInDarkTheme()
     val resolved = resolveThemeMode(themeMode, dark)
     // Classic appearance replaces the old theme families. Existing stored selections
     // remain readable but no longer tint backgrounds or controls.
-    val scheme = if (resolved == "LIGHT") LightColorScheme else AmoledColorScheme
+    val context = LocalContext.current
+    val sharedMaterialAvailable = remember(context.assets) {
+        context.assets.list("visual-material")?.contains("glass.agsl") == true
+    }
+    val baseScheme = (if (resolved == "LIGHT") LightColorScheme else AmoledColorScheme).let { base ->
+        if (!sharedMaterialAvailable) base else if (resolved == "LIGHT") base.copy(
+            background = Color(0xFFF2F2F7), surface = Color.White,
+            surfaceContainerLowest = Color.White, surfaceContainerLow = Color(0xFFF2F2F7),
+            surfaceContainer = Color.White, surfaceContainerHigh = Color(0xFFE5E5EA),
+            surfaceContainerHighest = Color(0xFFD1D1D6), surfaceVariant = Color(0xFFE5E5EA),
+            onSurface = Color(0xFF000000), onBackground = Color(0xFF000000),
+            onSurfaceVariant = Color(0xFF636366), outlineVariant = Color(0xFFD1D1D6)
+        ) else base.copy(
+            background = Color.Black, surface = Color(0xFF1C1C1E),
+            surfaceContainerLowest = Color.Black, surfaceContainerLow = Color(0xFF111113),
+            surfaceContainer = Color(0xFF1C1C1E), surfaceContainerHigh = Color(0xFF2C2C2E),
+            surfaceContainerHighest = Color(0xFF38383A), surfaceVariant = Color(0xFF2C2C2E),
+            onSurface = Color.White, onBackground = Color.White,
+            onSurfaceVariant = Color(0xFFAEAEB2), outlineVariant = Color(0xFF3A3A3C)
+        )
+    }
+    val accent = remember(accentColor) {
+        runCatching { Color(android.graphics.Color.parseColor(accentColor)) }
+            .getOrDefault(Color(0xFFFA243C))
+    }
+    val onAccent = if (accent.luminance() > .179f) Color.Black else Color.White
+    val scheme = baseScheme.copy(primary = accent, secondary = accent, tertiary = accent,
+        onPrimary = onAccent, onSecondary = onAccent, onTertiary = onAccent,
+        primaryContainer = androidx.compose.ui.graphics.lerp(baseScheme.surface, accent, if (resolved == "LIGHT") .13f else .23f),
+        secondaryContainer = androidx.compose.ui.graphics.lerp(baseScheme.surface, accent, if (resolved == "LIGHT") .13f else .23f),
+        tertiaryContainer = androidx.compose.ui.graphics.lerp(baseScheme.surface, accent, if (resolved == "LIGHT") .13f else .23f),
+        onPrimaryContainer = baseScheme.onSurface, onSecondaryContainer = baseScheme.onSurface,
+        onTertiaryContainer = baseScheme.onSurface)
+    val defaultFamily = AkiraFontFamily
+    val family = remember(appearanceFont, appearanceFontId, defaultFamily) {
+        when (appearanceFont) {
+            "serif" -> FontFamily.Serif
+            "custom" -> if (Regex("[0-9a-f]{64}").matches(appearanceFontId)) runCatching {
+                FontFamily(androidx.compose.ui.text.font.Font(File(context.filesDir, "appearance-fonts/$appearanceFontId.ttf")))
+            }.getOrDefault(defaultFamily) else defaultFamily
+            else -> defaultFamily
+        }
+    }
+    val type = remember(family) { PlayerTypography.copy(
+        displayLarge = PlayerTypography.displayLarge.copy(fontFamily = family),
+        displayMedium = PlayerTypography.displayMedium.copy(fontFamily = family),
+        displaySmall = PlayerTypography.displaySmall.copy(fontFamily = family),
+        headlineMedium = PlayerTypography.headlineMedium.copy(fontFamily = family),
+        headlineSmall = PlayerTypography.headlineSmall.copy(fontFamily = family),
+        titleSmall = PlayerTypography.titleSmall.copy(fontFamily = family),
+        bodySmall = PlayerTypography.bodySmall.copy(fontFamily = family),
+        labelLarge = PlayerTypography.labelLarge.copy(fontFamily = family),
+        labelMedium = PlayerTypography.labelMedium.copy(fontFamily = family),
+        headlineLarge = PlayerTypography.headlineLarge.copy(fontFamily = family),
+        titleLarge = PlayerTypography.titleLarge.copy(fontFamily = family),
+        titleMedium = PlayerTypography.titleMedium.copy(fontFamily = family),
+        bodyLarge = PlayerTypography.bodyLarge.copy(fontFamily = family),
+        bodyMedium = PlayerTypography.bodyMedium.copy(fontFamily = family),
+        labelSmall = PlayerTypography.labelSmall.copy(fontFamily = family)
+    ) }
+    val density = LocalDensity.current
+    val textScale = listOf(14f, 15f, 16f, 17f, 19f, 21f, 23f)[appearanceSizeIndex.coerceIn(0, 6)] / 17f
     MaterialTheme(
         colorScheme = scheme,
-        typography = PlayerTypography
+        typography = type
     ) {
         val base = LocalTextStyle.current
         val reduced = com.akira.app.core.design.components.LocalContentMotionReduced.current || com.akira.app.core.design.motion.InteractionPreferences.reducedMotion
         val delegateHaptics = androidx.compose.ui.platform.LocalHapticFeedback.current
         val haptics = remember(delegateHaptics) { com.akira.app.core.design.util.PreferenceHaptics(delegateHaptics) }
         CompositionLocalProvider(
+            LocalAkiraFontFamily provides family,
+            LocalDensity provides Density(density.density, density.fontScale * textScale),
             LocalRippleConfiguration provides null,
             com.akira.app.core.design.components.LocalContentMotionReduced provides reduced,
             androidx.compose.ui.platform.LocalHapticFeedback provides haptics,

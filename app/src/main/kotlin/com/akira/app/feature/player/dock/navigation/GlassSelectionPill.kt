@@ -6,8 +6,7 @@
  * Copyright (c) 2025 Ahmed Gamil, MIT License.
  *
  * The rendering is the shared material renderer, on the vendored backdrop library: the lens
- * refracts the tab bar's exported glass and its recorded tab row rather than a
- * screen capture.
+ * refracts the tab bar's exported glass beneath sharp foreground icons.
  */
 package com.akira.app.feature.player.dock.navigation
 
@@ -47,7 +46,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sign
 
 /** How much taller than the bar the pill stands while it is lifted. */
-internal val PILL_GROW_HEIGHT = 9.dp
+internal val PILL_GROW_HEIGHT = com.akira.app.core.design.system.AkiraDockSpec.lensLift.dp
 
 /**
  * The selection pill's physics, owned by the tab bar and handed to whichever
@@ -525,8 +524,8 @@ internal fun GlassSelectionPill(
     motion: GlassPillMotion,
     fillColor: Color,
     barGlass: LayerBackdrop,
-    tabRow: LayerBackdrop,
     modifier: Modifier,
+    tabRow: LayerBackdrop? = null,
 ) {
     val page = LocalAppBackdrop.current
     val density=LocalDensity.current
@@ -556,7 +555,7 @@ internal fun GlassSelectionPill(
 private class SelectionPillBackdrop(
     private val page: Backdrop,
     private val bar: Backdrop,
-    private val tabs: Backdrop,
+    private val tabs: Backdrop?,
     private val fill: () -> Color,
 ) : Backdrop {
 
@@ -578,6 +577,6 @@ private class SelectionPillBackdrop(
                 size = Size(size.width * 3, size.height * 3),
             )
         }
-        with(tabs) { drawBackdrop(density, coordinates, layerBlock) }
+        tabs?.let { with(it) { drawBackdrop(density, coordinates, layerBlock) } }
     }
 }

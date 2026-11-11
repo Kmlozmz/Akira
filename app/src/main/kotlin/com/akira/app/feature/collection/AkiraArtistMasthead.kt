@@ -14,13 +14,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import com.akira.app.core.design.components.*
 import com.akira.app.core.design.icon.AkiraIcons
-import com.akira.app.core.design.theme.AkiraFontFamily
+import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 import com.akira.app.core.design.components.localizedText
 
 @Composable
 internal fun AkiraArtistMasthead(name: String, stats: String, background: Color, favorite: Boolean,
     playing: Boolean, onPlay: ()->Unit, onFavorite: ()->Unit, onInfo: ()->Unit, modifier: Modifier=Modifier) {
     val source=rememberAkiraMenuSource(icon=AkiraIcons.Info,hasOwnSurface=true)
+    source.visualInsetPx=with(androidx.compose.ui.platform.LocalDensity.current){2.dp.toPx()}
     val ink=LocalDetailInk.current
     Column(modifier.fillMaxWidth(),horizontalAlignment=Alignment.CenterHorizontally) {
         Text(name,color=ink,fontFamily=AkiraFontFamily,fontSize=30.sp,lineHeight=34.sp,
@@ -30,13 +31,13 @@ internal fun AkiraArtistMasthead(name: String, stats: String, background: Color,
         Spacer(Modifier.height(16.dp))
             Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                 AkiraIconButton(AkiraIcons.Info,localizedText("Artist information","Información del artista"),
-                    {source.open(onInfo)},modifier=source.modifier,tint=ink,glyphSize=20.dp)
+                    {source.open(onInfo)},modifier=source.modifier,tint=ink,glyphSize=22.dp,surfaceSize=44.dp)
                 Box(Modifier.size(56.dp).background(ink.copy(alpha=.85f),CircleShape),contentAlignment=Alignment.Center) {
                     AkiraIconButton(if(playing)AkiraIcons.Pause else AkiraIcons.Play,localizedText("Play / pause","Reproducir / pausar"),
                         onPlay,tint=background,glyphSize=32.dp,showBackground=false)
                 }
                 AkiraIconButton(if(favorite)AkiraIcons.StarFilled else AkiraIcons.Star,localizedText("Favorite artist","Artista favorito"),
-                    onFavorite,tint=ink,glyphSize=22.dp,popOnTrue=favorite)
+                    onFavorite,tint=ink,glyphSize=22.dp,surfaceSize=44.dp,popOnTrue=favorite)
             }
     }
 }

@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.sp
 import com.akira.app.core.datastore.UserPreferences
 import com.akira.app.core.datastore.UserPreferencesRepository
 import com.akira.app.core.design.icon.AkiraIcons
-import com.akira.app.core.design.theme.AkiraFontFamily
+import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 import com.akira.app.core.i18n.LocalStrings
 import com.akira.app.core.i18n.AkiraUiText
 import com.akira.app.core.model.Song
@@ -32,7 +32,7 @@ import com.akira.app.core.design.backdrop.backdrops.rememberLayerBackdrop
 internal fun LiquidGlassSettingsScreen(prefs: UserPreferences,repo: UserPreferencesRepository,song: Song?,onBack: ()->Unit) {
     AkiraStudioScreen("Liquid Glass",onBack) {
         Column(Modifier.fillMaxWidth().verticalScroll(com.akira.app.core.design.navigation.LocalPageScrollState.current ?: rememberScrollState())
-            .padding(top=118.dp).padding(horizontal=24.dp,vertical=20.dp)) {
+            .padding(top=80.dp).padding(horizontal=24.dp,vertical=20.dp)) {
             GlassSettingsControls(prefs,repo,song)
         }
     }

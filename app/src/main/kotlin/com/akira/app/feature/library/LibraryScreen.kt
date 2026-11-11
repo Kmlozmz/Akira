@@ -174,7 +174,7 @@ import androidx.media3.common.util.UnstableApi
 import coil.imageLoader
 import coil.compose.AsyncImage
 import com.akira.app.core.datastore.UserPreferencesRepository
-import com.akira.app.core.design.theme.AkiraFontFamily
+import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 import com.akira.app.core.design.theme.noRippleClickable
 import com.akira.app.core.media.MusicServiceConnection
 import com.akira.app.core.model.Song
@@ -1070,6 +1070,11 @@ fun LibraryScreen(
                 SettingsScreen(
                     prefsRepo = prefsRepo,
                     startWithSound = settingsStartWithSound,
+                    rootBackLabel = when(previousDestination) {
+                        HomeDestination.LIBRARY -> com.akira.app.core.design.components.localizedText("Library","Biblioteca")
+                        HomeDestination.SEARCH -> com.akira.app.core.design.components.localizedText("Search","Buscar")
+                        else -> com.akira.app.core.design.components.localizedText("Home","Inicio")
+                    },
                     previewSongs = songsList.take(4), previewSong = currentSong,
                     onBack = { closeSettings() },
                     onTestCrossfade = {
@@ -1102,6 +1107,7 @@ fun LibraryScreen(
             if (showSortBottomSheet) {
                 LibrarySortMenu(
                     current = currentSortOrder,
+                    fields=SortField.entries,
                     onSelect = { libraryViewModel.setSortOrder(it) },
                     onDismiss = { showSortBottomSheet = false }
                 )
