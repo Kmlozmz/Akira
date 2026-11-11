@@ -101,7 +101,7 @@
         138
       ],
       "original_source": {
-        "path": "instrumentacion/codex-m16-final/m18glow3/runtime.jsonl",
+        "path": "reference/native/m18glow3/runtime.jsonl",
         "sha256": "01ddc665563dce29beaabbd8fd741aba794b982c972bb08c084b16b0ef364f00"
       },
       "structured_program": {
@@ -284,7 +284,7 @@
         145
       ],
       "original_source": {
-        "path": "instrumentacion/codex-m16-final/m18morph3/runtime.jsonl",
+        "path": "reference/native/m18morph3/runtime.jsonl",
         "sha256": "91b18de8efba29739c3b4f948f9e164f11e21d1fe51c11a051cf29664c466d72"
       },
       "structured_program": {
@@ -486,7 +486,7 @@
         89
       ],
       "original_source": {
-        "path": "instrumentacion/codex-m16-final/m18loupe3/runtime.jsonl",
+        "path": "reference/native/m18loupe3/runtime.jsonl",
         "sha256": "5e79ad9f8779854262c6fef9c27dbaf016f650ad5097c99117ba20594ea0693a"
       },
       "structured_program": {
@@ -594,7 +594,7 @@
         176
       ],
       "original_source": {
-        "path": "instrumentacion/codex-m16-final/m18bar2/runtime.jsonl",
+        "path": "reference/native/m18bar2/runtime.jsonl",
         "sha256": "aa2968b058942f15a28f4aa19f54c5bb9bfc6ab7114c13b9e75a8a2742faa7f8"
       },
       "structured_program": {
@@ -604,7 +604,7 @@
     }
   ],
   "gpu_validation": {
-    "path": "instrumentacion/codex-m16-final/M18-closeout.json",
+    "path": "reference/native/M18-closeout.json",
     "sha256": "1ab218e3f08548f7b1f364f1e7ce9667186e4af8f5e18f9a2b5446e2aa1eadaa"
   },
   "scope": "Exact captured material states at the reference viewport. Image buffers remain in the research evidence, rather than inflating the reusable package.",

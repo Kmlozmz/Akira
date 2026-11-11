@@ -550,15 +550,15 @@
   },
   "provenance": {
     "graph": {
-      "path": "instrumentacion/codex-m16-final/m18more1/image-pass-graph.json",
+      "path": "reference/native/m18more1/image-pass-graph.json",
       "sha256": "2b21824eea53403e8fc988dd5227ccfd519130864c751bc1c6c0796ab8737130"
     },
     "source": {
-      "path": "instrumentacion/codex-m16-final/m18more1/runtime.jsonl",
+      "path": "reference/native/m18more1/runtime.jsonl",
       "sha256": "ae2599aab5a7d7207984e7098b3c4c4a1b42adcb45bf7e6d22258ce77d237d3c"
     },
     "generator": {
-      "path": "instrumentacion/codex_more_surface_export.py",
+      "path": "instrumentacion/component_more_surface_export.py",
       "sha256": "2f3e865dc89b01184c78b2a63672c1b32f897c344725cfc760222ae0d80d9e18"
     },
     "base_image_source_id": 39,
@@ -577,7 +577,7 @@
     "In nativesurfaces8 only, the Scene source field named target_format_argument is a mislabeled opaque output-handle fragment; it is ignored. Picture target_format_argument is the actual format index."
   ],
   "gpu_validation": {
-    "path": "instrumentacion/codex-m16-final/M18-more-closeout.json",
+    "path": "reference/native/M18-more-closeout.json",
     "sha256": "27cfe867429e5e36f51aae6f0b330346b5b2b4c24626b108ebbf739b789ce6c9"
   }
 }
