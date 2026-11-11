@@ -1,6 +1,6 @@
 {
   "provenance": {
-    "path": "instrumentacion/codex-m16-final/nativesurfaces4/backdrop-recipes-validation.json",
+    "path": "reference/native/nativesurfaces4/backdrop-recipes-validation.json",
     "sha256": "5d5c27dd7c268c2e318cfdb3771ea75ba56e56383ad8a9dc077893fddc84af46"
   },
   "recipes": [

@@ -1,6 +1,6 @@
 {
   "provenance": {
-    "path": "instrumentacion/codex-m16-final/iconmetrics4/icon-metrics-validation.json",
+    "path": "reference/native/iconmetrics4/icon-metrics-validation.json",
     "sha256": "2850db88abebda23c3f2ec67889706ce821c4df2e76c339b6cf2d1c574527bfb"
   },
   "close": [
@@ -207,7 +207,7 @@
         ]
       },
       "semantic_source": {
-        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "path": "reference/native/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
         "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
       },
       "semantic_ordinal": 8,
@@ -422,7 +422,7 @@
         ]
       },
       "semantic_source": {
-        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "path": "reference/native/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
         "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
       },
       "semantic_ordinal": 8,
@@ -530,7 +530,7 @@
         "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
       },
       "semantic_source": {
-        "path": "instrumentacion/codex-m16-final/iconmetrics4/editor-confirm-glyph/nodes.json",
+        "path": "reference/native/iconmetrics4/editor-confirm-glyph/nodes.json",
         "sha256": "9fa390e469c12ce451f0b2eb3b646164eba4c764a8cf3c879475a557b71c0147"
       },
       "semantic_ordinal": 35,
@@ -816,7 +816,7 @@
         "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
       },
       "semantic_source": {
-        "path": "instrumentacion/codex-m16-final/iconmetrics4/editor-confirm-glyph/nodes.json",
+        "path": "reference/native/iconmetrics4/editor-confirm-glyph/nodes.json",
         "sha256": "9fa390e469c12ce451f0b2eb3b646164eba4c764a8cf3c879475a557b71c0147"
       },
       "semantic_ordinal": 37,
@@ -1138,7 +1138,7 @@
         "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
       },
       "semantic_source": {
-        "path": "instrumentacion/codex-m16-final/iconmetrics4/editor-confirm-glyph/nodes.json",
+        "path": "reference/native/iconmetrics4/editor-confirm-glyph/nodes.json",
         "sha256": "9fa390e469c12ce451f0b2eb3b646164eba4c764a8cf3c879475a557b71c0147"
       },
       "semantic_ordinal": 35,
@@ -1424,7 +1424,7 @@
         "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
       },
       "semantic_source": {
-        "path": "instrumentacion/codex-m16-final/iconmetrics4/editor-confirm-glyph/nodes.json",
+        "path": "reference/native/iconmetrics4/editor-confirm-glyph/nodes.json",
         "sha256": "9fa390e469c12ce451f0b2eb3b646164eba4c764a8cf3c879475a557b71c0147"
       },
       "semantic_ordinal": 37,
@@ -1746,7 +1746,7 @@
         "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
       },
       "semantic_source": {
-        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "path": "reference/native/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
         "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
       },
       "semantic_ordinal": 9,
@@ -2036,7 +2036,7 @@
         "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
       },
       "semantic_source": {
-        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "path": "reference/native/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
         "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
       },
       "semantic_ordinal": 9,
@@ -2326,7 +2326,7 @@
         "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
       },
       "semantic_source": {
-        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "path": "reference/native/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
         "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
       },
       "semantic_ordinal": 9,
@@ -2616,7 +2616,7 @@
         "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
       },
       "semantic_source": {
-        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "path": "reference/native/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
         "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
       },
       "semantic_ordinal": 9,
@@ -2906,7 +2906,7 @@
         "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
       },
       "semantic_source": {
-        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "path": "reference/native/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
         "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
       },
       "semantic_ordinal": 9,
@@ -3196,7 +3196,7 @@
         "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
       },
       "semantic_source": {
-        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "path": "reference/native/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
         "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
       },
       "semantic_ordinal": 9,
@@ -3486,7 +3486,7 @@
         "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
       },
       "semantic_source": {
-        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "path": "reference/native/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
         "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
       },
       "semantic_ordinal": 9,
@@ -3776,7 +3776,7 @@
         "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
       },
       "semantic_source": {
-        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "path": "reference/native/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
         "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
       },
       "semantic_ordinal": 9,
@@ -4066,7 +4066,7 @@
         "scope": "Original full-range text box, including alignment and font metrics. Not tight ink bounds."
       },
       "semantic_source": {
-        "path": "instrumentacion/codex-m16-final/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
+        "path": "reference/native/iconmetrics4/close-lines-and-confirm-glyph/nodes.json",
         "sha256": "fa6bb14609d30df87a45ab36118d089145307cdb941e024a204083d743fff40e"
       },
       "semantic_ordinal": 9,
