@@ -19,7 +19,8 @@ class SleepTimerManager(
     private val getActiveDeck: () -> DeckPlayer,
     private val onEndItemModeChanged: (Boolean) -> Unit = {},
     private val clock: () -> Long = { android.os.SystemClock.elapsedRealtime() },
-    private val dispatcher: CoroutineDispatcher = Dispatchers.Main
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Main,
+    private val onPlaybackStopped: () -> Unit = {}
 ) {
     companion object {
         private const val TAG = "AkiraSleepTimer"
@@ -46,6 +47,9 @@ class SleepTimerManager(
     fun start(durationMs: Long) {
         if (durationMs <= 0 && durationMs != END_OF_SONG && durationMs != END_OF_QUEUE) return
         cancel()
+        // Cancellation restores the crossfade's saved end guards. Do it before
+        // installing the timer's guards, or those can be overwritten by restore.
+        if (durationMs == END_OF_SONG) crossfadeEngine.cancelCrossfade()
         onEndItemModeChanged(durationMs == END_OF_SONG)
         _activeMode.value = durationMs
         SleepTimerBus.setActiveMode(durationMs)
@@ -53,7 +57,6 @@ class SleepTimerManager(
 
         when (durationMs) {
             END_OF_SONG -> {
-                crossfadeEngine.cancelCrossfade()
                 // Suppress crossfade so the engine pauses at the current track's end.
                 crossfadeEngine.pauseAtEndOfItem = true
                 _remainingMs.value = END_OF_SONG
@@ -109,6 +112,7 @@ class SleepTimerManager(
         if (_activeMode.value == END_OF_SONG) {
             Log.d(TAG, "End-of-song mode: pausing playback")
             getActiveDeck().pause()
+            onPlaybackStopped()
             cancel()
         }
     }
@@ -118,6 +122,7 @@ class SleepTimerManager(
         if (_activeMode.value == END_OF_QUEUE) {
             Log.d(TAG, "End-of-queue mode: pausing playback")
             getActiveDeck().pause()
+            onPlaybackStopped()
             cancel()
         }
     }
@@ -126,6 +131,7 @@ class SleepTimerManager(
         fadeJob?.cancel()
         if (!getActiveDeck().playWhenReady) {
             // Playback is already paused.
+            onPlaybackStopped()
             cancel()
             return
         }
@@ -141,6 +147,7 @@ class SleepTimerManager(
             crossfadeEngine.externalVolumeMultiplier = 0f
             // Crossfade may have swapped decks during these ten seconds.
             getActiveDeck().pause()
+            onPlaybackStopped()
             crossfadeEngine.cancelCrossfade()
             Log.d(TAG, "Fade-out complete, playback paused")
             cancel()

@@ -62,7 +62,8 @@ internal object QueueOrder {
         return ranges
     }
     fun insert(order: List<String>, current: String?, additions: List<String>, mode: String, before: String? = null): List<String> {
-        val items = additions.distinct().filterNot(order::contains)
+        val existing = order.toHashSet()
+        val items = additions.filter { existing.add(it) }
         val index = when (mode) {
             "NEXT" -> (order.indexOf(current) + 1).coerceIn(0, order.size)
             "BEFORE" -> order.indexOf(before).takeIf { it >= 0 } ?: order.size
@@ -70,8 +71,14 @@ internal object QueueOrder {
         }
         return order.toMutableList().apply { addAll(index, items) }
     }
-    fun restore(order: List<String>, saved: List<String>): List<String> =
-        saved.distinct().filter(order::contains) + order.filterNot(saved::contains)
+    fun restore(order: List<String>, saved: List<String>): List<String> {
+        val remaining = order.toMutableSet()
+        return saved.filter { remaining.remove(it) } + order.filter(remaining::contains)
+    }
+
+    /** Unlike ordinary REMOVE, physical deletion includes the active occurrence. */
+    fun removeSong(order: List<String>, occurrences: Map<String, String>, songId: String): List<String> =
+        order.filterNot { occurrences[it] == songId }
     fun move(order: List<String>, from: String, target: String): List<String> {
         val old = order.indexOf(from); val destination = order.indexOf(target)
         if (old < 0 || destination < 0 || old == destination) return order
@@ -89,6 +96,7 @@ internal object QueueEditCommand {
     const val ITEMS = "items"
     const val MODE = "mode"
     const val ENTRY = "entry"
+    const val SONG_ID = "song_id"
     const val ORDER = "order"
     const val TARGET = "target"
 }

@@ -2,7 +2,7 @@ import 'package:pigeon/pigeon.dart';
 
 @ConfigurePigeon(PigeonOptions(
   dartOut: 'lib/bridge/appearance.g.dart',
-  kotlinOut: '../../app/src/visual/kotlin/com/akira/app/visual/Appearance.g.kt',
+  kotlinOut: '../../app/src/main/kotlin/com/akira/app/feature/appearance/Appearance.g.kt',
   kotlinOptions: KotlinOptions(package: 'com.akira.app.feature.appearance'),
 ))
 class VisualPreferences {

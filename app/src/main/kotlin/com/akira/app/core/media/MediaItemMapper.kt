@@ -17,9 +17,20 @@ object MediaItemMapper {
     private const val KEY_GENRE = "extra_genre"
     private const val KEY_PATH = "extra_path"
     private const val KEY_QUEUE_ENTRY = "extra_queue_entry"
+    private const val KEY_ALBUM_ID = "extra_album_id"
+    private const val KEY_MIME_TYPE = "extra_mime_type"
+    private const val KEY_TRACK_NUMBER = "extra_track_number"
+    private const val KEY_DATE_ADDED = "extra_date_added"
+    private const val KEY_DATE_MODIFIED = "extra_date_modified"
+    private const val KEY_HAS_LYRICS = "extra_has_lyrics"
+    private const val KEY_FAVORITE = "extra_favorite"
+    private const val KEY_ONLINE_GENERATION = "extra_online_queue_generation"
 
     /** Identity lookup in queue edits must not allocate a complete Song per comparison. */
     fun MediaItem.queueIdentity(): String = mediaMetadata.extras?.getString(KEY_QUEUE_ENTRY) ?: mediaId
+
+    internal fun MediaItem.onlineQueueGeneration(): Long =
+        mediaMetadata.extras?.getLong(KEY_ONLINE_GENERATION) ?: 0L
 
     fun Song.toMediaItem(entryId: String = java.util.UUID.randomUUID().toString()): MediaItem {
         val extras = Bundle().apply {
@@ -31,6 +42,14 @@ object MediaItemMapper {
             putString(KEY_GENRE, genre)
             putString(KEY_PATH, path)
             putString(KEY_QUEUE_ENTRY, entryId)
+            putLong(KEY_ALBUM_ID, albumId)
+            putString(KEY_MIME_TYPE, mimeType)
+            putInt(KEY_TRACK_NUMBER, trackNumber)
+            putLong(KEY_DATE_ADDED, dateAddedSec)
+            putLong(KEY_DATE_MODIFIED, dateModifiedSec)
+            putBoolean(KEY_HAS_LYRICS, hasLyrics)
+            putBoolean(KEY_FAVORITE, isFavorite)
+            putLong(KEY_ONLINE_GENERATION, com.akira.app.core.online.SourceQueueStore.onlineGeneration)
         }
 
         val metadata = MediaMetadata.Builder()
@@ -77,6 +96,13 @@ object MediaItemMapper {
             durationMs = durationMs,
             contentUri = uriStr,
             albumArtUri = meta.artworkUri?.toString(),
+            albumId = extras?.getLong(KEY_ALBUM_ID) ?: 0L,
+            mimeType = extras?.getString(KEY_MIME_TYPE) ?: localConfiguration?.mimeType ?: "audio/*",
+            trackNumber = extras?.getInt(KEY_TRACK_NUMBER) ?: 0,
+            dateAddedSec = extras?.getLong(KEY_DATE_ADDED) ?: 0L,
+            dateModifiedSec = extras?.getLong(KEY_DATE_MODIFIED) ?: 0L,
+            hasLyrics = extras?.getBoolean(KEY_HAS_LYRICS) ?: false,
+            isFavorite = extras?.getBoolean(KEY_FAVORITE) ?: false,
             tone = tone,
             year = year,
             genre = (meta.genre?.toString() ?: extras?.getString(KEY_GENRE)).orEmpty(),

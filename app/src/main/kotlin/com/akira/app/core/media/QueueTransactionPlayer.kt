@@ -7,7 +7,22 @@ import androidx.media3.common.*
  * Hundreds of shuffled removals must not send hundreds of full Binder queues.
  */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-internal class QueueTransactionPlayer(player: Player) : ForwardingPlayer(player) {
+internal class QueueTransactionPlayer(player: Player, private val onExplicitPause: () -> Unit = {}) : ForwardingPlayer(player) {
+    override fun pause() { onExplicitPause(); super.pause() }
+    override fun stop() { onExplicitPause(); super.stop() }
+    override fun clearMediaItems() { onExplicitPause(); super.clearMediaItems() }
+    override fun setMediaItem(item: MediaItem) { onExplicitPause(); super.setMediaItem(item) }
+    override fun setMediaItem(item: MediaItem, positionMs: Long) { onExplicitPause(); super.setMediaItem(item, positionMs) }
+    override fun setMediaItem(item: MediaItem, resetPosition: Boolean) { onExplicitPause(); super.setMediaItem(item, resetPosition) }
+    override fun setMediaItems(items: List<MediaItem>) { onExplicitPause(); super.setMediaItems(items) }
+    override fun setMediaItems(items: List<MediaItem>, resetPosition: Boolean) { onExplicitPause(); super.setMediaItems(items, resetPosition) }
+    override fun setMediaItems(items: List<MediaItem>, index: Int, positionMs: Long) {
+        onExplicitPause(); super.setMediaItems(items, index, positionMs)
+    }
+    override fun setPlayWhenReady(playWhenReady: Boolean) {
+        if (!playWhenReady) onExplicitPause()
+        super.setPlayWhenReady(playWhenReady)
+    }
     private var depth=0
     // ForwardingPlayer creates equal (not identical) listener wrappers when
     // removing. Identity keys would leak the old MediaSession listener and let

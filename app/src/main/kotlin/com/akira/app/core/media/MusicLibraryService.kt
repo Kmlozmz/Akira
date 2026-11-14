@@ -31,6 +31,7 @@ import com.akira.app.core.audio.effectiveEqualizer
 import com.akira.app.core.media.MediaItemMapper.toMediaItem
 import com.akira.app.core.media.MediaItemMapper.queueIdentity
 import com.akira.app.core.media.MediaItemMapper.toSong
+import com.akira.app.core.media.MediaItemMapper.onlineQueueGeneration
 import com.akira.app.core.datastore.UserPreferencesRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,8 +67,8 @@ class MusicLibraryService : MediaLibraryService() {
 
     // One audio-focus owner for both decks; see PlaybackFocus.
     private lateinit var playbackFocus: PlaybackFocus
-    // ReanudaciÃ³n pendiente por pÃ©rdida de foco TRANSITORIA (llamada, otra app).
-    private var resumeAfterTransientLoss = false
+    // Reanudación pendiente por pérdida de foco TRANSITORIA (llamada, otra app).
+    private val focusResume = TransientFocusResume()
     // Track focus-induced pauses separately from user pauses; only a transient focus loss permits automatic resume.
     private var pausedByFocusLoss = false
 
@@ -90,6 +91,14 @@ class MusicLibraryService : MediaLibraryService() {
     private var routeCallback: android.media.MediaRouter.Callback? = null
     private var audioDeviceCallback: android.media.AudioDeviceCallback? = null
 
+    private fun cancelAutomaticResume() {
+        if (focusResume.pending && !activeDeck.playWhenReady && ::playbackFocus.isInitialized) playbackFocus.release()
+        focusResume.cancel()
+        pausedByFocusLoss = false
+        bluetoothPausedAt = null
+        pausedByBecomingNoisy = false
+    }
+
     override fun onCreate() {
         super.onCreate()
         prefsRepo = UserPreferencesRepository(this)
@@ -105,13 +114,12 @@ class MusicLibraryService : MediaLibraryService() {
             onLost = { willResume ->
                 // Capture playWhenReady before pausing, because pause clears it.
                 val wasPlaying = activeDeck.playWhenReady
-                resumeAfterTransientLoss = willResume && wasPlaying
+                focusResume.lost(willResume, wasPlaying)
                 pausedByFocusLoss = wasPlaying
                 if (wasPlaying) activeDeck.pause()
             },
             onGained = {
-                if (resumeAfterTransientLoss) {
-                    resumeAfterTransientLoss = false
+                if (focusResume.consumeGain()) {
                     // Do not call play again if the user has already resumed playback.
                     if (!activeDeck.playWhenReady) activeDeck.play()
                 }
@@ -174,6 +182,7 @@ class MusicLibraryService : MediaLibraryService() {
                 player.shuffleModeEnabled = lastKnownShuffle
                 player.repeatMode = lastKnownRepeat
                 activeDeck = player
+                recordOnlineListening(player)
                 com.akira.app.core.audio.AudioFxAvailability.select(player.audioSessionId)
                 mediaLibrarySession?.setPlayer(sessionPlayer(player))
                 publishWidgets()
@@ -187,7 +196,7 @@ class MusicLibraryService : MediaLibraryService() {
             CrossfadePreviewBus.clear()
         },
             onIncomingTrackReady = { incoming ->
-                // La UI muestra la canciÃ³n entrante desde ya; el crossfade no se toca.
+                // La UI muestra la canción entrante desde ya; el crossfade no se toca.
                 CrossfadePreviewBus.setIncoming(incoming.mediaId)
             },
             onCrossfadeCancelled = { CrossfadePreviewBus.clear() }
@@ -201,6 +210,7 @@ class MusicLibraryService : MediaLibraryService() {
                     val disconnected = ready && wasConnected && !account.connected
                     if (ready) wasConnected = account.connected
                     if (disconnected && activeDeck.currentMediaItem?.toSong()?.contentUri?.startsWith("akira-youtube:") == true) {
+                        cancelAutomaticResume()
                         crossfadeEngine.cancelCrossfade()
                         deckA.pause(); deckB.pause()
                         deckA.stop(); deckB.stop()
@@ -218,6 +228,7 @@ class MusicLibraryService : MediaLibraryService() {
                 .combine(scanner.observeMediaStoreChanges()) { filters, _ -> filters }
                 .collect { (minimum, excluded, whitelist) ->
                     autoplayLibrary = scanner.scanLocalSongs(minimum, excluded, whitelist)
+                    autoplaySongsById = autoplayLibrary.associateBy { it.id }
                     val dao = com.akira.app.core.database.AppDatabase.getInstance(this@MusicLibraryService).playbackHistoryDao()
                     autoplayLibrary.forEach { song ->
                         val key = com.akira.app.core.model.SongKey.of(song).encoded
@@ -241,19 +252,16 @@ class MusicLibraryService : MediaLibraryService() {
             onEndItemModeChanged = { enabled ->
                 deckA.setPauseAtEndOfMediaItems(enabled)
                 deckB.setPauseAtEndOfMediaItems(enabled)
-            }
+            },
+            onPlaybackStopped = ::cancelAutomaticResume
         )
         crossfadeEngine.onSleepTimerSongEnded = { sleepTimerManager.onSongEndedNaturally() }
         crossfadeEngine.onSleepTimerQueueEnded = { sleepTimerManager.onQueueEnded() }
         SleepTimerBus.registerHandlers(
             onStart = { durationMs ->
-                deckA.setPauseAtEndOfMediaItems(durationMs == SleepTimerBus.END_OF_SONG)
-                deckB.setPauseAtEndOfMediaItems(durationMs == SleepTimerBus.END_OF_SONG)
                 sleepTimerManager.start(durationMs)
             },
             onCancel = {
-                deckA.setPauseAtEndOfMediaItems(false)
-                deckB.setPauseAtEndOfMediaItems(false)
                 sleepTimerManager.cancel()
             }
         )
@@ -307,7 +315,7 @@ class MusicLibraryService : MediaLibraryService() {
     private fun updateNormalization(player: ExoPlayer) {
         if (!::crossfadeEngine.isInitialized) return
         val item = player.currentMediaItem ?: return
-        val song = autoplayLibrary.firstOrNull { it.id == item.mediaId } ?: item.toSong()
+        val song = autoplaySongsById[item.mediaId] ?: item.toSong()
         val mode = currentEqualizerPrefs?.normalizationMode ?: "OFF"
         val prefs = currentEqualizerPrefs
         val headroom = prefs?.effectiveEqualizer(com.akira.app.core.audio.OutputRoutes.current.value)?.headroom ?: 1f
@@ -323,13 +331,22 @@ class MusicLibraryService : MediaLibraryService() {
         }
     }
 
+    private fun recordOnlineListening(player: ExoPlayer) {
+        recordActiveOnlineListening(player) {
+            com.akira.app.core.online.OnlineRepository.get(this).recordListening(it)
+        }
+    }
+
     private suspend fun samplePlayCounts() {
         val now = android.os.SystemClock.elapsedRealtime()
         val elapsed = now - lastPlaySampleAt
         lastPlaySampleAt = now
         for (deck in listOf(deckA, deckB)) {
             val item = deck.currentMediaItem ?: continue
-            val song = autoplayLibrary.firstOrNull { it.id == item.mediaId } ?: item.toSong()
+            val song = autoplaySongsById[item.mediaId] ?: item.toSong()
+            val online = song.contentUri.startsWith("akira-youtube:")
+            val generation = item.onlineQueueGeneration()
+            if (online && generation != com.akira.app.core.online.SourceQueueStore.onlineGeneration) continue
             val key = com.akira.app.core.model.SongKey.of(song).encoded
             val entry = playTrackers[deck]
             val tracker = if (entry?.first == key) entry.second else PlayCountTracker(song.durationMs).also {
@@ -338,12 +355,15 @@ class MusicLibraryService : MediaLibraryService() {
             if (tracker.sample(deck.currentPosition, deck.isPlaying, elapsed)) {
                 com.akira.app.core.database.AppDatabase.getInstance(this).playbackHistoryDao()
                     .recordPlay(key, System.currentTimeMillis())
-                com.akira.app.core.online.OnlineRepository.get(this).recordQualifiedPlay(song)
+                // Room can suspend while logout invalidates the old deck.
+                if (!online || generation == com.akira.app.core.online.SourceQueueStore.onlineGeneration)
+                    com.akira.app.core.online.OnlineRepository.get(this).recordQualifiedPlay(song)
             }
         }
     }
     private var autoplayFilling = false
     private var autoplayLibrary = emptyList<com.akira.app.core.model.Song>()
+    private var autoplaySongsById = emptyMap<String, com.akira.app.core.model.Song>()
     private var recentIdsLoaded = false
 
     private suspend fun recordRecentPlay(id: String) {
@@ -359,12 +379,14 @@ class MusicLibraryService : MediaLibraryService() {
             !recentIdsLoaded || autoplayFilling || !activeDeck.playWhenReady ||
             activeDeck.mediaItemCount == 0 || activeDeck.repeatMode != Player.REPEAT_MODE_OFF ||
             SleepTimerBus.activeMode.value != 0L) return
+        // The preferences collector already retains the latest snapshot. Avoid
+        // traversing a large queue every 250 ms when autoplay is disabled.
+        val prefs = currentEqualizerPrefs ?: return
+        if (!prefs.autoplay) return
         val player = activeDeck
         val traversal = playbackQueueIndexes(player)
         val upcoming = remainingQueueIndexes(traversal, player.currentMediaItemIndex)
         if (upcoming.isEmpty() || upcoming.size > 2) return
-        val prefs = prefsRepo.userPreferences.first()
-        if (!prefs.autoplay) return
         autoplayFilling = true
         try {
             val currentEntry = player.currentMediaItem?.queueIdentity()
@@ -460,8 +482,8 @@ class MusicLibraryService : MediaLibraryService() {
                 }
             })
         }
-        sessionDeckA=QueueTransactionPlayer(deckA)
-        sessionDeckB=QueueTransactionPlayer(deckB)
+        sessionDeckA=QueueTransactionPlayer(deckA, ::cancelAutomaticResume)
+        sessionDeckB=QueueTransactionPlayer(deckB, ::cancelAutomaticResume)
 
         deckA.addListener(createServicePlayerListener(deckA))
         deckB.addListener(createServicePlayerListener(deckB))
@@ -498,9 +520,7 @@ class MusicLibraryService : MediaLibraryService() {
             playTrackers.remove(player)
             updateNormalization(player)
             if (player == activeDeck) {
-                if (player.isPlaying) mediaItem?.toSong()?.let {
-                    com.akira.app.core.online.OnlineRepository.get(this@MusicLibraryService).recordListening(it)
-                }
+                recordOnlineListening(player)
                 publishWidgets()
                 mediaItem?.mediaId?.let { id ->
                     serviceScope.launch {
@@ -539,7 +559,7 @@ class MusicLibraryService : MediaLibraryService() {
             }
             if (playWhenReady) {
                 // A manual playback action cancels any pending automatic resume after focus loss.
-                resumeAfterTransientLoss = false
+                focusResume.cancel()
                 pausedByFocusLoss = false
                 pausedByBecomingNoisy = false
                 bluetoothPausedAt = null
@@ -557,19 +577,17 @@ class MusicLibraryService : MediaLibraryService() {
                     pausedByBecomingNoisy = false
                 }
                 // Retain focus after a focus-induced pause to receive GAIN; release it for user-initiated pauses.
-                val keepFocus = pausedByFocusLoss && resumeAfterTransientLoss
+                val keepFocus = pausedByFocusLoss && focusResume.pending
                 pausedByFocusLoss = false
                 if (!keepFocus) {
-                    resumeAfterTransientLoss = false
+                    focusResume.cancel()
                     playbackFocus.release()
                 }
             }
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            if (isPlaying && player === activeDeck) player.currentMediaItem?.toSong()?.let {
-                com.akira.app.core.online.OnlineRepository.get(this@MusicLibraryService).recordListening(it)
-            }
+            if (isPlaying && player === activeDeck) recordOnlineListening(player)
             Log.d("AkiraPlayback", "service deck=${if (player === deckA) "A" else "B"} " +
                 "isPlaying=$isPlaying active=${player === activeDeck}")
         }
@@ -687,6 +705,8 @@ class MusicLibraryService : MediaLibraryService() {
     /** Main-thread transaction: edits the actual traversal and preserves the current audio item. */
     private fun editPlaybackQueue(args: Bundle): SessionResult {
         val start=android.os.SystemClock.elapsedRealtime()
+        val deletionSourceOnline = if (args.getString(QueueEditCommand.OP) == "DELETE_SONG")
+            activeDeck.currentMediaItem?.toSong()?.contentUri?.startsWith("akira-youtube:") else null
         if (::crossfadeEngine.isInitialized) crossfadeEngine.prepareQueueEdit()
         val transaction=sessionPlayer(activeDeck)
         editingQueue=true
@@ -708,6 +728,18 @@ class MusicLibraryService : MediaLibraryService() {
                 args.getString(QueueEditCommand.MODE).orEmpty(), args.getString(QueueEditCommand.TARGET))
             "MOVE" -> QueueOrder.move(order, entry, args.getString(QueueEditCommand.TARGET).orEmpty())
             "REMOVE" -> order.filterNot { it == entry && it != current }
+            "DELETE_SONG" -> {
+                val songId = args.getString(QueueEditCommand.SONG_ID).orEmpty()
+                require(songId.isNotBlank())
+                val occurrences = (0 until player.mediaItemCount).associate {
+                    player.getMediaItemAt(it).let { item -> item.queueIdentity() to item.mediaId }
+                }
+                if (player.currentMediaItem?.mediaId == songId) {
+                    cancelAutomaticResume()
+                    player.pause()
+                }
+                QueueOrder.removeSong(order, occurrences, songId)
+            }
             "CLEAR" -> QueueOrder.keepCurrent(order, current)
             "ORDER" -> QueueOrder.restore(order, args.getStringArrayList(QueueEditCommand.ORDER).orEmpty())
             else -> throw IllegalArgumentException("Unknown queue operation")
@@ -726,7 +758,7 @@ class MusicLibraryService : MediaLibraryService() {
                 desired.map { physical.getValue(it) }.toIntArray(), System.nanoTime()))
         } else {
             // Cache occurrence identities once. The old nested full queue scan
-            // allocated O(nÂ²) Song objects on the UI looper even for one append.
+            // allocated O(n²) Song objects on the UI looper even for one append.
             val physicalIds = (0 until player.mediaItemCount).map {
                 player.getMediaItemAt(it).queueIdentity()
             }.toMutableList()
@@ -757,6 +789,11 @@ class MusicLibraryService : MediaLibraryService() {
         editingQueue=false
         transaction.end()
         publishWidgets()
+        if (deletionSourceOnline != null && activeDeck.mediaItemCount == 0) {
+            com.akira.app.core.widget.WidgetPlaybackStore.capture(this, activeDeck, deletionSourceOnline)
+            com.akira.app.core.widget.AkiraWidgets.publish(this, null, false,
+                currentEqualizerPrefs ?: com.akira.app.core.datastore.UserPreferences(), false)
+        }
         com.akira.app.core.logging.AkiraLog.i("Queue", "Committed ${args.getString(QueueEditCommand.OP)}: count=${activeDeck.mediaItemCount}, elapsed=${android.os.SystemClock.elapsedRealtime()-start}ms")
     }
     }
@@ -774,9 +811,10 @@ class MusicLibraryService : MediaLibraryService() {
         }
 
         override fun onPlayerCommandRequest(session: MediaSession, controller: MediaSession.ControllerInfo, playerCommand: Int): Int {
-            if (playerCommand == Player.COMMAND_PLAY_PAUSE) {
-                bluetoothPausedAt = null
-                pausedByBecomingNoisy = false
+            if (playerCommand == Player.COMMAND_PLAY_PAUSE || playerCommand == Player.COMMAND_STOP) {
+                // A repeated pause need not emit a Player callback. Invalidate
+                // at the command boundary, including paused source replacement.
+                cancelAutomaticResume()
             }
             return SessionResult.RESULT_SUCCESS
         }

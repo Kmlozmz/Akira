@@ -80,7 +80,7 @@ import kotlinx.coroutines.CancellationException
         item("header") {
             PlaylistHeader(page.title, artists.map { CreatorUi(it.name, artistId = it.id) },
                 listOfNotNull(collection.stats, if(loading && tracks.isEmpty()) null else localizedText("${tracks.size} songs", "${tracks.size} canciones"),
-                    queue.sumOf { it.durationMs }.takeIf { it > 0 }?.let { "${it / 60000} min" }).joinToString(" Â· "),
+                    queue.sumOf { it.durationMs }.takeIf { it > 0 }?.let { "${it / 60000} min" }).joinToString(" · "),
                 isPlaying = playing && queue.any { it.id == current?.id },
                 onPlayClick = { if (queue.any { it.id == current?.id }) onToggle() else queue.firstOrNull()?.let { onPlay(it, queue) } },
                 onShuffleClick = { queue.shuffled().let { q -> q.firstOrNull()?.let { onPlay(it, q) } } },
@@ -92,7 +92,7 @@ import kotlinx.coroutines.CancellationException
         items(tracks, key = { "track-${it.id}" }) { item -> OnlineDetailTrack(item, queue, current, playing, onPlay, onToggle, onMore) }
         if (page.continuation != null) item("next") {
             TextButton(onClick = onLoadMore, enabled = !loadingMore, modifier = Modifier.fillMaxWidth()) {
-                Text(if (loadingMore) localizedText("Loadingâ€¦", "Cargandoâ€¦") else if (moreFailed) localizedText("Retry", "Reintentar") else localizedText("More songs", "MÃ¡s canciones"))
+                Text(if (loadingMore) localizedText("Loading…", "Cargando…") else if (moreFailed) localizedText("Retry", "Reintentar") else localizedText("More songs", "Más canciones"))
             }
         }
         if(tracks.isNotEmpty()) item { PlaylistEndOfLine(tracks.size, queue.sumOf { it.durationSeconds }) }
@@ -213,7 +213,7 @@ import kotlinx.coroutines.CancellationException
             catch(_:Exception){AkiraNotices.show(radioError)}
         }})
     if (showInfo) ArtistInformationSheet(artist.title, image, background.value, collection.stats,
-        biography ?: localizedText("YouTube Music hasn't provided a biography for this artist.", "YouTube Music no ha proporcionado una biografÃ­a para este artista."),
+        biography ?: localizedText("YouTube Music hasn't provided a biography for this artist.", "YouTube Music no ha proporcionado una biografía para este artista."),
         onDismiss = { showInfo = false })
 }
 

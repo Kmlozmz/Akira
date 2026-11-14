@@ -323,6 +323,7 @@ class MusicServiceConnection(
         if (mediaController !== controller || controller.mediaItemCount > 0) return
         val online = OnlineRepository.get(context).enabled.value
         if (saved != null && saved.songs.any { it.contentUri.startsWith("akira-youtube:") != online }) return
+        if (online && saved != null && saved.onlineGeneration != SourceQueueStore.onlineGeneration) return
         val songs = saved?.songs ?: fallbackQueue.filter { it.contentUri.startsWith("akira-youtube:") == online }
         if (songs.isEmpty()) return
         val index = saved?.safeIndex ?: songs.indexOfFirst { it.id == fallbackSongId }.coerceAtLeast(0)
@@ -347,7 +348,8 @@ class MusicServiceConnection(
         val snapshot = existing.takeIf { it.isNotEmpty() }?.let {
             WidgetQueueSnapshot(it, controller.currentMediaItemIndex, controller.currentPosition,
                 controller.shuffleModeEnabled, controller.repeatMode,
-                playbackQueueIndexes(controller).map { index -> it[index].queueEntryId })
+                playbackQueueIndexes(controller).map { index -> it[index].queueEntryId },
+                with(MediaItemMapper) { controller.getMediaItemAt(0).onlineQueueGeneration() })
         }
         // Clear immediately, before disk IO. Never resume the old source from the dock.
         controller.pause()
@@ -367,7 +369,8 @@ class MusicServiceConnection(
                 com.akira.app.core.datastore.AppUiSnapshot.read(context) ?: com.akira.app.core.datastore.UserPreferences(), false)
         }
         if (saved == null || mediaController !== controller || controller.mediaItemCount > 0 ||
-            sourceMode != online || OnlineRepository.get(context).enabled.value != online) return
+            sourceMode != online || OnlineRepository.get(context).enabled.value != online ||
+            (online && saved.onlineGeneration != SourceQueueStore.onlineGeneration)) return
         controller.setMediaItems(saved.songs.map { it.toMediaItem(it.queueEntryId) }, saved.safeIndex, saved.safePosition)
         controller.shuffleModeEnabled = saved.shuffle
         controller.repeatMode = saved.repeat
@@ -472,8 +475,12 @@ class MusicServiceConnection(
     }
 
     fun removeSongFromQueue(songId: String) {
-        val index = _currentQueue.value.indexOfFirst { it.id == songId }
-        if (index >= 0) removeQueueItem(index)
+        // Physical deletion invalidates every occurrence, including the active
+        // item. Ordinary queue removal still protects the current occurrence.
+        editQueue(android.os.Bundle().apply {
+            putString(QueueEditCommand.OP, "DELETE_SONG")
+            putString(QueueEditCommand.SONG_ID, songId)
+        })
     }
 
     fun clearQueue() = editQueue(android.os.Bundle().apply { putString(QueueEditCommand.OP,"CLEAR") })

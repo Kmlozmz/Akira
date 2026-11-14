@@ -66,6 +66,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -426,18 +427,21 @@ internal fun LyricsHero(
     val haptics = com.akira.app.core.design.util.rememberAkiraHaptics()
     val lyricOffsetDao = remember(context) { AppDatabase.getInstance(context).lyricOffsetDao() }
     var shareCandidates by remember(song.id) { mutableStateOf<List<String>?>(null) }
-    val songKey = remember(song.path, song.durationMs) { com.akira.app.core.model.SongKey.of(song).encoded }
-    val savedOffsetEntity by lyricOffsetDao.observeOffsetForSong(songKey).collectAsStateWithLifecycle(initialValue = null)
+    val songKey = remember(song.path, song.contentUri, song.durationMs) { com.akira.app.core.model.SongKey.of(song).encoded }
+    val savedOffsetEntity by key(songKey) {
+        remember(lyricOffsetDao, songKey) { lyricOffsetDao.observeOffsetForSong(songKey) }
+            .collectAsStateWithLifecycle(initialValue = null)
+    }
     LaunchedEffect(songKey) {
         withContext(Dispatchers.IO) { AppDatabase.getInstance(context).playbackHistoryDao().resolveOffset(song.id, songKey) }
     }
     val savedOffsetMs = LyricTiming.clampOffsetMs(savedOffsetEntity?.offsetMs ?: 0L)
 
-    var liveOffsetMs by remember(song.id, savedOffsetMs) { mutableLongStateOf(savedOffsetMs) }
+    var liveOffsetMs by remember(songKey, savedOffsetMs) { mutableLongStateOf(savedOffsetMs) }
     var showCalibrationSheet by remember { mutableStateOf(false) }
     var showOptionsMenu by remember { mutableStateOf(false) }
 
-    LaunchedEffect(savedOffsetMs) {
+    LaunchedEffect(songKey, savedOffsetMs) {
         liveOffsetMs = savedOffsetMs
     }
 

@@ -9,3 +9,14 @@ Akira uses two UI adapters around one component contract. Kotlin/Compose renders
 Classic and Glass share controlled inputs and header alignment. Classic retains the colored chevron with a parent-page label; Glass uses the shared circular back. Font & Size is not a product setting; the default interface font is Akira's Roboto Flex. Settings stored by older evaluations remain on disk for compatibility.
 
 Generated Flutter platform projects, compiled AARs, test fixtures and local tools are excluded from version control. The Android project consumes the module's local release Maven output under the `com.akira.ui` group.
+
+Run bridge generation from `ui_bridge/flutter` with the pinned Pigeon dependency:
+
+```powershell
+flutter pub get --enforce-lockfile
+dart run pigeon --input pigeons/appearance.dart
+flutter analyze --no-pub
+flutter build aar --no-pub --no-debug --no-profile --build-number=1.0
+```
+
+The schema writes Kotlin to `app/src/main/kotlin/com/akira/app/feature/appearance/Appearance.g.kt` and Dart to `lib/bridge/appearance.g.dart` inside the module. Regenerate both files together and review their diff before rebuilding the AAR. The Android application consumes `com.akira.ui:flutter_release:1.0`; the local Maven output must exist before compiling the host. Keep all supported Android architectures in the normal AAR build.

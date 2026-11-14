@@ -28,6 +28,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
@@ -67,8 +69,8 @@ class AppearanceActivity : FlutterActivity(), AppearanceHost {
         super.onCreate(savedInstanceState)
         attached = true
         scope.launch {
-            repository.userPreferences.collect { prefs ->
-                runCatching { client?.preferencesChanged(snapshot(prefs)) }
+            repository.userPreferences.map(::snapshot).distinctUntilChanged().collect { preferences ->
+                runCatching { client?.preferencesChanged(preferences) }
             }
         }
     }

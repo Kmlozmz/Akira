@@ -4,10 +4,6 @@
 // Original geometry, shaders, wipe, reel and motion are retained. See THIRD_PARTY_NOTICES.md.
 package com.akira.app.core.design.rendering
 
-import com.akira.app.core.design.components.*
-import com.akira.app.core.design.motion.*
-import com.akira.app.core.design.navigation.*
-
 import android.graphics.Shader
 import android.os.Build
 import androidx.compose.ui.graphics.RenderEffect
@@ -19,6 +15,12 @@ import kotlin.math.roundToInt
 object BlurEffectCache {
     private val composeCache = ConcurrentHashMap<Int, RenderEffect>()
     private val nativeCache = ConcurrentHashMap<Int, android.graphics.RenderEffect>()
+
+    /** Arguments are evaluated before [get]; DECAL itself is unavailable before API 31. */
+    fun getDecal(radius: Float): RenderEffect? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return null
+        return get(radius, Shader.TileMode.DECAL)
+    }
 
     /** [allowLargeRadius] lets a surface opt out of the API 31-34 radius budget. */
     fun get(

@@ -6,6 +6,10 @@ plugins {
 }
 
 import java.util.Properties
+import java.security.GeneralSecurityException
+import java.security.KeyStore
+import java.security.MessageDigest
+import java.security.PrivateKey
 import com.android.build.api.artifact.SingleArtifact
 
 val appVersion = Properties().apply {
@@ -18,26 +22,37 @@ require(Regex("[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?").matches(appVersion
 }
 require(appVersionCode > 0) { "versionCode must be positive and increase for every published release" }
 
-// Release signing uses a local keystore.properties file.
+// Local configuration may point to protected credentials outside the checkout.
+// CI can supply the same external file through AKIRA_SIGNING_PROPERTIES.
 val keystorePropsFile = rootProject.file("keystore.properties")
-val keystoreProps = Properties()
-if (keystorePropsFile.exists()) {
-    keystorePropsFile.inputStream().use { stream -> keystoreProps.load(stream) }
+val localSigningProps = Properties().apply {
+    if (keystorePropsFile.exists()) keystorePropsFile.inputStream().use { load(it) }
+}
+val signingPropertiesPath = providers.environmentVariable("AKIRA_SIGNING_PROPERTIES").orNull
+    ?.takeIf { it.isNotBlank() } ?: localSigningProps.getProperty("signingPropertiesFile")
+val signingPropertiesFile = signingPropertiesPath?.let { rootProject.file(it) } ?: keystorePropsFile
+val keystoreProps = Properties().apply {
+    if (signingPropertiesFile.exists()) signingPropertiesFile.inputStream().use { load(it) }
+}
+val releaseIdentity = Properties().apply {
+    rootProject.file("release-signing.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
 }
 val hasReleaseKeystore = (keystoreProps.getProperty("storeFile") ?: "")
     .let { storePath -> storePath.isNotBlank() && file(storePath).exists() }
 
 if (!hasReleaseKeystore) {
     logger.warn(
-        "Akira: no valid release signing key was found " +
-            "(keystore.properties + .jks). The release build will use the " +
-            "DEBUG key and cannot be published to Google Play."
+        "Akira: the production signing key is unavailable " +
+            "(external signing configuration + keystore). Release APK packaging is blocked."
     )
 }
 
 android {
     namespace = "com.akira.app"
     compileSdk = 36
+    // Match the Flutter toolchain so native debug symbols can be stripped
+    // instead of silently packaging the original unstripped libraries.
+    ndkVersion = "28.2.13676358"
 
     defaultConfig {
         applicationId = "com.akira.app"
@@ -45,6 +60,12 @@ android {
         targetSdk = 35
         versionCode = appVersionCode
         versionName = appVersionName
+
+        // Package only complete Flutter runtime targets. x86-only auxiliary
+        // AndroidX libraries must not advertise an unsupported 32-bit runtime.
+        ndk {
+            abiFilters += setOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -59,12 +80,7 @@ android {
                 storePassword = keystoreProps.getProperty("storePassword")
                 keyAlias = keystoreProps.getProperty("keyAlias")
                 keyPassword = keystoreProps.getProperty("keyPassword")
-            } else {
-                // Use the debug key when no release key is configured.
-                storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
-                storePassword = "android"
-                keyAlias = "androiddebugkey"
-                keyPassword = "android"
+                storeType = keystoreProps.getProperty("storeType", "PKCS12")
             }
         }
     }
@@ -91,6 +107,13 @@ android {
         }
     }
 
+    // Keep maintained regression suites versioned independently of the local,
+    // historically ignored test directories.
+    sourceSets {
+        getByName("test").java.srcDir("src/regressionTest/kotlin")
+        getByName("androidTest").java.srcDir("src/regressionAndroidTest/kotlin")
+    }
+
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_21
@@ -102,6 +125,56 @@ android {
         buildConfig = true
     }
 }
+
+// AGP can omit validateSigningRelease when the signing config is incomplete,
+// so gate packaging explicitly rather than relying on that optional task.
+val verifyReleaseSigning = tasks.register("verifyReleaseSigning") {
+    group = "verification"
+    description = "Requires the configured production key before Release packaging"
+    doLast {
+        require(hasReleaseKeystore) {
+            "Akira Release requires the configured production keystore; Debug signing is not a fallback."
+        }
+        require(listOf("storePassword", "keyAlias", "keyPassword").all { keystoreProps.getProperty(it) != null }) {
+            "Akira Release signing configuration is incomplete."
+        }
+        require(appVersionCode >= 10 && appVersionName.substringBefore('.').toInt() >= 1) {
+            "The new production identity is reserved for Akira 1.0.0 onward, starting at versionCode 10."
+        }
+        val storeFile = file(keystoreProps.getProperty("storeFile")).canonicalFile
+        require(!storeFile.toPath().startsWith(rootProject.rootDir.canonicalFile.toPath())) {
+            "The production private keystore must remain outside the repository."
+        }
+        val expected = releaseIdentity.getProperty("certificateSha256", "").lowercase()
+        require(Regex("[0-9a-f]{64}").matches(expected)) {
+            "The approved public production certificate fingerprint is missing."
+        }
+        val storePassword = keystoreProps.getProperty("storePassword").toCharArray()
+        val keyPassword = keystoreProps.getProperty("keyPassword").toCharArray()
+        try {
+            val store = KeyStore.getInstance(keystoreProps.getProperty("storeType", "PKCS12"))
+            storeFile.inputStream().use { store.load(it, storePassword) }
+            val alias = keystoreProps.getProperty("keyAlias")
+            require(store.isKeyEntry(alias)) { "The configured Release alias has no private key." }
+            val certificate = requireNotNull(store.getCertificate(alias)) { "The configured Release key has no certificate." }
+            val actual = MessageDigest.getInstance("SHA-256")
+                .digest(certificate.encoded).joinToString("") { "%02x".format(it.toInt() and 0xff) }
+            require(actual == expected) {
+                "The Release signer does not match the approved Akira production identity."
+            }
+            require(store.getKey(alias, keyPassword) is PrivateKey) {
+                "The configured production private key is unavailable."
+            }
+        } catch (_: GeneralSecurityException) {
+            throw GradleException("Cannot open the configured production identity; check the protected signing configuration.")
+        } finally {
+            storePassword.fill('\u0000')
+            keyPassword.fill('\u0000')
+        }
+    }
+}
+tasks.matching { it.name in setOf("packageRelease", "packageReleaseBundle", "signReleaseBundle", "assembleRelease", "bundleRelease") }
+    .configureEach { dependsOn(verifyReleaseSigning) }
 
 kotlin {
     jvmToolchain(21)

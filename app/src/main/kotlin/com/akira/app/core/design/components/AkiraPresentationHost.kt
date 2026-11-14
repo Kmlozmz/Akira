@@ -452,7 +452,7 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState, scene: Backd
                             if (reduced) snap() else tween(140), label = "presentationContent")
                         Box(Modifier.graphicsLayer {
                             val blur=sharedFrame?.menuBlur ?: 0f
-                            renderEffect=com.akira.app.core.design.rendering.BlurEffectCache.get(blur,android.graphics.Shader.TileMode.DECAL)
+                            renderEffect=com.akira.app.core.design.rendering.BlurEffectCache.getDecal(blur)
                             val p=opticalProgress()
                             val reveal=((p-.06f)/.34f).coerceIn(0f,1f)
                             val presence=sharedFrame?.contentAlpha ?: (reveal*reveal*(3f-2f*reveal))
@@ -500,14 +500,14 @@ private fun AkiraPresentationOverlay(state: AkiraPresentationState, scene: Backd
                         alpha=sharedFrame?.sourceAlpha ?: (1f-p*p*(3f-2f*p))
                         scaleX=1f; scaleY=1f
                         val blur=sharedFrame?.seedBlur ?: 0f
-                        renderEffect=com.akira.app.core.design.rendering.BlurEffectCache.get(blur,android.graphics.Shader.TileMode.DECAL)
+                        renderEffect=com.akira.app.core.design.rendering.BlurEffectCache.getDecal(blur)
                     }) {body()}
                     else if (icon != null) Icon(icon, null,
                         Modifier.size(22.dp).graphicsLayer {
                             val sourceWidth = state.rootAnchor?.width ?: 1f
                             alpha = sharedFrame?.sourceAlpha ?: ((sourceWidth * 2f - currentGeometry().width) / sourceWidth.coerceAtLeast(1f)).coerceIn(0f, 1f)
                             val blur=sharedFrame?.seedBlur ?: 0f
-                            renderEffect=com.akira.app.core.design.rendering.BlurEffectCache.get(blur,android.graphics.Shader.TileMode.DECAL)
+                            renderEffect=com.akira.app.core.design.rendering.BlurEffectCache.getDecal(blur)
                         }, tint = MaterialTheme.colorScheme.onSurface)
                     else Spacer(Modifier.size(1.dp))
                 }

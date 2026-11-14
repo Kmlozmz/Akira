@@ -269,7 +269,7 @@ fun LiquidSlider(
                             if (progress <= 0f) null else InnerShadow(radius = 4f.dp * progress, alpha = progress)
                         }
                     },
-                    // Fully covered by the opaque white surface at rest â€” see LiquidToggle.
+                    // Fully covered by the opaque white surface at rest — see LiquidToggle.
                     onDrawBackdrop = { drawBackdrop ->
                         if (dampedDragAnimation.pressProgress > 0f) drawBackdrop()
                     },

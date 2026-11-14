@@ -45,6 +45,7 @@ class OnlineRepository private constructor(context: Context) {
     val likedIds = _likedIds.asStateFlow()
     private val likeOverrides = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
     private val likeLock = Mutex()
+    private var likeRequest: Deferred<Unit>? = null
     private val visitorLock = Mutex()
     private var visitorAttemptAt = -60_000L
     private val historyLock = Mutex()
@@ -78,7 +79,7 @@ class OnlineRepository private constructor(context: Context) {
     private var libraryIndexRequest: LibraryIndexRequest? = null
     private data class LibraryIndexRequest(val user: OnlineAccount, val generation: Long, val revision: Long,
         val progress: MutableStateFlow<OnlinePage?>, val result: Deferred<OnlinePage>)
-    private val sessionGeneration = java.util.concurrent.atomic.AtomicLong()
+    private val sessionGeneration = OnlineSessionEpoch()
     private val homeRequestLock = Mutex()
     private var homeRequest: Pair<OnlineAccount, Deferred<OnlinePage>>? = null
     private val _homePages = MutableStateFlow<Pair<OnlineAccount, OnlinePage>?>(null)
@@ -116,7 +117,7 @@ class OnlineRepository private constructor(context: Context) {
             }
         }
         scope.launch {
-            combine(enabled, account) { mode, user -> mode && user.connected }.collectLatest { connected ->
+            combine(enabled, account, sessionGeneration.changes) { mode, user, _ -> mode && user.connected }.collectLatest { connected ->
                 if (connected) try { refreshLikes() }
                 catch (cancelled: CancellationException) { throw cancelled }
                 catch (_: Exception) { /* Existing feed and playback remain available if likes cannot load. */ }
@@ -224,6 +225,8 @@ class OnlineRepository private constructor(context: Context) {
         initialized.await()
         lock.withLock {
             streams.clear()
+            sessionGeneration.incrementAndGet()
+            likeRequest?.cancel()
             val saved = JSONObject().put("cookie", cookie).put("visitor", visitor.orEmpty()).put("sync", sync.orEmpty())
             applySession(saved)
             try {
@@ -239,38 +242,38 @@ class OnlineRepository private constructor(context: Context) {
                 synchronized(browsePages) { browsePages.clear() }
                 loadHistory(userScope)
                 _account.value = OnlineAccount(true, info.name, info.thumbnailUrl)
+                sessionGeneration.commit()
                 restorePages(_account.value, homeOnly = true)
                 prefetchHome()
             } catch (e: Exception) {
                 sessionStore.read()?.let(::applySession) ?: run { YouTube.cookie = null; YouTube.dataSyncId = null; YouTube.useLoginForBrowse = false }
+                sessionGeneration.commit()
                 throw e
             }
         }
     }
     suspend fun disconnect() = withContext(Dispatchers.IO) {
         initialized.await()
-        val previousProfile = historyScope
-        streams.clear()
-        sessionGeneration.incrementAndGet(); homeRequest?.second?.cancel(); pageWriteJob?.cancel()
-        libraryIndexRequest?.result?.cancel(); pageRestoreJob?.cancel()
-        _homePages.value = null
-        pageWriteLock.withLock { pageStore.clear(previousProfile) }
-        synchronized(browsePages) { browsePages.clear() }
-        _account.value = OnlineAccount()
-        _likedIds.value = emptySet(); likeOverrides.clear(); knownSongs.clear()
-        synchronized(rouletteWinners) { rouletteWinners.clear() }
         lock.withLock {
-            sessionStore.clear(); streams.clear()
+            val previousProfile = historyScope
+            streams.clear()
+            sessionGeneration.incrementAndGet()
+            likeRequest?.cancel()
+            homeRequest?.second?.cancel(); pageWriteJob?.cancel()
+            libraryIndexRequest?.result?.cancel(); pageRestoreJob?.cancel()
+            _homePages.value = null
+            pageWriteLock.withLock { pageStore.clear(previousProfile) }
+            synchronized(browsePages) { browsePages.clear() }
+            _likedIds.value = emptySet(); likeOverrides.clear(); knownSongs.clear()
+            synchronized(rouletteWinners) { rouletteWinners.clear() }
+            sessionStore.clear()
             YouTube.cookie = null; YouTube.dataSyncId = null; YouTube.visitorData = null
             YouTube.useLoginForBrowse = false
-            _account.value = OnlineAccount()
             SourceQueueStore.clearOnline(app)
-            if (com.akira.app.core.widget.WidgetPlaybackStore.read(app)?.songs?.firstOrNull()
-                    ?.contentUri?.startsWith("akira-youtube:") == true) {
-                app.getSharedPreferences("akira_widget", Context.MODE_PRIVATE).edit().clear().apply()
-            }
+            _account.value = OnlineAccount()
             _likedIds.value = guestFavorites().map { it.id }.toSet()
             loadHistory("guest")
+            sessionGeneration.commit()
             restorePages(_account.value, homeOnly = true)
         }
         prefetchHome()
@@ -345,47 +348,80 @@ class OnlineRepository private constructor(context: Context) {
             })
     private suspend fun refreshLikes() {
         ready()
-        val user = _account.value
+        val (user, generation) = lock.withLock { _account.value to sessionGeneration.get() }
+        if (!user.connected) return
         val first = YouTube.playlist("LM").getOrThrow()
-        cachePage("library:songs", catalog(OnlinePage("Library", listOf(OnlineShelf(
-            if (Locale.getDefault().language == "es") "Tus Me gusta" else "Liked songs", first.songs)), first.songsContinuation)), user)
-        val ids = first.songs.map { it.id }.toMutableSet()
-        fun publish() {
-            if (_account.value.connected) _likedIds.value = (ids + likeOverrides.filterValues { it }.keys) - likeOverrides.filterValues { !it }.keys
+        lock.withLock {
+            currentCoroutineContext().ensureActive()
+            if (!sessionOperationIsCurrent(generation, sessionGeneration.get(), _enabled.value)) return
+            cachePage("library:songs", catalog(OnlinePage("Library", listOf(OnlineShelf(
+                if (Locale.getDefault().language == "es") "Tus Me gusta" else "Liked songs", first.songs)), first.songsContinuation)), user)
         }
-        publish()
+        val ids = first.songs.map { it.id }.toMutableSet()
+        suspend fun publish(): Boolean = lock.withLock {
+            currentCoroutineContext().ensureActive()
+            if (!sessionOperationIsCurrent(generation, sessionGeneration.get(), _enabled.value)) return@withLock false
+            _likedIds.value = (ids + likeOverrides.filterValues { it }.keys) - likeOverrides.filterValues { !it }.keys
+            true
+        }
+        if (!publish()) return
         var token = first.songsContinuation
         val seen = mutableSetOf<String>()
         while (token != null && seen.add(token)) {
             currentCoroutineContext().ensureActive(); ready()
             val next = YouTube.playlistContinuation(token).getOrThrow()
-            ids.addAll(next.songs.map { it.id }); publish(); token = next.continuation
+            ids.addAll(next.songs.map { it.id })
+            if (!publish()) return
+            token = next.continuation
         }
     }
-    suspend fun toggleLike(song: Song) = withContext(Dispatchers.IO) {
-        likeLock.withLock {
-            ready()
-            val id = song.id.removePrefix("youtube:")
-            require(id.matches(Regex("[A-Za-z0-9_-]{11}")))
-            val liked = id !in _likedIds.value
-            if (!_account.value.connected) {
-                val saved = guestFavorites().associateBy { it.id }.toMutableMap()
-                if (liked) saved[id] = knownSongs[id] ?: SongItem(id, song.title, listOf(Artist(song.artist, null)),
-                    duration = song.durationSeconds, thumbnail = song.albumArtUri.orEmpty()) else saved.remove(id)
-                val rows = org.json.JSONArray()
-                saved.values.forEach { item ->
-                    rows.put(encodeGuestSong(item))
+    suspend fun toggleLike(song: Song) {
+        initialized.await()
+        // Capture before dispatching or waiting for another like: queued clicks
+        // belong to the session in which they were submitted.
+        val generation = sessionGeneration.get()
+        withContext(Dispatchers.IO) {
+            likeLock.withLock {
+                ready()
+                val pending = lock.withLock {
+                    if (generation != sessionGeneration.get()) return@withContext
+                    val id = song.id.removePrefix("youtube:")
+                    require(id.matches(Regex("[A-Za-z0-9_-]{11}")))
+                    val liked = id !in _likedIds.value
+                    if (!_account.value.connected) {
+                        val saved = guestFavorites().associateBy { it.id }.toMutableMap()
+                        if (liked) saved[id] = knownSongs[id] ?: SongItem(id, song.title, listOf(Artist(song.artist, null)),
+                            duration = song.durationSeconds, thumbnail = song.albumArtUri.orEmpty()) else saved.remove(id)
+                        val rows = org.json.JSONArray()
+                        saved.values.forEach { item -> rows.put(encodeGuestSong(item)) }
+                        prefs.edit().putString("guest_favorites", rows.toString()).apply()
+                        invalidateLibraryIndex()
+                        _likedIds.value = saved.keys.toSet()
+                        return@withContext
+                    }
+                    // Build the authenticated request before unlocking. Network IO
+                    // then suspends without preventing logout from cancelling it.
+                    val request = async(start = CoroutineStart.UNDISPATCHED) {
+                        YouTube.likeVideo(id, liked).getOrThrow()
+                        Unit
+                    }
+                    likeRequest = request
+                    Triple(id, liked, request)
                 }
-                prefs.edit().putString("guest_favorites", rows.toString()).apply()
-                invalidateLibraryIndex()
-                _likedIds.value = saved.keys.toSet()
-                return@withLock
+                try {
+                    pending.third.await()
+                    lock.withLock {
+                        if (!sessionOperationIsCurrent(generation, sessionGeneration.get(), _enabled.value)) return@withContext
+                        invalidateLibraryIndex()
+                        likeOverrides[pending.first] = pending.second
+                        _likedIds.value = if (pending.second) _likedIds.value + pending.first else _likedIds.value - pending.first
+                    }
+                } finally {
+                    withContext(NonCancellable) { lock.withLock {
+                        if (likeRequest === pending.third) likeRequest = null
+                    } }
+                }
             }
-            YouTube.likeVideo(id, liked).getOrThrow()
-            ready()
-            invalidateLibraryIndex()
-            likeOverrides[id] = liked
-            _likedIds.value = if (liked) _likedIds.value + id else _likedIds.value - id
         }
     }
     private suspend fun invalidateLibraryIndex() {

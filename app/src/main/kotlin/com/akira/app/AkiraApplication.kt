@@ -6,7 +6,6 @@ import com.akira.app.core.database.AppDatabase
 import com.akira.app.core.datastore.UserPreferencesRepository
 import kotlinx.coroutines.launch
 
-@UnstableApi
 class AkiraApplication : Application(), coil.ImageLoaderFactory {
     override fun newImageLoader(): coil.ImageLoader = coil.ImageLoader.Builder(this)
         .components { add(com.akira.app.core.online.OnlineArtworkInterceptor()) }.build()
@@ -14,6 +13,7 @@ class AkiraApplication : Application(), coil.ImageLoaderFactory {
     val database: AppDatabase by lazy { AppDatabase.getInstance(this) }
     val preferencesRepository: UserPreferencesRepository by lazy { UserPreferencesRepository(this) }
 
+    @androidx.annotation.OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
         com.akira.app.core.design.motion.InteractionPreferences.load(this)
