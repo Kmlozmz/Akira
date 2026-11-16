@@ -10,7 +10,8 @@ import androidx.compose.ui.graphics.asComposeRenderEffect
 /** Uses the font selector's foreground lens, independently of the backdrop material. */
 @RequiresApi(33)
 internal class FontForegroundEffect(context:Context) {
-    private val shader=RuntimeShader(context.assets.open("visual-material/foreground-morph.agsl").bufferedReader().use{it.readText()})
+    private val shader=com.akira.app.core.design.rendering.PreparedRuntimeShaders.acquire(
+        context.assets.open("visual-material/foreground-morph.agsl").bufferedReader().use{it.readText()})
     private val points=FloatArray(32)
     private val radii=FloatArray(8)
     fun bind(frame:SharedMorphFrame,dp:Float):androidx.compose.ui.graphics.RenderEffect? {

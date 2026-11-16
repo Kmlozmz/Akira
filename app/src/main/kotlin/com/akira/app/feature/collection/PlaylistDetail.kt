@@ -214,7 +214,8 @@ fun PlaylistDetailScaffold(
     val elastic = rememberAkiraBouncingEffect()
     val scope = rememberCoroutineScope()
 
-    CompositionLocalProvider(LocalAppBackdrop provides pageBackdrop) {
+    CompositionLocalProvider(LocalAppBackdrop provides pageBackdrop,
+        LocalPageHeaderBackdrop provides pageBackdrop) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -487,8 +488,7 @@ private fun BackPill(
                 }
                 .graphicsLayer { alpha = morph().coerceIn(0f, 1f) }
         ) {
-            Box(Modifier.matchParentSize().clip(pillShape).then(
-                Modifier.liquidGlass(pillShape)))
+            Box(Modifier.matchParentSize().akiraNavigationSurface(pillShape))
 
         }
 

@@ -14,6 +14,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.*
@@ -35,7 +39,8 @@ import kotlinx.coroutines.launch
 /** Batch exceptions explain which rule hid each file before changing library visibility. */
 @Composable internal fun LibraryFilterReview(songs: List<Song>, prefs: UserPreferences,
     repo: UserPreferencesRepository, modifier: Modifier = Modifier, listState: LazyListState = rememberLazyListState(),
-    fontFamily: FontFamily = com.akira.app.core.design.theme.CurrentAkiraFontFamily, onDone: (() -> Unit)? = null) {
+    fontFamily: FontFamily = com.akira.app.core.design.theme.CurrentAkiraFontFamily, onDone: (() -> Unit)? = null,
+    persistSelection: (suspend (Set<String>, Boolean) -> Unit)? = null, compact: Boolean = false) {
     var showRestored by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     var selected by rememberSaveable { mutableStateOf(emptyList<String>()) }
@@ -44,6 +49,10 @@ import kotlinx.coroutines.launch
     val scope = rememberCoroutineScope()
     val haptics = rememberAkiraHaptics()
     val focus = LocalFocusManager.current
+    val colors = MaterialTheme.colorScheme
+    val light = colors.background.luminance() > .5f
+    val rowColor = if (light) colors.surface else colors.surfaceContainerHigh
+    val inputColor = colors.surfaceContainerHighest
     val excluded = remember(songs, prefs.minDurationSeconds, prefs.excludedFolderPaths, prefs.whitelistedSongIds) {
         songs.filter { it.id !in prefs.whitelistedSongIds && !passesLibraryFilters(it, prefs.minDurationSeconds, prefs.excludedFolderPaths, emptySet()) }
     }
@@ -61,18 +70,21 @@ import kotlinx.coroutines.launch
         saving = true
         haptics.confirm()
         scope.launch {
-            try { repo.setSongsWhitelisted(ids, keep); selected = emptyList(); result = true }
+            try {
+                if (persistSelection != null) persistSelection(ids, keep) else repo.setSongsWhitelisted(ids, keep)
+                selected = emptyList(); result = true
+            }
             catch(cancel: kotlinx.coroutines.CancellationException) { throw cancel }
             catch(_: Exception) { result = false }
             finally { saving = false }
         }
     }
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp)) {
         AkiraSegmentedControl(listOf("excluded" to localizedText("Excluded", "Excluidas"), "restored" to localizedText("Restored", "Recuperadas")),
             if(showRestored) "restored" else "excluded", {
                 if(!saving) { showRestored = it == "restored"; selected = emptyList(); query = ""; result = null }
-            }, MaterialTheme.colorScheme.surfaceContainerHigh, fontFamily = fontFamily)
-        Text(if(showRestored) localizedText("These songs are included despite your filters. Select songs to apply the filters again.",
+            }, inputColor, fontFamily = fontFamily)
+        if (!compact) Text(if(showRestored) localizedText("These songs are included despite your filters. Select songs to apply the filters again.",
             "Estas canciones se incluyen aunque coincidan con un filtro. Selecciónalas para volver a aplicarles los filtros.")
             else localizedText("These files are hidden by your filters. Select any songs you want to include.",
                 "Estos archivos quedan fuera por tus filtros. Selecciona las canciones que quieras incluir."),
@@ -82,8 +94,9 @@ import kotlinx.coroutines.launch
             singleLine = true, shape = RoundedCornerShape(16.dp),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() }),
-            colors = TextFieldDefaults.colors(focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            leadingIcon = { Icon(Icons.Rounded.Search, null, tint = colors.onSurfaceVariant) },
+            colors = TextFieldDefaults.colors(focusedContainerColor = inputColor,
+                unfocusedContainerColor = inputColor, disabledContainerColor = inputColor,
                 focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, disabledIndicatorColor = Color.Transparent),
             trailingIcon = { if(query.isNotEmpty()) IconButton({ query = "" }) { Icon(AkiraIcons.Close, localizedText("Clear search", "Borrar búsqueda")) } })
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -108,11 +121,11 @@ import kotlinx.coroutines.launch
                 showRestored -> localizedText("No songs restored yet.", "Todavía no has recuperado ninguna canción.")
                 else -> localizedText("No files excluded by these filters.", "Ningún archivo queda fuera por estos filtros.")
             }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        } else LazyColumn(Modifier.weight(1f), state = listState, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            itemsIndexed(visible, key = { _, song -> song.id }) { index, song ->
+        } else LazyColumn(Modifier.weight(1f), state = listState, contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(visible, key = { song -> song.id }) { song ->
                 val chosen = song.id in selected
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                    .background(if(chosen) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
+                    .background(if(chosen) colors.primary.copy(alpha = if(light) .16f else .24f).compositeOver(rowColor) else rowColor)
                     .toggleable(chosen, enabled = !saving, role = Role.Checkbox, onValueChange = {
                         haptics.click(); selected = if(it) selected + song.id else selected - song.id
                     }).heightIn(min = 84.dp).padding(12.dp), verticalAlignment = Alignment.CenterVertically,
@@ -129,7 +142,10 @@ import kotlinx.coroutines.launch
                         Text(filterReason(song, prefs), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
-                    Checkbox(chosen, null, Modifier.clearAndSetSemantics {})
+                    Box(Modifier.size(28.dp).background(if (chosen) colors.primary else colors.surfaceContainerHighest,
+                        RoundedCornerShape(50)).clearAndSetSemantics {}, contentAlignment = Alignment.Center) {
+                        if (chosen) Icon(AkiraIcons.Check, null, Modifier.size(18.dp), tint = colors.onPrimary)
+                    }
                 }
             }
         }

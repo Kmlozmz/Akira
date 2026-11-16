@@ -2,7 +2,6 @@ package com.akira.app.feature.player
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -13,6 +12,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -38,7 +38,7 @@ internal fun PlayerTrackActions(isFavorite: Boolean, ink: Color, referencePortra
     Row(verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(if (referencePortrait) 0.dp else 2.dp)) {
         PlayerTrackActionButton(strings.favorite, glyphInk, isFavorite, false,
-            if (referencePortrait) 20.dp else 22.dp, onFavorite)
+            if (isFavorite) 24.dp else 22.dp, onFavorite)
         PlayerTrackActionButton(strings.options, glyphInk, false, true,
             if (referencePortrait) 24.dp else 22.dp, onMore)
     }
@@ -75,11 +75,10 @@ private fun PlayerTrackActionButton(label: String, ink: Color, favorite: Boolean
 @Composable
 private fun PlayerActionFace(ink: Color, favorite: Boolean, menu: Boolean,
     faceSize: Dp, glyphSize: Dp, label: String? = null) {
-    if (favorite) {
-        Canvas(Modifier.size(faceSize).semantics {
-            if (label != null) this.contentDescription = label
-        }) {
-            // Even-odd fill leaves the star open to the artwork underneath.
+    if (favorite && !menu) {
+        Box(Modifier.size(faceSize).drawWithCache {
+            // Same filled-star geometry as AkiraIcons.StarFilled, cut out of
+            // the circle so the live artwork remains visible through it.
             val face = Path().apply {
                 fillType = PathFillType.EvenOdd
                 addOval(Rect(0f, 0f, size.width, size.height))
@@ -98,8 +97,8 @@ private fun PlayerActionFace(ink: Color, favorite: Boolean, menu: Boolean,
                 lineTo(dx + 9.3f * unit, dy + 8.7f * unit)
                 close()
             }
-            drawPath(face, Color.White)
-        }
+            onDrawBehind { drawPath(face, ink) }
+        }.semantics { if (label != null) contentDescription = label })
     } else {
         Box(Modifier.size(faceSize).background(Color.White.copy(alpha = .13f), CircleShape),
             contentAlignment = Alignment.Center) {

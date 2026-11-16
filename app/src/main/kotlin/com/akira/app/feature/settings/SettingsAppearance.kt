@@ -25,7 +25,7 @@ import com.akira.app.core.design.navigation.AkiraBackButton
 import com.akira.app.core.design.theme.CurrentAkiraFontFamily
 
 @Composable internal fun settingsSurfaceColor():Color =
-    if(MaterialTheme.colorScheme.background.luminance()>.5f)Color(0xFFF2F2F7) else Color(0xFF1C1C1E)
+    if(MaterialTheme.colorScheme.background.luminance()>.5f)MaterialTheme.colorScheme.surfaceContainer else Color(0xFF1C1C1E)
 
 @Composable internal fun SettingsLeadingIcon(icon:ImageVector,enabled:Boolean=true,content:(@Composable ()->Unit)?=null,tint:Color=MaterialTheme.colorScheme.primary) {
     Box(Modifier.size(28.dp),contentAlignment=Alignment.Center) {

@@ -45,6 +45,7 @@ import com.akira.app.core.design.theme.AkiraTheme
 import com.akira.app.core.model.Song
 import com.akira.app.feature.library.LibraryScreen
 import com.akira.app.feature.setup.LibrarySetupScreen
+import com.akira.app.feature.setup.onboardingReveal
 import com.akira.app.feature.setup.WelcomeScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -248,6 +249,18 @@ open class MainActivity : ComponentActivity() {
     // The visual snapshot can be restored by Android independently of DataStore.
     // It supplies colours only; completion is read from the authoritative preferences.
     var currentScreen by rememberSaveable { mutableStateOf<OnboardingNav?>(null) }
+    var onboardingArrival by remember { mutableStateOf(false) }
+    val setupNavigationGate = remember { com.akira.app.core.startup.StartupNavigationGate() }
+    val arrivalProgress = remember { androidx.compose.animation.core.Animatable(0f) }
+    val setupMotionReduced = com.akira.app.core.design.components.LocalContentMotionReduced.current ||
+        com.akira.app.core.design.components.isReduceMotionActive(context)
+    LaunchedEffect(onboardingArrival, setupMotionReduced) {
+        if (onboardingArrival) {
+            if (setupMotionReduced) arrivalProgress.snapTo(1f)
+            else arrivalProgress.animateTo(1f, androidx.compose.animation.core.tween(750,
+                easing = androidx.compose.animation.core.FastOutSlowInEasing))
+        }
+    }
                     var scannedSongsList by remember { mutableStateOf<List<Song>>(emptyList()) }
 
                     // Navigation must not depend indefinitely on a preference read.
@@ -297,14 +310,14 @@ open class MainActivity : ComponentActivity() {
 LaunchedEffect(loadedPrefs) {
                     val prefs = loadedPrefs
                     if (prefs != null) com.akira.app.core.datastore.AppUiSnapshot.write(context, prefs)
-                    // DataStore completion outranks an old UI snapshot after a fast close/reopen.
-                    if (prefs != null && (currentScreen == null ||
-                            (prefs.isOnboardingCompleted && currentScreen != OnboardingNav.MAIN_LIBRARY))) {
-                        if (prefs.isOnboardingCompleted) {
+                    // Reconcile startup once. The active onboarding owns its save/animation/navigation sequence.
+                    when (setupNavigationGate.resolve(prefs?.isOnboardingCompleted)) {
+                        com.akira.app.core.startup.StartupDestination.LIBRARY -> {
+                            if (currentScreen != null && currentScreen != OnboardingNav.MAIN_LIBRARY) onboardingArrival = true
                             currentScreen = OnboardingNav.MAIN_LIBRARY
-                        } else {
-                            currentScreen = OnboardingNav.WELCOME
                         }
+                        com.akira.app.core.startup.StartupDestination.SETUP -> currentScreen = OnboardingNav.WELCOME
+                        else -> Unit
                     }
                 }
 
@@ -317,6 +330,9 @@ LaunchedEffect(loadedPrefs) {
                         .background(if (widgetLaunchMotion?.finished == false) Color.Transparent else MaterialTheme.colorScheme.background)
                         .captionBarPadding()
                 ) {
+                    if (onboardingArrival && !setupMotionReduced) {
+                        com.akira.app.feature.setup.OnboardingArrivalBackdrop { arrivalProgress.value }
+                    }
                     val activeScreen = currentScreen
                     if (activeScreen != null && (!showSplashIntro || introContentAllowed)) {
                         AnimatedContent(
@@ -338,42 +354,27 @@ LaunchedEffect(loadedPrefs) {
                             },
                             targetState = activeScreen,
                             transitionSpec = {
-                                com.akira.app.core.design.navigation.pageNavigationTransform(
-                                    targetState.ordinal>initialState.ordinal,
-                                    android.provider.Settings.Global.getFloat(context.contentResolver,
-                                        android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,1f)==0f).using(null)
-                        },
+                                if (targetState == OnboardingNav.MAIN_LIBRARY && initialState != OnboardingNav.MAIN_LIBRARY)
+                                    com.akira.app.feature.setup.onboardingEntryTransform(setupMotionReduced).using(null)
+                                else com.akira.app.core.design.navigation.pageNavigationTransform(
+                                    targetState.ordinal > initialState.ordinal, setupMotionReduced).using(null)
+                            },
                         label = "ios_empalme_screen_transition"
                     ) { screen ->
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .graphicsLayer()
+                                .then(if (screen == OnboardingNav.MAIN_LIBRARY && onboardingArrival && !setupMotionReduced)
+                                    Modifier.onboardingReveal { arrivalProgress.value } else Modifier)
                         ) {
                             when (screen) {
-                                OnboardingNav.WELCOME -> {
-                                    WelcomeScreen(
-                                        onGetStartedClick = {
-                                            currentScreen = OnboardingNav.LIBRARY_SETUP
-                                        }
-                                    )
-                                }
-                                OnboardingNav.LIBRARY_SETUP -> {
-                                    LibrarySetupScreen(
-                                        onNavigateBack = {
-                                            currentScreen = OnboardingNav.WELCOME
-                                        },
-                                        onSetupComplete = { songs ->
+                                OnboardingNav.WELCOME, OnboardingNav.LIBRARY_SETUP, OnboardingNav.PERSONALIZE -> {
+                                    com.akira.app.feature.setup.OnboardingScreen(prefsRepo,
+                                        onComplete = { songs ->
                                             scannedSongsList = songs
+                                            onboardingArrival = true
                                             currentScreen = OnboardingNav.MAIN_LIBRARY
-                                        },
-                                        onCustomize={songs -> scannedSongsList=songs;currentScreen=OnboardingNav.PERSONALIZE}
-                                    )
-                                }
-                                OnboardingNav.PERSONALIZE -> {
-                                    com.akira.app.feature.setup.PersonalizeSetupScreen(prefsRepo,
-                                        onBack={currentScreen=OnboardingNav.LIBRARY_SETUP},
-                                        onComplete={scannedSongsList=emptyList();currentScreen=OnboardingNav.MAIN_LIBRARY})
+                                        })
                                 }
                                 OnboardingNav.MAIN_LIBRARY -> {
                                     // Prepare the destination during the pause after the signature settles.

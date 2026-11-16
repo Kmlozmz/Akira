@@ -147,7 +147,7 @@ internal fun SetupLayout(title: String, subtitle: String, onBack: (() -> Unit)? 
 }
 
 @Composable internal fun SetupCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(28.dp))
+    Column(modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(24.dp))
         .padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp), content = content)
 }
 

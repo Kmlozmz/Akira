@@ -87,15 +87,19 @@ internal fun SettingsRow(icon: ImageVector, title: String, detail: String, onCli
 internal fun SettingsToggleRow(icon: ImageVector, title: String, detail: String, checked: Boolean,
     onChange: (Boolean) -> Unit) {
     val haptics = rememberAkiraHaptics()
-    fun change(value: Boolean) { haptics.toggle(value); onChange(value) }
+    val currentChecked = rememberUpdatedState(checked)
+    val currentChange = rememberUpdatedState(onChange)
+    val change: (Boolean) -> Unit = remember(haptics) { { next ->
+        if (next != currentChecked.value) { haptics.toggle(next); currentChange.value(next) }
+    } }
     Row(Modifier.fillMaxWidth().heightIn(min = if(detail.isBlank())52.dp else 68.dp)
         .background(Color.Transparent)
-        .toggleable(checked, role = Role.Switch, onValueChange = ::change)
+        .toggleable(checked, role = Role.Switch, onValueChange = change)
         .padding(start = 16.dp, end = 10.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         SettingsLeadingIcon(icon)
         SettingsRowText(title, detail, Modifier.weight(1f))
-        AkiraSwitch(checked, ::change, Modifier.clearAndSetSemantics { }, haptic = {})
+        AkiraSwitch(checked, change, Modifier.clearAndSetSemantics { }, haptic = {})
     }
 }
 

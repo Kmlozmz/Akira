@@ -186,6 +186,9 @@ fun SettingsScreen(prefsRepo: UserPreferencesRepository, onBack: () -> Unit, mod
                             }
                             SettingsSection.APPLICATION -> {
                                 SettingsGroup {
+                                    SettingsRow(Icons.Rounded.AutoAwesome, localizedText("Initial setup", "Configuración inicial"),
+                                        localizedText("Review the welcome and your preferences", "Revisa la bienvenida y tus preferencias"),
+                                        { context.startActivity(Intent(context, com.akira.app.feature.setup.OnboardingActivity::class.java)) })
                                     SettingsRow(Icons.Rounded.Language, strings.languageTitle, languageLabel(current.language),
                                         { editor = SettingsEditor.LANGUAGE }, opensSelector = true)
                                     SettingsRow(Icons.Rounded.SystemUpdateAlt, localizedText("Updates", "Actualizaciones"),

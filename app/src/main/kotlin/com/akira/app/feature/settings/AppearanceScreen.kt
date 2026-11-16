@@ -41,6 +41,8 @@ internal fun AppearanceScreen(prefs: UserPreferences, repo: UserPreferencesRepos
         "AMOLED" to com.akira.app.core.design.components.localizedText("Dark", "Oscuro"))
     AkiraStudioScreen(strings.ui(AkiraUiText.Appearance), onBack) {
         Column(Modifier.fillMaxWidth().verticalScroll(com.akira.app.core.design.navigation.LocalPageScrollState.current ?: rememberScrollState(), flingBehavior = com.akira.app.core.design.motion.rememberAkiraBouncingFling()).padding(top=80.dp).padding(24.dp)) {
+        InterfaceStylePicker(prefs.liquidGlassEnabled, true) { glass -> scope.launch { repo.setLiquidGlassEnabled(glass) } }
+        Spacer(Modifier.height(24.dp))
         SettingsGroup {
         labels.forEach { (mode,label) ->
             val selected=if(mode=="AMOLED")prefs.themeMode=="AMOLED"||prefs.themeMode=="DARK" else prefs.themeMode==mode

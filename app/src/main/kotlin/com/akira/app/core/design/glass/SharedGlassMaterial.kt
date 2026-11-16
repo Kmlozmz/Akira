@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
@@ -27,7 +28,13 @@ internal val LocalSharedGlassMaterial = staticCompositionLocalOf<SharedGlassMate
 @Composable
 internal fun rememberSharedGlassMaterial(): SharedGlassMaterial? {
     val context = LocalContext.current.applicationContext
-    return remember(context) { SharedGlassMaterial.load(context) }
+    val material = remember(context) { SharedGlassMaterial.load(context) }
+    LaunchedEffect(material) {
+        if (Build.VERSION.SDK_INT >= 33 && material != null) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            material.prepare(context)
+        }
+    }
+    return material
 }
 
 /** The evaluation and Flutter surfaces share optical source and light/dark recipes. */
@@ -58,6 +65,15 @@ internal class SharedGlassMaterial private constructor(
     private val bindings = WeakHashMap<RuntimeShader, Binding>()
     var failed: Boolean = false
         private set
+
+    internal fun prepare(context: Context) {
+        if (Build.VERSION.SDK_INT < 33) return
+        com.akira.app.core.design.rendering.PreparedRuntimeShaders.prepare(source)
+        listOf("switch.agsl", "press-glow.agsl", "foreground-morph.agsl").forEach { name ->
+            runCatching { context.assets.open("visual-material/$name").bufferedReader().use { it.readText() } }
+                .getOrNull()?.let(com.akira.app.core.design.rendering.PreparedRuntimeShaders::prepare)
+        }
+    }
 
     fun apply(scope: BackdropEffectScope, pixelsPerDp: Float, dark: Boolean,
         opacity: Float, diffusion: Float, presence: Float = 1f, readable: Boolean = false,
@@ -165,8 +181,13 @@ internal class SharedGlassMaterial private constructor(
     }
 
     companion object {
+        @Volatile private var cached: SharedGlassMaterial? = null
         private val dynamicUniforms=setOf("uP","uRad","uShape","uFrag","uBd","uTap","uLight","uTr","uShadow","uRing","uBlurP","uTintO")
         fun load(context: Context): SharedGlassMaterial? {
+            cached?.let { return it }
+            return synchronized(this) { cached ?: loadOnce(context).also { cached = it } }
+        }
+        private fun loadOnce(context: Context): SharedGlassMaterial? {
             val source = try {
                 context.assets.open("visual-material/glass.agsl").bufferedReader().use { it.readText() }
             } catch (_: java.io.FileNotFoundException) { return null }

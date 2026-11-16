@@ -33,7 +33,8 @@ fun AkiraModalSheet(onDismissRequest: () -> Unit, contentColor: Color = Material
     containerColor: Color? = null,
     immersive: Boolean = false,
     content: @Composable ColumnScope.() -> Unit) {
-    if (style == AkiraPanelStyle.Page || style == AkiraPanelStyle.Details) {
+    val glassStyle = com.akira.app.core.design.glass.LocalGlassStyleEnabled.current || com.akira.app.core.design.glass.LocalLiquidGlassEnabled.current
+    if (glassStyle && (style == AkiraPanelStyle.Page || style == AkiraPanelStyle.Details)) {
         AkiraPageSheet(onDismissRequest, contentColor, title, footer, containerColor,
             style == AkiraPanelStyle.Details, immersive, content)
         return
@@ -92,7 +93,15 @@ fun AkiraModalSheet(onDismissRequest: () -> Unit, contentColor: Color = Material
             }.then(if(style==AkiraPanelStyle.AudioOutput)Modifier else Modifier.nestedScroll(scroll))
                 .padding(top = if(style==AkiraPanelStyle.Update)0.dp else if(style==AkiraPanelStyle.AudioOutput)14.dp else 16.dp,
                     bottom = if(style==AkiraPanelStyle.Update)0.dp else if(style==AkiraPanelStyle.AudioOutput)16.dp else 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally, content = content)
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                if (!glassStyle && (style == AkiraPanelStyle.Page || style == AkiraPanelStyle.Details)) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(title.orEmpty(), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+                        IconButton(onDismissRequest) { Icon(com.akira.app.core.design.icon.AkiraIcons.Close, localizedText("Close", "Cerrar")) }
+                    }
+                }
+                content()
+            }
         }
     }
 }

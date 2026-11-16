@@ -290,14 +290,18 @@ internal fun HomeTopBar(progress:()->Float,glassState:GlassState,playerSheetProg
     // Preserve that threshold while mapping the transition to finger travel.
     val transitionFraction = (with(LocalDensity.current) { 68.dp.toPx() } /
         heroHeightPx.coerceAtLeast(1f)).coerceAtLeast(.001f)
-    val p = ((progress() - .5f) / transitionFraction).coerceIn(0f, 1f)
+    // Read continuous scroll only in layer/draw phases. Recomposition here also
+    // rebuilt the account control and three blur bands on every scroll frame.
+    val p = remember(progress, transitionFraction) {
+        { ((progress() - .5f) / transitionFraction).coerceIn(0f, 1f) }
+    }
     val background = MaterialTheme.colorScheme.background
     // Native backdrop nodes must never paint beyond this header's viewport.
     Box(Modifier.fillMaxWidth().height(headerHeight).graphicsLayer {
         clip = true
         compositingStrategy = CompositingStrategy.Offscreen
     }) {
-        val showOverlay by remember { derivedStateOf { progress() > .01f } }
+        val showOverlay by remember(progress) { derivedStateOf { progress() > .01f } }
         if (showOverlay) {
             Box(Modifier.matchParentSize().graphicsLayer { alpha = progress().coerceIn(0f, 1f) }) {
                 ProgressiveGlassBackground(state = glassState,
@@ -306,23 +310,23 @@ internal fun HomeTopBar(progress:()->Float,glassState:GlassState,playerSheetProg
                     steps = 3, modifier = Modifier.fillMaxSize())
             }
             Box(Modifier.matchParentSize().drawWithCache {
+                val scrim = Brush.verticalGradient(0f to background.copy(alpha = .9f),
+                    .3f to background.copy(alpha = .6f),
+                    .6f to background.copy(alpha = .3f), 1f to Color.Transparent)
                 onDrawBehind {
-                    val scroll = progress().coerceIn(0f, 1f)
-                    drawRect(Brush.verticalGradient(0f to background.copy(alpha = scroll * .9f),
-                        .3f to background.copy(alpha = scroll * .6f),
-                        .6f to background.copy(alpha = scroll * .3f), 1f to Color.Transparent))
+                    drawRect(scrim, alpha = progress().coerceIn(0f, 1f))
                 }
             })
         }
         Row(Modifier.fillMaxWidth().padding(top=WindowInsets.statusBars.asPaddingValues().calculateTopPadding()+14.dp,bottom=16.dp,start=HomeContentInset,end=30.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
             Box(contentAlignment=Alignment.CenterStart) {
                 Icon(painterResource(R.drawable.ic_akira_logo_header),"Akira",tint=MaterialTheme.colorScheme.onBackground,
-                    modifier=Modifier.size(23.5.dp,25.dp).graphicsLayer{alpha=1f-p;scaleX=1f-p*.25f;scaleY=scaleX;transformOrigin=TransformOrigin(0f,.5f)})
+                    modifier=Modifier.size(23.5.dp,25.dp).graphicsLayer{val fraction=p();alpha=1f-fraction;scaleX=1f-fraction*.25f;scaleY=scaleX;transformOrigin=TransformOrigin(0f,.5f)})
                 Text(localizedText("Home","Inicio"),style=TextStyle(fontFamily=AkiraFontFamily,fontWeight=FontWeight.Bold,fontSize=32.sp,letterSpacing=(-.06).em),
-                    modifier=Modifier.graphicsLayer{alpha=p})
+                    modifier=Modifier.graphicsLayer{alpha=p()})
             }
             com.akira.app.core.design.components.AkiraAccountButton({ profile = true },
-                Modifier.graphicsLayer { scaleX=1f-p*.1f;scaleY=scaleX }, alwaysShowProfile = true)
+                Modifier.graphicsLayer { scaleX=1f-p()*.1f;scaleY=scaleX }, alwaysShowProfile = true)
         }
     }
 }

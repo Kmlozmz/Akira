@@ -240,9 +240,13 @@ internal fun SetupLibraryContent(state: SetupState, audioGranted: Boolean, notif
 }
 
 internal fun hasSetupPermissions(context: android.content.Context): Boolean {
-    val permission=if(Build.VERSION.SDK_INT>=33)Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
-    return ContextCompat.checkSelfPermission(context,permission)==PackageManager.PERMISSION_GRANTED &&
+    return hasSetupAudioPermission(context) &&
         androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+}
+
+internal fun hasSetupAudioPermission(context: android.content.Context): Boolean {
+    val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
+    return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 }
 
 internal fun indexedAudioFormats(songs: List<Song>): List<Pair<String, Int>> = songs

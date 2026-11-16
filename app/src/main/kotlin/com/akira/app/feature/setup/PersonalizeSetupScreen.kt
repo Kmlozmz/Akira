@@ -207,16 +207,22 @@ import kotlin.math.roundToInt
     }
 }
 
-@Composable private fun SetupToggle(title: String,value: Boolean,onChange: (Boolean)->Unit) {
-    val haptics=com.akira.app.core.design.util.rememberAkiraHaptics()
-    fun change(next: Boolean) {if(next!=value){haptics.toggle(next);onChange(next)}}
-    Row(Modifier.fillMaxWidth().heightIn(min=48.dp).toggleable(value,role=Role.Switch,onValueChange=::change),verticalAlignment=Alignment.CenterVertically) {
-        Text(title,Modifier.weight(1f),style=MaterialTheme.typography.bodyLarge)
-        Spacer(Modifier.width(12.dp))
-        com.akira.app.core.design.components.AkiraSwitch(value,::change,Modifier.clearAndSetSemantics {},haptic={})
+/** Preserve the shared Akira switch; gesture callbacks always read current state. */
+@Composable internal fun SetupToggle(title: String, value: Boolean, onChange: (Boolean) -> Unit) {
+    val currentValue = rememberUpdatedState(value)
+    val currentChange = rememberUpdatedState(onChange)
+    val haptics = com.akira.app.core.design.util.rememberAkiraHaptics()
+    val change: (Boolean) -> Unit = remember(haptics) { { next ->
+        if (next != currentValue.value) { haptics.toggle(next); currentChange.value(next) }
+    } }
+    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp)
+        .toggleable(value, role = Role.Switch, onValueChange = change), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        Spacer(Modifier.width(16.dp))
+        com.akira.app.core.design.components.AkiraSwitch(value, change, Modifier.clearAndSetSemantics {}, haptic = {})
     }
 }
-@Composable private fun SetupChoices(options: List<Pair<String,String>>,selected: String,onSelect: (String)->Unit) {
+@Composable internal fun SetupChoices(options: List<Pair<String,String>>,selected: String,onSelect: (String)->Unit) {
     val horizontal=androidx.compose.ui.platform.LocalDensity.current.fontScale<=1.3f
     if(horizontal)com.akira.app.core.design.components.AkiraSegmentedControl(options,selected,onSelect,MaterialTheme.colorScheme.surfaceContainerHigh,fontFamily=com.akira.app.core.design.brand.AkiraBrandFont)
     else Column {options.forEach {(id,label)->SetupSoundChoice(label,"",id==selected) {onSelect(id)}}}
@@ -237,7 +243,7 @@ import kotlin.math.roundToInt
         if(selected)Icon(AkiraIcons.Check,null,Modifier.size(20.dp),tint=MaterialTheme.colorScheme.primary)
     }
 }
-@Composable private fun SetupDuration(seconds: Int,onCommit: (Int)->Unit) {
+@Composable internal fun SetupDuration(seconds: Int,onCommit: (Int)->Unit) {
     var draft by remember {mutableFloatStateOf(seconds.toFloat().coerceAtLeast(1f))}
     var dragging by remember {mutableStateOf(false)}
     LaunchedEffect(seconds) {if(!dragging)draft=seconds.toFloat().coerceAtLeast(1f)}

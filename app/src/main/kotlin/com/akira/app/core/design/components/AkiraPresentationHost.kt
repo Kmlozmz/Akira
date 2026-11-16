@@ -78,6 +78,7 @@ internal class AkiraPresentationEntry(
     var typography: Typography? = null
     var backdrop: Backdrop? = null
     var glass by mutableStateOf(false)
+    var glassStyle by mutableStateOf(false)
     var reduced by mutableStateOf(false)
     var footer by mutableStateOf<(@Composable () -> Unit)?>(null)
 }
@@ -103,7 +104,7 @@ internal class AkiraPresentationState(val anchors: AkiraMenuAnchors?) {
     fun showsBody(entry: AkiraPresentationEntry): Boolean =
         entry === desiredEntry || (desiredEntry == null && entry === returningEntry)
 
-    fun add(entry: AkiraPresentationEntry) {
+    fun add(entry: AkiraPresentationEntry, hideSource: Boolean = true) {
         entry.parent = entries.lastOrNull { !it.removed }
         if (entries.isEmpty()) {
             generation++
@@ -111,7 +112,7 @@ internal class AkiraPresentationState(val anchors: AkiraMenuAnchors?) {
             closing = null
             rootAnchor = entry.anchor
             rootSource = entry.source
-            anchors?.hiddenSource = entry.source
+            anchors?.hiddenSource = if (hideSource) entry.source else null
         }
         entries.add(entry)
     }
@@ -163,8 +164,9 @@ fun AkiraPresentationHost(content: @Composable () -> Unit) {
     val state = remember(anchors) { AkiraPresentationState(anchors) }
     val material=com.akira.app.core.design.glass.LocalSharedGlassMaterial.current
     val shaderContext=androidx.compose.ui.platform.LocalContext.current.applicationContext
-    LaunchedEffect(state,material,shaderContext) {
-        if(material!=null && android.os.Build.VERSION.SDK_INT>=33 && state.foregroundEffect==null) {
+    val usesGlass = com.akira.app.core.design.glass.LocalGlassStyleEnabled.current || LocalLiquidGlassEnabled.current || state.entries.any { it.glassStyle }
+    LaunchedEffect(state,material,shaderContext,usesGlass) {
+        if(usesGlass && material!=null && android.os.Build.VERSION.SDK_INT>=33 && state.foregroundEffect==null) {
             state.foregroundEffect=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
                 runCatching{com.akira.app.core.design.motion.FontForegroundEffect(shaderContext)}.getOrNull()
             }
@@ -206,7 +208,10 @@ private fun AkiraPresentationLayer(state: AkiraPresentationState, pages: AkiraPa
     com.akira.app.core.design.rendering.PreferInteractiveFrameRate()
     Box(Modifier.fillMaxSize()) {
         if (pages.entries.isNotEmpty()) AkiraPageSheetOverlay(pages, scene)
-        if (state.entries.isNotEmpty()) AkiraPresentationOverlay(state, scene)
+        if (state.entries.isNotEmpty()) {
+            val style = (state.desiredEntry ?: state.returningEntry ?: state.entries.last()).glassStyle
+            if (style) AkiraPresentationOverlay(state, scene) else AkiraClassicPresentation(state)
+        }
         else AkiraNoticeHost(Modifier.align(Alignment.BottomCenter).navigationBarsPadding(), priority = 3)
     }
 }
@@ -240,6 +245,7 @@ internal fun AkiraPresentation(
     val typography = MaterialTheme.typography
     val backdrop = LocalAkiraOverlayBackdrop.current ?: LocalAppBackdrop.current
     val glass = LocalLiquidGlassEnabled.current
+    val glassStyle = com.akira.app.core.design.glass.LocalGlassStyleEnabled.current || glass
     val reduced = LocalContentMotionReduced.current
     // Keep the page/player's own material context without overriding the dialog's
     // LocalView, input connection, focus manager, or window insets.
@@ -248,11 +254,12 @@ internal fun AkiraPresentation(
         entry.typography = typography
         entry.backdrop = backdrop
         entry.glass = glass
+        entry.glassStyle = glassStyle
         entry.reduced = reduced
         entry.footer = footerBody
     }
     DisposableEffect(entry) {
-        host.add(entry)
+        host.add(entry, glassStyle)
         onDispose { entry.removed = true }
     }
 }

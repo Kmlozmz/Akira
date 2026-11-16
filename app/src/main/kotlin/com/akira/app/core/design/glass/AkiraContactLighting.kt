@@ -27,7 +27,7 @@ internal fun rememberAkiraContactLighting(amount:()->Float,point:()->Offset):Mod
 
 @androidx.annotation.RequiresApi(33)
 internal class AkiraContactFilter(source:String,profile:FloatArray) {
-    private val shader=android.graphics.RuntimeShader(source).apply { setFloatUniform("contactProfile",profile) }
+    private val shader=com.akira.app.core.design.rendering.PreparedRuntimeShaders.acquire(source).apply { setFloatUniform("contactProfile",profile) }
     fun frame(size:androidx.compose.ui.geometry.Size,point:Offset,amount:Float):android.graphics.RenderEffect? {
         val p=amount.coerceIn(0f,1f)
         if(p<.001f || size.width<=0f || size.height<=0f)return null

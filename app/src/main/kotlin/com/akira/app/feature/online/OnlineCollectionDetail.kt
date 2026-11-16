@@ -162,7 +162,7 @@ import kotlinx.coroutines.CancellationException
         .setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, artist.shareLink), artist.title)) }
     fun play() { if (queue.any { it.id == current?.id }) onToggle() else queue.firstOrNull()?.let { onPlay(it, queue) } }
     CompositionLocalProvider(LocalAppBackdrop provides backdrop,
-        com.akira.app.core.design.navigation.LocalPageHeaderBackdrop provides artworkBackdrop) {
+        com.akira.app.core.design.navigation.LocalPageHeaderBackdrop provides backdrop) {
         Box(Modifier.fillMaxSize().containerTransformTarget(transitionKey, 68.5.dp).background(background.value)) {
             Box(Modifier.fillMaxSize().glassRoot(glass) { progress > .01f }.layerBackdrop(backdrop)) {
                 Box(Modifier.fillMaxSize().layerBackdrop(artworkBackdrop).background(background.value)) {
@@ -195,7 +195,7 @@ import kotlinx.coroutines.CancellationException
                     } }
                 }
             }
-            ArtistBar(artist.title, glass, progress, background.value, onBack,
+            ArtistBar(artist.title, glass, { progress }, background.value, onBack,
                 onShare = ::share,
                 onMore = { showMenu = true }, onTitle = { scope.launch { state.animateScrollToItem(0) } })
         }

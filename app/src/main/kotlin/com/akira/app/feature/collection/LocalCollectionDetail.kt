@@ -186,11 +186,11 @@ fun LocalCollectionDetail(initial: DetailPage, library: List<Song>, current: Son
     val elastic=rememberAkiraBouncingEffect()
     val scope=rememberCoroutineScope()
     CompositionLocalProvider(LocalAppBackdrop provides pageBackdrop,
-        com.akira.app.core.design.navigation.LocalPageHeaderBackdrop provides artworkBackdrop) {
+        com.akira.app.core.design.navigation.LocalPageHeaderBackdrop provides pageBackdrop) {
     Box(Modifier.fillMaxSize().containerTransformTarget(page.transitionKey,48.dp).background(background.value)) {
         Box(Modifier.fillMaxSize().glassRoot(glass){morph.value>.01f}.layerBackdrop(pageBackdrop).background(background.value)) {
-            // Record only the background, before the controls. Sampling the page
-            // itself would feed the buttons back into their own glass texture.
+            // Inline masthead controls sample artwork; floating header controls
+            // sample pageBackdrop, whose recording excludes the header itself.
             Box(Modifier.fillMaxSize().layerBackdrop(artworkBackdrop).background(background.value)) {
                 Box(Modifier.akiraMediaStretch({elastic?.topPull?:0f})) { LocalArtistBanner(lead?.albumArtUri,height,{progress.value},background) }
             }
@@ -234,7 +234,7 @@ fun LocalCollectionDetail(initial: DetailPage, library: List<Song>, current: Son
                 item { Spacer(Modifier.height(50.dp)) }
             }
         }
-        ArtistBar(page.title,glass,morph.value,background.value,onBack,
+        ArtistBar(page.title,glass,{morph.value},background.value,onBack,
             onShare={
                 val intent=android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
                     .putExtra(android.content.Intent.EXTRA_TEXT,page.title)
@@ -260,12 +260,11 @@ fun LocalCollectionDetail(initial: DetailPage, library: List<Song>, current: Son
     }
 }
 
-@Composable internal fun ArtistBar(title:String,glass:GlassState,p:Float,background:Color,onBack:()->Unit,
+@Composable internal fun ArtistBar(title:String,glass:GlassState,progress:()->Float,background:Color,onBack:()->Unit,
     onShare:()->Unit,onMore:()->Unit,onTitle:()->Unit) {
     val status=WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val ink=LocalDetailInk.current
-    val controlInk=lerp(Color.White,ink,p.coerceIn(0f,1f))
-    val controlFill=lerp(Color.Black.copy(alpha=.5f),ink.copy(alpha=.12f),p.coerceIn(0f,1f))
+    val showChrome by remember(progress) { derivedStateOf { progress() > .01f } }
     val menuSource=rememberAkiraMenuSource(hasOwnSurface=true,icon=null)
     val density=androidx.compose.ui.platform.LocalDensity.current
     menuSource.visualVerticalInsetPx=with(density){2.dp.toPx()}
@@ -287,14 +286,14 @@ fun LocalCollectionDetail(initial: DetailPage, library: List<Song>, current: Son
                 androidx.compose.ui.geometry.Offset(.12f,.18f)*menuSource.responseAmount() },density)
     }
     Box(Modifier.fillMaxWidth().height(status+96.dp).graphicsLayer{clip=true;compositingStrategy=CompositingStrategy.Offscreen}) {
-        if(p>.01f)ProgressiveGlassBackground(glass,maxBlurRadius={34f*p.coerceIn(0f,1f)},tint=background.copy(alpha=.4f),foundationColor=background,direction=BlurDirection.BottomToTop,steps=3,modifier=Modifier.matchParentSize().graphicsLayer{alpha=p.coerceIn(0f,1f)})
+        if(showChrome)ProgressiveGlassBackground(glass,maxBlurRadius={34f*progress().coerceIn(0f,1f)},tint=background.copy(alpha=.4f),foundationColor=background,direction=BlurDirection.BottomToTop,steps=3,modifier=Modifier.matchParentSize().graphicsLayer{alpha=progress().coerceIn(0f,1f)})
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(top=6.dp,start=26.dp,end=28.dp).height(47.dp),verticalAlignment=Alignment.CenterVertically){
             DetailHeaderControl(R.drawable.ic_navigation_back,localizedText("Back","Atrás"),onBack)
 
-            Text(title,color=ink,fontFamily=AkiraFontFamily,fontSize=19.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f).padding(horizontal=12.dp).graphicsLayer{alpha=p.coerceIn(0f,1f);translationY=10.dp.toPx()*(1f-p)}.clickable(onClick=onTitle))
+            Text(title,color=ink,fontFamily=AkiraFontFamily,fontSize=19.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f).padding(horizontal=12.dp).graphicsLayer{val p=progress().coerceIn(0f,1f);alpha=p;translationY=10.dp.toPx()*(1f-p)}.clickable(onClick=onTitle))
             Box(Modifier.width(104.dp).height(48.dp).then(menuSource.modifier).then(menuSource.containerModifier)) {
-                Box(Modifier.matchParentSize().padding(vertical=2.dp).clip(capsule)
-                    .liquidGlass(capsule))
+                Box(Modifier.matchParentSize().padding(vertical=2.dp)
+                    .akiraNavigationSurface(capsule))
                 Row(Modifier.fillMaxSize(),verticalAlignment=Alignment.CenterVertically) {
                     com.akira.app.core.design.components.AkiraIconButton(com.akira.app.core.design.icon.AkiraIcons.Share,
                         localizedText("Share","Compartir"),onShare,Modifier.weight(1f),tint=ink,glyphSize=19.dp,showBackground=false)
