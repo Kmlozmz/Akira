@@ -164,7 +164,10 @@ fun AkiraPresentationHost(content: @Composable () -> Unit) {
     val state = remember(anchors) { AkiraPresentationState(anchors) }
     val material=com.akira.app.core.design.glass.LocalSharedGlassMaterial.current
     val shaderContext=androidx.compose.ui.platform.LocalContext.current.applicationContext
-    val usesGlass = com.akira.app.core.design.glass.LocalGlassStyleEnabled.current || LocalLiquidGlassEnabled.current || state.entries.any { it.glassStyle }
+    val liquidGlass = LocalLiquidGlassEnabled.current
+    val glassStyle = com.akira.app.core.design.glass.LocalGlassStyleEnabled.current
+    val reduceTransparency = com.akira.app.core.design.glass.LocalReduceTransparency.current
+    val usesGlass = glassStyle || liquidGlass || state.entries.any { it.glassStyle }
     LaunchedEffect(state,material,shaderContext,usesGlass) {
         if(usesGlass && material!=null && android.os.Build.VERSION.SDK_INT>=33 && state.foregroundEffect==null) {
             state.foregroundEffect=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
@@ -180,7 +183,11 @@ fun AkiraPresentationHost(content: @Composable () -> Unit) {
     } }
     val scene = rememberLayerBackdrop()
     val presenting = state.entries.isNotEmpty() || pages.entries.isNotEmpty()
-    val sampleScene = presenting && LocalLiquidGlassEnabled.current && isGlassSupported()
+    val sampleScene = presenting && isGlassSupported() && (liquidGlass || (!usesGlass && !reduceTransparency))
+    // Keep the page's remembered state attached to one content identity as overlay
+    // capture and semantics nodes attach/detach around it.
+    val latestSceneContent = rememberUpdatedState(content)
+    val sceneContent = remember { movableContentOf { latestSceneContent.value() } }
     CompositionLocalProvider(LocalAkiraPresentationState provides state, LocalAkiraPageSheetState provides pages) {
       Box(Modifier.fillMaxSize().drawBehind {
           if (pages.presence > 0f) drawRect(Color.Black)
@@ -189,7 +196,7 @@ fun AkiraPresentationHost(content: @Composable () -> Unit) {
         Box(Modifier.fillMaxSize()
             .then(if (presenting) Modifier.clearAndSetSemantics {} else Modifier)
             .then(if (sampleScene) Modifier.layerBackdrop(scene) else Modifier)) {
-            Box(Modifier.fillMaxSize().pageSheetScene(pages)) { content() }
+            Box(Modifier.fillMaxSize().pageSheetScene(pages)) { sceneContent() }
         }
         if (presenting) AkiraPresentationLayer(state, pages, scene)
       }
@@ -210,7 +217,7 @@ private fun AkiraPresentationLayer(state: AkiraPresentationState, pages: AkiraPa
         if (pages.entries.isNotEmpty()) AkiraPageSheetOverlay(pages, scene)
         if (state.entries.isNotEmpty()) {
             val style = (state.desiredEntry ?: state.returningEntry ?: state.entries.last()).glassStyle
-            if (style) AkiraPresentationOverlay(state, scene) else AkiraClassicPresentation(state)
+            if (style) AkiraPresentationOverlay(state, scene) else AkiraClassicPresentation(state, scene)
         }
         else AkiraNoticeHost(Modifier.align(Alignment.BottomCenter).navigationBarsPadding(), priority = 3)
     }

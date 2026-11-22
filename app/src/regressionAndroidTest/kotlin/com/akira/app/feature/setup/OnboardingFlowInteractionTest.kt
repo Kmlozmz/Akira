@@ -7,6 +7,8 @@ import android.os.Build
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import com.akira.app.BuildConfig
 import com.akira.app.MainActivity
 import com.akira.app.core.datastore.UserPreferencesRepository
@@ -25,7 +27,9 @@ class OnboardingFlowInteractionTest {
 
     @Test fun permissionsScanPopupAndAnimatedEntry() {
         check(BuildConfig.DEBUG)
-        assumeTrue("This test changes only the emulator's isolated debug preferences", Build.HARDWARE.contains("ranchu") || Build.HARDWARE.contains("goldfish"))
+        check(BuildConfig.APPLICATION_ID.endsWith(".debug"))
+        val physicalDebugAllowed = InstrumentationRegistry.getArguments().getString("allowPhysicalDebug") == "true"
+        assumeTrue("Physical debug testing must be explicitly enabled", physicalDebugAllowed || Build.HARDWARE.contains("ranchu") || Build.HARDWARE.contains("goldfish"))
         val context = instrumentation.targetContext
         val repo = UserPreferencesRepository(context)
         runBlocking { repo.setLanguage("en"); repo.setThemeMode("LIGHT"); repo.setLiquidGlassEnabled(false); repo.setOnboardingCompleted(false) }
@@ -35,6 +39,10 @@ class OnboardingFlowInteractionTest {
         context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
 
         awaitText("Get started", 25_000)
+        instrumentation.runOnMainSync {
+            ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).filterIsInstance<MainActivity>()
+                .forEach { it.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+        }
         Thread.sleep(700)
         screenshot("01-welcome")
         tap("Get started")

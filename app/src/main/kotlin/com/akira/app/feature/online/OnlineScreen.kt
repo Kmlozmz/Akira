@@ -2,6 +2,8 @@ package com.akira.app.feature.online
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
@@ -81,7 +83,6 @@ import kotlinx.coroutines.flow.first
     var moreFailed by remember { mutableStateOf(false) }
     var homePageCount by remember { mutableIntStateOf(1) }
     val consumedTokens = remember { mutableSetOf<String>() }
-    var revision by remember { mutableIntStateOf(0) }
     var showAccount by remember { mutableStateOf(false) }
     var paginationJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val scope = rememberCoroutineScope()
@@ -99,6 +100,7 @@ import kotlinx.coroutines.flow.first
         destination == HomeDestination.LIBRARY -> "library:$effectiveLibraryKind"
         else -> "home"
     }
+    var revision by remember(account, requestKey) { mutableIntStateOf(0) }
     val liveRequestKey by rememberUpdatedState(requestKey)
     fun initialPage() = repository.cachedPage(requestKey, account) ?: active?.let {
         OnlinePage(it.title, emptyList(), collection = OnlineCollection(it, creators = when(it) {
@@ -147,12 +149,17 @@ import kotlinx.coroutines.flow.first
                 destination == HomeDestination.LIBRARY -> repository.library(effectiveLibraryKind, force = revision > 0)
                 else -> repository.home(seed = liveCurrent, force = revision > 0)
             } }
-            repository.cachePage(requestKey, loaded, account)
-            page = loaded
+            if (requestKey != "home") repository.cachePage(requestKey, loaded, account)
+            page = repository.cachedPage(requestKey, account) ?: loaded
         } catch (timeout: kotlinx.coroutines.TimeoutCancellationException) { failure = timeout.onlineFailure()
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (error: Exception) { failure = error.onlineFailure() }
         finally { loading = false }
+    }
+    LaunchedEffect(account, requestKey) {
+        repository.pageRevision.collect {
+            repository.cachedPage(requestKey, account)?.let { cached -> page = cached }
+        }
     }
     LaunchedEffect(account, active, destination) {
         if (active == null && destination == HomeDestination.HOME) repository.homePages.collect { snapshot ->
@@ -160,16 +167,16 @@ import kotlinx.coroutines.flow.first
         }
     }
     val shelves = page?.shelves.orEmpty()
+    val songs = remember(shelves) { shelves.flatMap { it.items }.filterIsInstance<SongItem>().distinctBy { it.id } }
+    val playableQueue = remember(songs) { songs.map { it.asOnlineSong() } }
     fun choose(item: YTItem, sourceKey: String? = null) {
         if(destination == HomeDestination.SEARCH && active == null && query.isNotBlank()) repository.rememberSearch(query)
         if (item is SongItem) {
             val song = item.asOnlineSong()
             if (current?.id == song.id) onTogglePlay()
-            else onPlay(song, shelves.flatMap { it.items }.filterIsInstance<SongItem>()
-                .distinctBy { it.id }.map { it.asOnlineSong() }.ifEmpty { listOf(song) })
+            else onPlay(song, playableQueue.ifEmpty { listOf(song) })
         } else onOpen(item, sourceKey)
     }
-    val songs = shelves.flatMap { it.items }.filterIsInstance<SongItem>().distinctBy { it.id }
     val continueLabel = localizedText("Continue listening", "Continuar escuchando")
     val libraryEntries = remember(shelves, libraryQuery, librarySort) {
         orderOnlineLibraryItems(shelves.flatMap { it.items }, libraryQuery, librarySort)
@@ -443,45 +450,67 @@ import kotlinx.coroutines.flow.first
     val themeMode=com.akira.app.core.design.theme.LocalThemeMode.current
     val preset=com.akira.app.core.design.theme.LocalAppearancePreset.current
     AkiraModalSheet(onDismissRequest=onDismiss,style=com.akira.app.core.design.components.AkiraPanelStyle.Popover){
-        Column(Modifier.fillMaxWidth().padding(horizontal=20.dp,vertical=12.dp)){
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-                com.akira.app.core.design.components.AkiraAccountAvatar(account,Modifier.size(44.dp))
-                Column(Modifier.weight(1f).padding(start=12.dp)){
-                    Text(if(account.connected)account.name else localizedText("Your music","Tu música"),
-                        style=MaterialTheme.typography.titleLarge)
-                    Text(if(account.connected)localizedText("Account connected","Cuenta conectada")
-                        else localizedText("Choose where to listen","Elige dónde escuchar"),
-                        style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+        ListeningModeContent(account, enabled, onSelect = { selected ->
+            repository.setEnabled(selected); onDismiss()
+        }, onManage = {
+            onDismiss()
+            context.startActivity(android.content.Intent(context, YouTubeLoginActivity::class.java)
+                .putExtra("themeMode", themeMode).putExtra("appearancePreset", preset))
+        })
+    }
+}
+
+
+/** Shared by the account popover and native interaction previews. */
+@Composable internal fun ListeningModeContent(account: com.akira.app.core.online.OnlineAccount, online: Boolean,
+    onSelect: (Boolean) -> Unit, onManage: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            com.akira.app.core.design.components.AkiraAccountAvatar(account, Modifier.size(48.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(if (account.connected) account.name else localizedText("Your music", "Tu música"), style = MaterialTheme.typography.titleLarge)
+                Text(if (account.connected) localizedText("Account connected", "Cuenta conectada")
+                    else localizedText("Listen your way", "Escucha a tu manera"), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
-            Spacer(Modifier.height(20.dp))
-            Text(localizedText("Listening mode","Modo de escucha"),style=MaterialTheme.typography.labelLarge,
-                color=MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(8.dp))
-            com.akira.app.core.design.components.AkiraChoiceRow(Icons.Rounded.MusicNote,
-                localizedText("Local library","Biblioteca local"),
-                localizedText("Music stored on this phone","Música guardada en este teléfono"),!enabled,
-                {repository.setEnabled(false);onDismiss()})
-            Spacer(Modifier.height(4.dp))
-            com.akira.app.core.design.components.AkiraChoiceRow(Icons.Rounded.Public,
-                localizedText("Online music","Música en línea"),
-                localizedText("Discover, search and stream","Descubre, busca y reproduce"),enabled,
-                {repository.setEnabled(true);onDismiss()})
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider(color=MaterialTheme.colorScheme.onSurface.copy(alpha=.08f))
-            TextButton(onClick={
-                onDismiss()
-                context.startActivity(android.content.Intent(context,YouTubeLoginActivity::class.java)
-                    .putExtra("themeMode",themeMode).putExtra("appearancePreset",preset))
-            },modifier=Modifier.fillMaxWidth().heightIn(min=48.dp)){
-                Icon(Icons.Rounded.Person,null,Modifier.size(20.dp))
-                Spacer(Modifier.width(10.dp))
-                Text(if(account.connected)localizedText("Manage account","Gestionar cuenta")
-                    else localizedText("Connect an account","Vincular una cuenta"))
-            }
-            if(!account.connected)Text(localizedText("Online listening also works without an account.",
-                "También puedes escuchar en línea sin una cuenta."),style=MaterialTheme.typography.bodySmall,
-                color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=2.dp,bottom=4.dp))
         }
+        Column(Modifier.fillMaxWidth().then(Modifier.selectableGroup()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(localizedText("Listening mode", "Modo de escucha"), style = MaterialTheme.typography.labelMedium,
+                color = colors.onSurfaceVariant, modifier = Modifier.padding(bottom = 3.dp))
+            ListeningModeOption(Icons.Rounded.MusicNote, localizedText("Local library", "Biblioteca local"),
+                localizedText("Music stored on this phone", "Música guardada en este teléfono"), !online) { onSelect(false) }
+            ListeningModeOption(Icons.Rounded.Public, localizedText("Online music", "Música en línea"),
+                localizedText("Discover, search and stream", "Descubre, busca y reproduce"), online) { onSelect(true) }
+        }
+        Surface(onClick = onManage, color = colors.onSurface.copy(alpha = .055f), shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Person, null, Modifier.size(20.dp), tint = colors.onSurfaceVariant)
+                Text(if (account.connected) localizedText("Manage account", "Gestionar cuenta") else localizedText("Connect an account", "Vincular una cuenta"),
+                    Modifier.weight(1f).padding(horizontal = 10.dp), style = MaterialTheme.typography.labelLarge)
+                Icon(AkiraIcons.ChevronRight, null, Modifier.size(15.dp), tint = colors.onSurfaceVariant)
+            }
+        }
+        if (!account.connected) Text(localizedText("Online listening also works without an account.", "También puedes escuchar en línea sin una cuenta."),
+            style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+    }
+}
+
+@Composable private fun ListeningModeOption(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String,
+    detail: String, selected: Boolean, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Row(Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
+        .background(if (selected) colors.primary.copy(alpha = .11f) else colors.onSurface.copy(alpha = .035f))
+        .selectable(selected, role = androidx.compose.ui.semantics.Role.RadioButton, onClick = onClick)
+        .padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(Modifier.size(38.dp).background(if (selected) colors.primary.copy(alpha = .13f) else colors.onSurface.copy(alpha = .06f),
+            androidx.compose.foundation.shape.RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+            Icon(icon, null, Modifier.size(22.dp), tint = if (selected) colors.primary else colors.onSurface)
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+        }
+        if (selected) Icon(Icons.Rounded.CheckCircle, null, Modifier.size(22.dp), tint = colors.primary)
+        else Spacer(Modifier.width(22.dp))
     }
 }

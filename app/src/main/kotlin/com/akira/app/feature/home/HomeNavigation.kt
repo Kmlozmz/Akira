@@ -19,6 +19,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.*
@@ -133,6 +134,8 @@ fun HomeNavigation(
                 onMiniPositioned = { state.reportMini(inline, it) },
                 onArtPositioned = { coords, corner -> state.reportArtwork(inline, coords, corner) },
                 pull = pull, modifier = accessoryModifier.graphicsLayer {
+                    // Keep the soft shadow outside the capsule while it fades.
+                    compositingStrategy = CompositingStrategy.ModulateAlpha
                     alpha = dockMiniReveal(playerProgress()) * (1f-editingFraction)
                     translationY = if (reduced) 0f else with(density) { dockMiniReturnOffsetDp(playerProgress()).dp.toPx() }
                 })
@@ -140,7 +143,10 @@ fun HomeNavigation(
     }
     FloatingTabBar(
         selectedTabKey = selected,
-        navigationModifier = Modifier.then(ink.modifier).graphicsLayer { alpha = dockNavigationReveal(playerProgress()) },
+        navigationModifier = Modifier.then(ink.modifier).graphicsLayer {
+            compositingStrategy = CompositingStrategy.ModulateAlpha
+            alpha = dockNavigationReveal(playerProgress())
+        },
         scrollConnection = state.scroll,
         modifier = modifier.fillMaxWidth(),
         tabBarContentModifier = surface,
@@ -169,7 +175,7 @@ fun HomeNavigation(
                     color = if (currentSelected == destination) selectedContentColor else contentColor.copy(alpha = .65f),
                     maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 1.dp))
-            }, onClick = { if (currentSelected != destination) haptics.play(Haptic.Select); currentSelect(destination) })
+            }, onClick = { if (currentSelected != destination) haptics.play(Haptic.Select); currentSelect(destination) }, indication = null)
         }
         standaloneTab(key = HomeDestination.SEARCH, icon = {
             Icon(painterResource(R.drawable.ic_navigation_search_outline), labels[3], tint = if(currentSelected == HomeDestination.SEARCH) selectedContentColor else contentColor.copy(alpha = .65f),
@@ -178,6 +184,6 @@ fun HomeNavigation(
             Text(labels[3], style = labelStyle,
                 color = if (currentSelected == HomeDestination.SEARCH) selectedContentColor else contentColor.copy(alpha = .65f),
                 maxLines = 1, modifier = Modifier.padding(top = 1.dp))
-        }, onClick = { haptics.play(Haptic.Select); currentSelect(HomeDestination.SEARCH) })
+        }, onClick = { haptics.play(Haptic.Select); currentSelect(HomeDestination.SEARCH) }, indication = null)
     }
 }

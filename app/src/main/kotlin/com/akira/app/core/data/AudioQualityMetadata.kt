@@ -17,12 +17,17 @@ internal suspend fun readAudioQualityInfo(context: Context, song: Song, initial:
     withContext(Dispatchers.IO) {
         if (song.contentUri.startsWith("akira-youtube:") ||
             (initial.codec != "FLAC" && initial.sampleRateHz != null &&
-                (initial.bitDepth != null || initial.quality == AudioQuality.DOLBY_ATMOS))) return@withContext initial
+                when (initial.quality) {
+                    AudioQuality.LOSSLESS -> initial.bitDepth != null
+                    AudioQuality.DOLBY_ATMOS -> true
+                    AudioQuality.COMPRESSED -> initial.bitrateBps != null
+                })) return@withContext initial
         val file = song.path.takeIf { it.isNotBlank() }?.let(::File)?.takeIf { it.isFile }
         val uri = Uri.parse(song.contentUri)
         if (file == null && uri.scheme !in setOf("content", "file")) return@withContext initial
         var rate = initial.sampleRateHz
         var bits = initial.bitDepth
+        var bitrate = initial.bitrateBps
         if (initial.codec == "FLAC") {
             runCatching {
                 val stream = file?.inputStream() ?: context.contentResolver.openInputStream(uri)
@@ -44,19 +49,25 @@ internal suspend fun readAudioQualityInfo(context: Context, song: Song, initial:
                 }
             }
         }
-        if ((rate == null || bits == null) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                (rate == null || (bits == null && initial.quality == AudioQuality.LOSSLESS))) ||
+            (bitrate == null && initial.quality == AudioQuality.COMPRESSED)) {
             val retriever = MediaMetadataRetriever()
             try {
                 if (file != null) retriever.setDataSource(file.absolutePath) else retriever.setDataSource(context, uri)
-                if (rate == null) rate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
+                if (rate == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) rate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)
                     ?.toIntOrNull()?.takeIf { it > 0 }
-                if (bits == null) bits = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITS_PER_SAMPLE)
+                if (bits == null && initial.quality == AudioQuality.LOSSLESS && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) bits = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITS_PER_SAMPLE)
                     ?.toIntOrNull()?.takeIf { it in 4..64 }
+                if (bitrate == null && initial.quality == AudioQuality.COMPRESSED) {
+                    bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)
+                        ?.toIntOrNull()?.takeIf { it >= 1_000 }
+                }
             } catch (_: Exception) {
                 // Keep known stream fields; an unavailable field is never replaced with a guessed value.
             } finally {
                 runCatching { retriever.release() }
             }
         }
-        initial.copy(sampleRateHz = rate, bitDepth = bits)
+        initial.copy(sampleRateHz = rate, bitDepth = bits, bitrateBps = bitrate)
     }

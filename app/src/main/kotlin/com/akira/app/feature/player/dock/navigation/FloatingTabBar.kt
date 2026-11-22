@@ -590,7 +590,7 @@ private fun SharedTransitionScope.InlineBar(
 private fun DockContactSurface(navigation: Boolean = false, content: @Composable (Modifier, MutableInteractionSource) -> Unit) {
     val touch=remember { MutableInteractionSource() }
     val pressed by touch.collectIsPressedAsState()
-    val ownResponse=com.akira.app.core.design.components.rememberAkiraPressResponse(pressed)
+    val ownResponse=com.akira.app.core.design.components.rememberAkiraPressResponse(pressed, contactLighting = false)
     val response=if(navigation) LocalDockSurfaceContact.current ?: ownResponse else ownResponse
     val inherited=com.akira.app.core.design.glass.LocalGlassDeformation.current
     val inheritedStrain=com.akira.app.core.design.glass.LocalGlassStrain.current

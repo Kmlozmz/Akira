@@ -148,6 +148,7 @@ enum class AkiraMenuStyle { Actions, Choices }
             } else { action.onClick(); onDismiss() }
         }
         AkiraMenuContactSurface(enabled = presentation?.closing == null) { contact ->
+        val classic = !com.akira.app.core.design.glass.LocalGlassStyleEnabled.current && !com.akira.app.core.design.glass.LocalLiquidGlassEnabled.current
         val scroll = rememberScrollState()
         contact.scroll = scroll
         BoxWithConstraints(Modifier.semantics { paneTitle = options }) {
@@ -157,9 +158,11 @@ enum class AkiraMenuStyle { Actions, Choices }
                         fontFamily=AkiraFontFamily,fontSize=12.sp,fontWeight=FontWeight.SemiBold,
                         color=MaterialTheme.colorScheme.onSurfaceVariant)
                     groups.filter { it.isNotEmpty() }.forEachIndexed { index, group ->
-                        if (index > 0 || quickActions.isNotEmpty()) HorizontalDivider(
-                            Modifier.padding(horizontal = 16.dp, vertical = if (index == 0) 0.dp else if (dense) 4.dp else 8.dp),
-                            thickness = .5.dp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .14f))
+                        if (index > 0 || quickActions.isNotEmpty()) {
+                            if (classic) Spacer(Modifier.height(if (dense) 8.dp else 12.dp)) else HorizontalDivider(
+                                Modifier.padding(horizontal = 16.dp, vertical = if (index == 0) 0.dp else if (dense) 4.dp else 8.dp),
+                                thickness = .5.dp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .14f))
+                        }
                         group.forEach { MenuActionRow(it, false, dense, enabled = presentation?.closing == null, style = style) { activate(it) } }
                     }
                 }

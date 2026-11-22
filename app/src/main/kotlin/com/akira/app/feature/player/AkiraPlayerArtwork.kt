@@ -123,11 +123,10 @@ internal fun Modifier.playerArtworkFade(fullWidthPx: Float,
                 } else {
                 if(amount != cachedStrength) {
                     cachedStrength=amount
-                    mask=Brush.verticalGradient(0f to Color.Black, .53f to Color.Black,
-                        .62f to Color.Black.copy(alpha=1f-.16f*amount),
-                        .71f to Color.Black.copy(alpha=1f-.50f*amount),
-                        .80f to Color.Black.copy(alpha=1f-.84f*amount),
-                        .89f to Color.Black.copy(alpha=1f-amount),
+                    mask=Brush.verticalGradient(0f to Color.Black, .56f to Color.Black,
+                        .67f to Color.Black.copy(alpha=1f-.15f*amount),
+                        .78f to Color.Black.copy(alpha=1f-.48f*amount),
+                        .89f to Color.Black.copy(alpha=1f-.83f*amount),
                         1f to Color.Black.copy(alpha=1f-amount))
                 }
                 drawRect(mask, blendMode=androidx.compose.ui.graphics.BlendMode.DstIn)
@@ -143,7 +142,7 @@ uniform float amount;
 half4 main(float2 position) {
     float2 uv=position/dimensions;
     float x=uv.x*2.0-1.0;
-    float t=clamp((uv.y-0.53+0.045*x*x)/0.36,0.0,1.0);
+    float t=clamp((uv.y-0.56+0.035*x*x)/0.44,0.0,1.0);
     float alpha=1.0-amount*t*t*(3.0-2.0*t);
     return half4(alpha);
 }

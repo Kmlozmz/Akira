@@ -73,7 +73,14 @@ class SetupToggleInteractionTest {
                     for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
                         val event = MotionEvent.obtain(now, now + if (action == MotionEvent.ACTION_UP) 55 else 0, action, x, y, 0)
                         event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
-                        try { assertTrue(instrumentation.uiAutomation.injectInputEvent(event, true)) } finally { event.recycle() }
+                        // UiAutomation injection waits for system window animations. Dispatch through
+                        // this app's actual decor view so an OEM's perpetual animation cannot stall the test.
+                        try { instrumentation.runOnMainSync {
+                            val decor = activity.window.decorView
+                            val origin = IntArray(2).also(decor::getLocationOnScreen)
+                            event.offsetLocation(-origin[0].toFloat(), -origin[1].toFloat())
+                            assertTrue(decor.dispatchTouchEvent(event))
+                        } } finally { event.recycle() }
                     }
                     awaitSwitch(index % 2 == 0)
                     instrumentation.runOnMainSync { assertEquals(index + 1, changes) }
@@ -91,6 +98,7 @@ class SetupToggleInteractionTest {
         }
         val deadline = SystemClock.elapsedRealtime() + 4_000
         while (SystemClock.elapsedRealtime() < deadline) {
+            if (android.os.Build.VERSION.SDK_INT >= 33) instrumentation.uiAutomation.clearCache()
             find(instrumentation.uiAutomation.rootInActiveWindow)?.let { if (it.isChecked == expected) return it }
             Thread.sleep(40)
         }

@@ -116,7 +116,7 @@ fun LocalCollectionDetail(initial: DetailPage, library: List<Song>, current: Son
             isPlaying=playing&&tracks.any{it.id==current?.id},onPlayClick={
                 if(tracks.any{it.id==current?.id})onToggle() else lead?.let{onPlay(it,tracks)}
             },onShuffleClick={tracks.shuffled().let{q->q.firstOrNull()?.let{onPlay(it,q)}}},
-            onCreatorClick={onOpen(artistDetail(it.name))}) }
+            onCreatorClick={onOpen(artistDetail(it.name))}, album = true) }
         itemsIndexed(tracks,key={_,s->s.id}) { i,s ->
             DetailSong(s,tracks,current,playing,onPlay,onToggle,onMore,Modifier.revealOnAppear("track-${s.id}",reveal,delayMillis=i.coerceAtMost(8)*28))
         }
@@ -169,6 +169,10 @@ fun LocalCollectionDetail(initial: DetailPage, library: List<Song>, current: Son
     val addedArtistMessage=localizedText("Added to Favorites","Se agregó a Favoritos")
     val removedArtistMessage=localizedText("Removed from Favorites","Se quitó de Favoritos")
     val lead=tracks.firstOrNull()
+    fun shuffle() {
+        val queue = tracks.shuffled()
+        queue.firstOrNull()?.let { onPlay(it, queue) }
+    }
     val albums=remember(tracks){tracks.distinctBy(::localAlbumKey)}
     val state=rememberLazyListState()
     val height=playlistCoverHeight()
@@ -199,13 +203,13 @@ fun LocalCollectionDetail(initial: DetailPage, library: List<Song>, current: Son
                     CompositionLocalProvider(LocalAppBackdrop provides artworkBackdrop) {
                     AkiraArtistMasthead(page.title,
                         localizedText("${tracks.size} songs · ${albums.size} albums in your library","${tracks.size} canciones · ${albums.size} álbumes en tu biblioteca"),
-                        background.value,favorite,playing&&tracks.any{it.id==current?.id},
+                        favorite,playing&&tracks.any{it.id==current?.id},
                         onPlay={if(tracks.any{it.id==current?.id})onToggle()else lead?.let{onPlay(it,tracks)}},
                         onFavorite={scope.launch {
                             artistRepo.setArtistFavorite(page.title,!favorite)
                             com.akira.app.core.design.components.AkiraNotices.show(
                                 if(!favorite)addedArtistMessage else removedArtistMessage)
-                        }},onInfo={showArtistInfo=true},
+                        }},onShuffle=::shuffle,
                         modifier=Modifier.padding(top=height*.56f).padding(horizontal=30.dp))
                     }
                 }
@@ -243,7 +247,7 @@ fun LocalCollectionDetail(initial: DetailPage, library: List<Song>, current: Son
         if(showArtistMenu) ArtistOptionsMenu(page.title,
             localizedText("${tracks.size} songs in your library","${tracks.size} canciones en tu biblioteca"),
             favorite,onDismiss={showArtistMenu=false},onPlay={lead?.let{onPlay(it,tracks)}},
-            onShuffle={tracks.shuffled().let{q->q.firstOrNull()?.let{onPlay(it,q)}}},
+            onShuffle=::shuffle,
             onFavorite={scope.launch{artistRepo.setArtistFavorite(page.title,!favorite)}},
             onAlbums=if(albums.isEmpty())null else ({scope.launch{state.animateScrollToItem(3+tracks.take(5).size)}}),
             onInformation={showArtistInfo=true},onShare={

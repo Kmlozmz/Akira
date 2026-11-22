@@ -554,6 +554,7 @@ fun PlaylistHeader(
     onCreatorClick: ((CreatorUi) -> Unit)? = null,
     compact: Boolean = false,
     below: (@Composable () -> Unit)? = null,
+    album: Boolean = false,
 ) {
     val DetailInk = LocalDetailInk.current
     val body: @Composable () -> Unit = {
@@ -562,10 +563,12 @@ fun PlaylistHeader(
                 start = PlaylistInset + 1.dp,
                 end = PlaylistInset,
                 bottom = 14.dp,
-            )
+            ).then(if (album) Modifier.fillMaxWidth() else Modifier),
+            horizontalAlignment = if (album) Alignment.CenterHorizontally else Alignment.Start,
         ) {
             Text(
                 text = title,
+                textAlign = if (album) androidx.compose.ui.text.style.TextAlign.Center else androidx.compose.ui.text.style.TextAlign.Start,
                 style = if (compact) PlaylistCompactTitleStyle else PlaylistTitleStyle,
                 color = DetailInk,
                 maxLines = 2,
@@ -575,7 +578,7 @@ fun PlaylistHeader(
                 Spacer(Modifier.height(3.dp))
                 CreatorRow(creators, onCreatorClick)
             }
-            if (!description.isNullOrBlank()) {
+            if (!album && !description.isNullOrBlank()) {
                 Spacer(Modifier.height(5.dp))
                 PlaylistDescription(description)
             }
@@ -590,7 +593,13 @@ fun PlaylistHeader(
                 )
             }
             Spacer(Modifier.height(16.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            if (album) {
+                CollectionPlaybackActions(isPlaying, onPlayClick, onShuffleClick)
+                if (!description.isNullOrBlank()) {
+                    Spacer(Modifier.height(12.dp))
+                    PlaylistDescription(description)
+                }
+            } else Row(verticalAlignment = Alignment.CenterVertically) {
                 PlayPill(isPlaying = isPlaying, onClick = onPlayClick)
                 Spacer(Modifier.width(9.dp))
                 CircleAction(
@@ -686,19 +695,27 @@ internal fun PlaylistDescription(text: String, modifier: Modifier = Modifier) {
 
 /** play and pause swap with a little pop, and the pill eases to the new label's width */
 @Composable
-internal fun PlayPill(isPlaying: Boolean, onClick: () -> Unit) {
-    val DetailInk = LocalDetailInk.current
+internal fun PlayPill(
+    isPlaying: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    height: Dp = 33.dp,
+    fill: Color = PillFill,
+    ink: Color = PillContent,
+    contentPadding: PaddingValues = PaddingValues(start = 21.dp, end = 17.dp),
+) {
     val interaction = remember { MutableInteractionSource() }
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
+        horizontalArrangement = Arrangement.Center,
+        modifier = modifier
             .pressBounce(interaction)
-            .height(33.dp)
+            .height(height)
             .clip(RoundedCornerShape(50))
-            .background(PillFill)
+            .background(fill)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .animateContentSize(spring(dampingRatio = 0.7f, stiffness = 500f))
-            .padding(start = 21.dp, end = 17.dp)
+            .padding(contentPadding)
     ) {
         AnimatedContent(
             targetState = isPlaying,
@@ -708,7 +725,7 @@ internal fun PlayPill(isPlaying: Boolean, onClick: () -> Unit) {
             Icon(
                 painter = painterResource(if (playing) R.drawable.ic_compact_pause else R.drawable.ic_compact_play),
                 contentDescription = null,
-                tint = PillContent,
+                tint = ink,
                 modifier = Modifier.size(15.dp),
             )
         }
@@ -721,7 +738,9 @@ internal fun PlayPill(isPlaying: Boolean, onClick: () -> Unit) {
             Text(
                 text = if (playing) localizedText("Pause", "Pausa") else localizedText("Play", "Reproducir"),
                 style = PillLabelStyle,
-                color = PillContent,
+                color = ink,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

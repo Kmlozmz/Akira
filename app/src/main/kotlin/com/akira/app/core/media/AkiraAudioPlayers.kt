@@ -6,6 +6,7 @@ import androidx.media3.common.Format
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.audio.AudioSink
 import com.akira.app.core.logging.AkiraLog
 
 /** Shared decoder policy for both decks. ON keeps platform decoders first;
@@ -13,9 +14,19 @@ import com.akira.app.core.logging.AkiraLog
  * Keep PCM processing available for playback speed and skip-silence.
  */
 @UnstableApi
-internal fun audioRenderers(context: Context) = DefaultRenderersFactory(context)
-    .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
-    .setEnableDecoderFallback(true)
+internal fun audioRenderers(context: Context, deck: AudioDeck? = null) =
+    object : DefaultRenderersFactory(context) {
+        override fun buildAudioSink(
+            context: Context,
+            enableFloatOutput: Boolean,
+            enableAudioTrackPlaybackParams: Boolean,
+        ): AudioSink? {
+            val sink = super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams)
+                ?: return null
+            return if (deck == null) sink else BeatTrackingAudioSink(sink, deck)
+        }
+    }.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+        .setEnableDecoderFallback(true)
 
 @UnstableApi
 internal class AudioDiagnostics(private val deck: String) : AnalyticsListener {

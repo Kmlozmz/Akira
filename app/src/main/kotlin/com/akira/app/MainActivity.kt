@@ -238,6 +238,7 @@ open class MainActivity : ComponentActivity() {
                 val rootDiffusion = androidx.compose.runtime.rememberUpdatedState(prefsState?.liquidGlassDiffusion ?: com.akira.app.core.design.glass.AkiraGlassDefaults.Diffusion)
                 androidx.compose.runtime.CompositionLocalProvider(
                     com.akira.app.core.design.glass.LocalSharedGlassMaterial provides visualMaterial,
+                    com.akira.app.core.design.glass.LocalReduceTransparency provides (prefsState?.appearanceReduceTransparency == true),
                     com.akira.app.core.design.glass.LocalLiquidGlassEnabled provides (prefsState?.liquidGlassEnabled == true && prefsState?.appearanceReduceTransparency != true),
                     com.akira.app.core.design.glass.LocalDockBackgroundDiffusion provides (prefsState?.dockLiquidGlassEnabled != false),
                     com.akira.app.core.design.glass.LocalLiquidGlassOpacity provides remember { { rootOpacity.value } },

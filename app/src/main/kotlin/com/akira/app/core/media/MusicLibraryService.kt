@@ -182,6 +182,7 @@ class MusicLibraryService : MediaLibraryService() {
                 player.shuffleModeEnabled = lastKnownShuffle
                 player.repeatMode = lastKnownRepeat
                 activeDeck = player
+                PlaybackBeatLights.activeDeck = if (player === deckA) AudioDeck.A else AudioDeck.B
                 recordOnlineListening(player)
                 com.akira.app.core.audio.AudioFxAvailability.select(player.audioSessionId)
                 mediaLibrarySession?.setPlayer(sessionPlayer(player))
@@ -457,14 +458,14 @@ class MusicLibraryService : MediaLibraryService() {
             .setUsage(C.USAGE_MEDIA)
             .build()
 
-        deckA = ExoPlayer.Builder(this, audioRenderers(this))
+        deckA = ExoPlayer.Builder(this, audioRenderers(this, AudioDeck.A))
             .setMediaSourceFactory(androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSource))
             .setAudioAttributes(audioAttributes, /* handleAudioFocus = */ false)
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
 
-        deckB = ExoPlayer.Builder(this, audioRenderers(this))
+        deckB = ExoPlayer.Builder(this, audioRenderers(this, AudioDeck.B))
             .setMediaSourceFactory(androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSource))
             .setAudioAttributes(audioAttributes, /* handleAudioFocus = */ false)
             .setHandleAudioBecomingNoisy(true)
@@ -472,6 +473,7 @@ class MusicLibraryService : MediaLibraryService() {
             .build()
 
         activeDeck = deckA
+        PlaybackBeatLights.activeDeck = AudioDeck.A
         deckA.addAnalyticsListener(AudioDiagnostics("A"))
         deckB.addAnalyticsListener(AudioDiagnostics("B"))
         listOf(deckA, deckB).forEach { deck ->

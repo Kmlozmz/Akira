@@ -109,6 +109,10 @@ class LibraryFilterContrastTest {
             visit(automation.rootInActiveWindow)?.let { return it }
             Thread.sleep(60)
         }
+        automation.takeScreenshot()?.let { bitmap ->
+            val folder = File(instrumentation.targetContext.getExternalFilesDir(null), "onboarding-audit").apply { mkdirs() }
+            File(folder, "failure-contrast.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        }
         error("Missing contrast fixture control: $text")
     }
     private fun tap(text: String) {

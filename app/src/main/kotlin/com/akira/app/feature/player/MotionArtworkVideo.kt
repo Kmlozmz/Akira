@@ -28,7 +28,9 @@ import androidx.media3.exoplayer.ExoPlayer
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 internal fun MotionArtworkVideo(artwork: MotionArtwork,isPlaying: Boolean,modifier: Modifier=Modifier,
-    onPlayer: ((ExoPlayer)->Unit)?=null) {
+    onPlayer: ((ExoPlayer)->Unit)?=null,
+    onBlend: ((Float) -> Unit)? = null,
+) {
     val context=LocalContext.current
     val lifecycle=LocalLifecycleOwner.current.lifecycle
     var source by remember(artwork) {mutableStateOf(artwork.url)}
@@ -100,5 +102,11 @@ internal fun MotionArtworkVideo(artwork: MotionArtwork,isPlaying: Boolean,modifi
         player.playWhenReady=isPlaying && !failed && visible
     }
     val alpha=animateFloatAsState(if(ready && !failed)1f else 0f,tween(350),label="motionSleeve")
+    if (onBlend != null) {
+        val report by rememberUpdatedState(onBlend)
+        LaunchedEffect(alpha, source) {
+            snapshotFlow { alpha.value }.collect { report(it) }
+        }
+    }
     AndroidView(factory={texture},modifier=modifier.graphicsLayer {this.alpha=alpha.value})
 }

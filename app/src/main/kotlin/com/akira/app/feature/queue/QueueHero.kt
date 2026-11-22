@@ -7,6 +7,11 @@ import com.akira.app.feature.player.*
 
 import com.akira.app.core.design.components.showAkiraSnackbar
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -52,7 +57,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,6 +69,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -110,6 +117,9 @@ internal fun QueueHero(
     onRestoreQueue: ((List<Song>, Int) -> Unit)? = null,
     onRestoreItem: ((Int, Song) -> Unit)? = null,
     onUserScroll: (Float) -> Unit = {},
+    onListTopChanged: (Float) -> Unit = {},
+    onScrollBoundary: (Boolean) -> Unit = {},
+    reading: Boolean = false,
     thumbModifier: Modifier = Modifier,
     modifier: Modifier = Modifier
 ) {
@@ -118,20 +128,29 @@ internal fun QueueHero(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val currentUserScroll by rememberUpdatedState(onUserScroll)
-    val userDragging by listState.interactionSource.collectIsDraggedAsState()
-    LaunchedEffect(listState) {
-        var previousIndex = listState.firstVisibleItemIndex
-        var previousOffset = listState.firstVisibleItemScrollOffset
-        androidx.compose.runtime.snapshotFlow {
-            Triple(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset, userDragging)
-        }.collect { (index, offset, dragging) ->
-            if (dragging && (index != previousIndex || offset != previousOffset)) {
-                val forward = index > previousIndex || (index == previousIndex && offset > previousOffset)
-                currentUserScroll(if (forward) 1f else -1f)
+    val currentScrollBoundary by rememberUpdatedState(onScrollBoundary)
+    val density = LocalDensity.current
+    val threshold = with(density) { 22.dp.toPx() }
+    val scrollMotion = remember(threshold) {
+        object : NestedScrollConnection {
+            private var distance = 0f
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (source != NestedScrollSource.UserInput || consumed.y == 0f) return Offset.Zero
+                val forward = -consumed.y
+                if (distance * forward < 0f) distance = 0f
+                distance += forward
+                if (kotlin.math.abs(distance) >= threshold) {
+                    currentUserScroll(distance)
+                    distance = 0f
+                }
+                return Offset.Zero
             }
-            previousIndex = index
-            previousOffset = offset
         }
+    }
+    val reduced = com.akira.app.core.design.components.LocalContentMotionReduced.current
+    LaunchedEffect(listState) {
+        androidx.compose.runtime.snapshotFlow { listState.canScrollBackward }
+            .collect { currentScrollBoundary(it) }
     }
     val snackbarHostState = remember { SnackbarHostState() }
     var addQueueToList by remember { mutableStateOf(false) }
@@ -139,20 +158,13 @@ internal fun QueueHero(
     LaunchedEffect(queue.isNotEmpty(), currentPlayingIndex) {
         if (!initiallyPositioned && queue.isNotEmpty()) {
             withFrameNanos { }
-            listState.scrollToItem(currentPlayingIndex.coerceIn(queue.indices))
+            val first = if (currentPlayingIndex in 0 until queue.lastIndex) currentPlayingIndex + 1 else currentPlayingIndex
+            listState.scrollToItem(first.coerceIn(queue.indices))
             initiallyPositioned = true
         }
     }
     val currentVisible by remember(currentPlayingIndex) { derivedStateOf { listState.layoutInfo.visibleItemsInfo.any { it.index == currentPlayingIndex } } }
 
-
-    val upNextSongs = remember(queue, currentPlayingIndex) {
-        if (queue.isNotEmpty() && currentPlayingIndex in queue.indices) {
-            queue.subList((currentPlayingIndex + 1).coerceAtMost(queue.size), queue.size)
-        } else {
-            emptyList()
-        }
-    }
 
     var swipeCloseSignal by remember { mutableIntStateOf(0) }
     var queueTopInRoot by remember { mutableFloatStateOf(0f) }
@@ -169,22 +181,18 @@ internal fun QueueHero(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-            Text(
-                text = strings.nowPlaying.uppercase(),
-                fontSize = 11.5.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = AkiraFontFamily,
-                color = Color.White.copy(alpha = 0.45f),
-                letterSpacing = 0.8.sp,
-                modifier = Modifier.padding(top = 10.dp, bottom = 6.dp)
-            )
-
+            AnimatedVisibility(
+                visible = !reading,
+                enter = expandVertically(tween(if (reduced) 0 else 240), expandFrom = Alignment.Top) +
+                    fadeIn(tween(if (reduced) 0 else 180)),
+                exit = shrinkVertically(tween(if (reduced) 0 else 230), shrinkTowards = Alignment.Top) +
+                    fadeOut(tween(if (reduced) 0 else 130)),
+            ) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
-                    .padding(8.dp),
+                    .padding(vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
@@ -248,29 +256,14 @@ internal fun QueueHero(
 
                 Spacer(modifier = Modifier.width(6.dp))
 
-                AkiraIconButton(
-                    icon = if (currentSong.isFavorite) AkiraIcons.StarFilled else AkiraIcons.Star,
-                    contentDescription = strings.favorite,
-                    showBackground = false,
-                    tint = if (currentSong.isFavorite) Color(0xFFFFD700) else Color.White.copy(alpha = 0.85f),
-                    popOnTrue = currentSong.isFavorite,
-                    onClick = { onToggleFavorite(currentSong) }
-                )
-
-                AkiraIconButton(
-                    icon = AkiraIcons.MoreHoriz,
-                    contentDescription = strings.options,
-                    showBackground = false,
-                    tint = Color.White.copy(alpha = 0.85f),
-                    onClick = { onOptionsClick() }
+                PlayerTrackActions(
+                    currentSong.isFavorite, Color.White, referencePortrait = true,
+                    onFavorite = { onToggleFavorite(currentSong) },
+                    onMore = onOptionsClick,
                 )
             }
 
-            TextButton(onClick = { addQueueToList = true }) {
-                Icon(AkiraIcons.Queue, null); Spacer(Modifier.width(8.dp)); Text(strings.library.addToList)
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-
+            Spacer(Modifier.height(8.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -301,6 +294,11 @@ internal fun QueueHero(
                     onClick = onToggleAutoplay,
                     modifier = Modifier.weight(1f)
                 )
+                if (queue.isNotEmpty()) {
+                    QueueTogglePill(AkiraIcons.Queue, strings.library.addToList, false,
+                        onClick = { addQueueToList = true }, modifier = Modifier.weight(1f),
+                        stateDescription = "")
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -311,13 +309,21 @@ internal fun QueueHero(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = strings.ui(com.akira.app.core.i18n.AkiraUiText.QueueTitle),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = AkiraFontFamily,
-                        color = Color.White
-                    )
+                    Column(Modifier.weight(1f, fill = false)) {
+                        Text(
+                            text = com.akira.app.core.design.components.localizedText("Playing next", "A continuación"),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = AkiraFontFamily,
+                            color = Color.White,
+                        )
+                        if (currentSong.album.isNotBlank()) {
+                            Text(com.akira.app.core.design.components.localizedText(
+                                "From ${currentSong.album}", "De ${currentSong.album}"),
+                                color = Color.White.copy(alpha = .62f), fontFamily = AkiraFontFamily,
+                                fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
                     if (queue.isNotEmpty()) {
                         Spacer(Modifier.width(8.dp))
                         Text(
@@ -379,6 +385,7 @@ internal fun QueueHero(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            }
             }
             if (queue.isEmpty()) {
                 Box(
@@ -443,8 +450,12 @@ internal fun QueueHero(
                         }
                     },
                     modifier = Modifier.fillMaxWidth().weight(1f)
+                        .nestedScroll(scrollMotion)
                         .queueEdgeFade(listState)
-                        .onGloballyPositioned { listTopInRoot = it.positionInRoot().y }
+                        .onGloballyPositioned {
+                            listTopInRoot = it.positionInRoot().y
+                            onListTopChanged(listTopInRoot)
+                        }
                 )
             }
         }

@@ -59,7 +59,7 @@ internal fun GlassNowPlaying(
     var nextPulse by remember {mutableIntStateOf(0)}
     val pressSource = remember { MutableInteractionSource() }
     val foldDeformation=LocalGlassDeformation.current
-    val response=com.akira.app.core.design.components.rememberAkiraPressResponse(false, .4f)
+    val response=com.akira.app.core.design.components.rememberAkiraPressResponse(false, .4f, contactLighting = false)
     val density=androidx.compose.ui.platform.LocalDensity.current
     val inheritedStrain=com.akira.app.core.design.glass.LocalGlassStrain.current
     val elastic=com.akira.app.core.design.glass.LocalLiquidGlassEnabled.current && !com.akira.app.core.design.components.LocalContentMotionReduced.current
@@ -212,7 +212,7 @@ internal fun GlassNowPlaying(
 private fun MiniControlButton(onClick: () -> Unit, modifier: Modifier=Modifier,
     enabled: Boolean=true,onHoldStart: (() -> (() -> Unit))?=null,content: @Composable () -> Unit) {
     var pressed by remember {mutableStateOf(false)}
-    val response=com.akira.app.core.design.components.rememberAkiraPressResponse(pressed)
+    val response=com.akira.app.core.design.components.rememberAkiraPressResponse(pressed, contactLighting = false)
     Box(modifier.then(response.modifier).then(if(enabled)Modifier.akiraTransportPress(onClick,onHoldStart,
         onPressedChanged={pressed=it}) else Modifier),
         contentAlignment=Alignment.Center) { content() }

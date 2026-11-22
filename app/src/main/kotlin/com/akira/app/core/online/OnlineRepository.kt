@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
@@ -46,8 +47,6 @@ class OnlineRepository private constructor(context: Context) {
     private val likeOverrides = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
     private val likeLock = Mutex()
     private var likeRequest: Deferred<Unit>? = null
-    private val visitorLock = Mutex()
-    private var visitorAttemptAt = -60_000L
     private val historyLock = Mutex()
     private val _recentSongs = MutableStateFlow<List<SongItem>>(emptyList())
     val recentSongs = _recentSongs.asStateFlow()
@@ -80,6 +79,16 @@ class OnlineRepository private constructor(context: Context) {
     private data class LibraryIndexRequest(val user: OnlineAccount, val generation: Long, val revision: Long,
         val progress: MutableStateFlow<OnlinePage?>, val result: Deferred<OnlinePage>)
     private val sessionGeneration = OnlineSessionEpoch()
+    private val visitorWarmup = OnlineVisitorWarmup(scope, android.os.SystemClock::elapsedRealtime,
+        sessionGeneration::get, { _enabled.value && YouTube.visitorData.isNullOrBlank() },
+        { YouTube.visitorData().getOrNull() }, { value, generation ->
+            lock.withLock {
+                if (generation == sessionGeneration.get() && _enabled.value && YouTube.visitorData.isNullOrBlank()) YouTube.visitorData = value
+            }
+        })
+    private var homeEnrichmentJob: Job? = null
+    private val _pageRevision = MutableStateFlow(0L)
+    val pageRevision = _pageRevision.asStateFlow()
     private val homeRequestLock = Mutex()
     private var homeRequest: Pair<OnlineAccount, Deferred<OnlinePage>>? = null
     private val _homePages = MutableStateFlow<Pair<OnlineAccount, OnlinePage>?>(null)
@@ -112,8 +121,11 @@ class OnlineRepository private constructor(context: Context) {
                 YouTube.cookie = null; YouTube.dataSyncId = null; YouTube.visitorData = null
                 YouTube.useLoginForBrowse = false
             } finally {
-                restorePages(_account.value, homeOnly = true)
-                _sessionReady.value = true; initialized.complete(Unit)
+                try { restorePages(_account.value, homeOnly = true) }
+                catch (cancel: CancellationException) { throw cancel }
+                catch (_: Exception) { /* A damaged disk cache must not block the online session. */ }
+                finally { _sessionReady.value = true; initialized.complete(Unit) }
+                if (_enabled.value) { visitorWarmup.request(); prefetchHome() }
             }
         }
         scope.launch {
@@ -125,9 +137,10 @@ class OnlineRepository private constructor(context: Context) {
         }
     }
     fun setEnabled(value: Boolean) {
-        prefs.edit().putBoolean("enabled", value).apply(); _enabled.value = value
+        _enabled.value = value
+        prefs.edit().putBoolean("enabled", value).apply()
         if (value) prefetchHome() else {
-            streams.clear()
+            streams.clear(); visitorWarmup.cancel(); homeEnrichmentJob?.cancel()
             homeRequest?.second?.cancel()
             libraryIndexRequest?.result?.cancel()
         }
@@ -163,6 +176,7 @@ class OnlineRepository private constructor(context: Context) {
             browsePages[key] = Triple(user, page, if (fresh) android.os.SystemClock.elapsedRealtime() else 0)
             if(browsePages.size > 32) browsePages.keys.firstOrNull { it != "home" && it != "search-library-index" && !it.startsWith("library:") }
                 ?.let { browsePages.remove(it) }
+            _pageRevision.update { it + 1 }
             if (fresh && persistentPage(key)) schedulePageWrite(user)
         }
     }
@@ -181,6 +195,7 @@ class OnlineRepository private constructor(context: Context) {
                 if (key == "home") _homePages.value = user to page
             }
         } }
+        if (pages.isNotEmpty()) _pageRevision.update { it + 1 }
         if (homeOnly) {
             pageRestoreJob?.cancel()
             pageRestoreJob = scope.launch { restorePages(user) }
@@ -224,7 +239,7 @@ class OnlineRepository private constructor(context: Context) {
     suspend fun connect(cookie: String, visitor: String?, sync: String?) = withContext(Dispatchers.IO) {
         initialized.await()
         lock.withLock {
-            streams.clear()
+            streams.clear(); visitorWarmup.cancel(); homeEnrichmentJob?.cancel()
             sessionGeneration.incrementAndGet()
             likeRequest?.cancel()
             val saved = JSONObject().put("cookie", cookie).put("visitor", visitor.orEmpty()).put("sync", sync.orEmpty())
@@ -256,7 +271,7 @@ class OnlineRepository private constructor(context: Context) {
         initialized.await()
         lock.withLock {
             val previousProfile = historyScope
-            streams.clear()
+            streams.clear(); visitorWarmup.cancel(); homeEnrichmentJob?.cancel()
             sessionGeneration.incrementAndGet()
             likeRequest?.cancel()
             homeRequest?.second?.cancel(); pageWriteJob?.cancel()
@@ -281,13 +296,7 @@ class OnlineRepository private constructor(context: Context) {
     private suspend fun ready() {
         initialized.await()
         check(_enabled.value) { "Modo online desactivado" }
-        if (YouTube.visitorData.isNullOrBlank()) visitorLock.withLock {
-            val now = android.os.SystemClock.elapsedRealtime()
-            if (YouTube.visitorData.isNullOrBlank() && now - visitorAttemptAt >= 60_000L) {
-                visitorAttemptAt = now
-                withTimeoutOrNull(3_000) { YouTube.refreshVisitorData().getOrNull() }
-            }
-        }
+        visitorWarmup.request()
     }
     private fun guestFavorites(key: String = "guest_favorites"): List<SongItem> = runCatching {
         val array = org.json.JSONArray(prefs.getString(key, "[]"))
@@ -479,11 +488,16 @@ class OnlineRepository private constructor(context: Context) {
     }
     private suspend fun artistCollections(shelves: List<OnlineShelf>): List<OnlineShelf> = supervisorScope {
         val user = _account.value
+        val generation = sessionGeneration.get()
+        val permits = kotlinx.coroutines.sync.Semaphore(3)
         val artists = shelves.filter { it.layout == OnlineShelfLayout.ARTISTS }.flatMap { it.items }
-            .filterIsInstance<ArtistItem>().distinctBy { it.id }.take(4)
+            .filterIsInstance<ArtistItem>().distinctBy { it.id }.take(8)
         withTimeoutOrNull(4_000) {
             artists.map { artist -> async {
+                permits.acquire()
+                try {
                 if (!artistReleases.containsKey(artist.id)) YouTube.artist(artist.id).getOrNull()?.let { page ->
+                    if (_account.value != user || sessionGeneration.get() != generation || !_enabled.value) return@let
                     if (artistReleases.size >= 128) artistReleases.clear()
                     artistReleases[artist.id] = page.sections.flatMap { it.items }.filterIsInstance<AlbumItem>().distinctBy { it.id }.take(4)
                     artistPortraits[artist.id] = page.artist
@@ -491,14 +505,17 @@ class OnlineRepository private constructor(context: Context) {
                         page.sections.map { OnlineShelf(it.title, it.items) }, collection = OnlineCollection(page.artist,
                             page.description, page.monthlyListenerCount ?: page.subscriberCountText))), user)
                 }
+                } finally { permits.release() }
             } }.awaitAll()
         }
+        cachedArtistCollections(shelves)
+    }
+    private fun cachedArtistCollections(shelves: List<OnlineShelf>): List<OnlineShelf> =
         shelves.map { shelf -> if (shelf.layout != OnlineShelfLayout.ARTISTS) shelf else shelf.copy(
             items = shelf.items.map { item -> artistPortraits[item.id]?.takeIf { item is ArtistItem } ?: item },
             artistAlbums = shelf.artistAlbums + shelf.items.mapNotNull { item ->
                 artistReleases[item.id]?.takeIf { it.size >= 2 }?.let { item.id to it }
             }.toMap()) }
-    }
     suspend fun home(continuation: String? = null, seed: Song? = null, force: Boolean = false): OnlinePage = withContext(Dispatchers.IO) {
         initialized.await()
         if (continuation != null) {
@@ -518,6 +535,7 @@ class OnlineRepository private constructor(context: Context) {
 
     private suspend fun loadHome(seed: Song?, user: OnlineAccount, generation: Long): OnlinePage {
         val started = android.os.SystemClock.elapsedRealtime()
+        homeEnrichmentJob?.cancel()
         val segments = linkedMapOf<String, List<OnlineShelf>>()
         val previous = cachedPage("home", user)
         var continuation: String? = null
@@ -596,16 +614,7 @@ class OnlineRepository private constructor(context: Context) {
                     ArtistItem(id, artist.name, null, shuffleEndpoint = null, radioEndpoint = null)
                 } }
             }.distinctBy { it.id } }.take(8)
-            val portraits = kotlinx.coroutines.sync.Semaphore(3)
-            val artists = withTimeoutOrNull(4_000) { artistCandidates.map { artist -> async {
-                if (!artist.thumbnail.isNullOrBlank()) artist else artistPortraits[artist.id] ?: run {
-                    portraits.acquire()
-                    try {
-                        YouTube.artist(artist.id).getOrNull()?.artist
-                            ?.also { if (artistPortraits.size > 128) artistPortraits.clear(); artistPortraits[artist.id] = it }
-                    } finally { portraits.release() }
-                }
-            } }.awaitAll().filterNotNull() }.orEmpty()
+            val artists = artistCandidates.map { artistPortraits[it.id] ?: it }
             val albums = detail?.albums.orEmpty().ifEmpty { tracks.mapNotNull { song -> song.album?.let { album ->
                 AlbumItem(album.id, "", title = album.name, artists = song.artists, thumbnail = song.thumbnail)
             } }.distinctBy { it.id } }.take(12)
@@ -629,11 +638,23 @@ class OnlineRepository private constructor(context: Context) {
         val unique = shelves.filter { it.items.isNotEmpty() }.distinctBy { it.title to it.items.first().id }
         currentCoroutineContext().ensureActive()
         if (unique.isEmpty() && result.isFailure) result.getOrThrow()
-        val loaded = catalog(OnlinePage("Home", artistCollections(unique), page?.continuation))
+        val loaded = catalog(OnlinePage("Home", cachedArtistCollections(unique), page?.continuation))
         currentCoroutineContext().ensureActive()
         if (_account.value == user && sessionGeneration.get() == generation && _enabled.value) {
             cachePage("home", loaded, user)
             _homePages.value = user to loaded
+            // Portraits and album collages enrich the visible page; they never delay its completion.
+            homeEnrichmentJob = scope.launch {
+                try {
+                    val enriched = loaded.copy(shelves = artistCollections(loaded.shelves))
+                    if (enriched != loaded && _account.value == user && sessionGeneration.get() == generation &&
+                        _enabled.value && cachedPage("home", user) === loaded) {
+                        cachePage("home", enriched, user)
+                        _homePages.value = user to enriched
+                    }
+                } catch (cancel: CancellationException) { throw cancel }
+                catch (_: Exception) { /* Optional artwork cannot turn a loaded feed into an error. */ }
+            }
         }
         if (com.akira.app.BuildConfig.DEBUG) android.util.Log.d("AkiraOnlineTiming",
             "home_complete_ms=${android.os.SystemClock.elapsedRealtime()-started}")

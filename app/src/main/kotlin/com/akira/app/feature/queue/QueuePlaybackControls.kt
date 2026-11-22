@@ -68,7 +68,7 @@ internal fun QueueTogglePill(
     val activate = { haptics.tick(); onClick() }
     // Repeat cycles three states; a binary toggle would announce the wrong contract.
     val action = if (stateDescription != null) Modifier.semantics {
-        this.stateDescription = stateDescription
+        if (stateDescription.isNotBlank()) this.stateDescription = stateDescription
         role = Role.Button
     }.clickable(interactionSource = touch, indication = null, onClick = activate)
     else Modifier.toggleable(isActive, interactionSource = touch, indication = null,

@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SurroundSound
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,8 +63,18 @@ internal fun AudioQualityBadge(song: Song, initialInfo: AudioQualityInfo, onOpen
         value = initialInfo
         value = readAudioQualityInfo(context, song, initialInfo)
     }
-    val label = if (info.quality == AudioQuality.DOLBY_ATMOS) "Dolby Atmos" else LocalStrings.current.lossless
-    val symbol = if (info.quality == AudioQuality.DOLBY_ATMOS) Icons.Rounded.SurroundSound else LosslessSymbol
+    val label = when (info.quality) {
+        AudioQuality.DOLBY_ATMOS -> "Dolby Atmos"
+        AudioQuality.LOSSLESS -> LocalStrings.current.lossless
+        AudioQuality.COMPRESSED -> listOfNotNull(info.codec, info.bitrateBps?.takeIf { it >= 1_000 }?.let {
+            "${it / 1_000} kbps"
+        }).joinToString(" ")
+    }
+    val symbol = when (info.quality) {
+        AudioQuality.DOLBY_ATMOS -> Icons.Rounded.SurroundSound
+        AudioQuality.LOSSLESS -> LosslessSymbol
+        AudioQuality.COMPRESSED -> Icons.Rounded.MusicNote
+    }
     val source = rememberAkiraMenuSource(icon = null, hideOnOpen = false, hasOwnSurface = true)
     val haptics = rememberAkiraHaptics()
     var showDetails by remember(song.contentUri) { mutableStateOf(false) }

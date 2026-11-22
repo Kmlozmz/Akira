@@ -16,6 +16,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -25,6 +30,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.akira.app.core.design.motion.ElasticGlassShape
+import com.akira.app.core.design.rendering.DownscaledBlur
 import com.akira.app.core.model.Song
 import com.akira.app.core.design.components.LocalContentMotionReduced
 import kotlinx.coroutines.coroutineScope
@@ -87,14 +93,31 @@ internal fun rememberPlayerArtworkMotion(expansion: Animatable<Float,*>,
 
 @Composable
 internal fun PlayerArtworkSurface(motion: PlayerArtworkMotion, song: Song,
-    expansion: Animatable<Float,*>, fullWidthPx: Float, motionArtwork: MotionArtwork?=null) {
+    expansion: Animatable<Float,*>, fullWidthPx: Float, motionArtwork: MotionArtwork?=null,
+    artworkVisible: Boolean = true,
+    mediaLayer: GraphicsLayer,
+    onVideoBlend: (Float) -> Unit,
+) {
     val density=LocalDensity.current
     val outline=remember(motion,density) {
         ElasticGlassShape({motion.radius.value},{0f},{androidx.compose.ui.geometry.Offset.Zero},density)
     }
+    val reduced = LocalContentMotionReduced.current
+    val visibility = animateFloatAsState(if (artworkVisible) 1f else 0f,
+        tween(if (reduced) 0 else 180), label = "playerArtworkVisibility")
     val needsMask by remember(motion) { derivedStateOf { motion.mask.value>.001f || motion.target?.mask==1f } }
+    val softEdge = needsMask && android.os.Build.VERSION.SDK_INT >= 31
+    val blurMask = remember {
+        Brush.verticalGradient(
+            0f to Color.Transparent,
+            .30f to Color.Black.copy(alpha = .18f),
+            .72f to Color.Black.copy(alpha = .90f),
+            1f to Color.Black,
+        )
+    }
+    val blurRadius = with(density) { 29.dp.toPx() }
     Box(Modifier.graphicsLayer {
-        alpha=if(motion.ready)playerArtworkSettledAlpha(expansion.value) else 0f
+        alpha=if(motion.ready)playerArtworkSettledAlpha(expansion.value) * visibility.value else 0f
         translationX=motion.bounds.value.left;translationY=motion.bounds.value.top
         shape=outline
         shadowElevation=24.dp.toPx()*(1f-motion.mask.value).coerceIn(0f,1f)*
@@ -108,20 +131,36 @@ internal fun PlayerArtworkSurface(motion: PlayerArtworkMotion, song: Song,
     }.clip(outline)
         .then(if(needsMask)Modifier.playerArtworkFade(fullWidthPx){motion.mask.value} else Modifier)
         .background(Color.Transparent),contentAlignment=Alignment.Center) {
-        if(!motion.ready) {
-            Spacer(Modifier.fillMaxSize())
-        } else if(!song.albumArtUri.isNullOrBlank()) {
-            com.akira.app.core.widget.WidgetTransitionArtwork(song.albumArtUri,
-                Modifier.fillMaxSize(),imageRequest=rememberPlayerArtworkRequest(song.albumArtUri))
-        } else {
-            val activity=LocalActivity.current as? com.akira.app.MainActivity
-            LaunchedEffect(activity) { activity?.widgetArtworkReady=true;activity?.widgetLaunchMotion?.contentReady=true }
-            Icon(Icons.Rounded.MusicNote,null,Modifier.size(76.dp).onGloballyPositioned {
-                activity?.widgetLaunchMotion?.takeIf { motion -> !motion.finished }?.artworkTarget=it.boundsInWindow()
-            },tint=Color.White)
+        Box(Modifier.fillMaxSize().then(if (softEdge) Modifier.drawWithContent {
+            mediaLayer.record { this@drawWithContent.drawContent() }
+            drawLayer(mediaLayer)
+        } else Modifier), contentAlignment = Alignment.Center) {
+            if(!motion.ready) {
+                Spacer(Modifier.fillMaxSize())
+            } else if(!song.albumArtUri.isNullOrBlank()) {
+                com.akira.app.core.widget.WidgetTransitionArtwork(song.albumArtUri,
+                    Modifier.fillMaxSize(),imageRequest=rememberPlayerArtworkRequest(song.albumArtUri))
+            } else {
+                val activity=LocalActivity.current as? com.akira.app.MainActivity
+                LaunchedEffect(activity) { activity?.widgetArtworkReady=true;activity?.widgetLaunchMotion?.contentReady=true }
+                Icon(Icons.Rounded.MusicNote,null,Modifier.size(76.dp).onGloballyPositioned {
+                    activity?.widgetLaunchMotion?.takeIf { motion -> !motion.finished }?.artworkTarget=it.boundsInWindow()
+                },tint=Color.White)
+            }
+            if(motionArtwork!=null && motion.ready) {
+                MotionArtworkVideo(motionArtwork, isPlaying = true, Modifier.fillMaxSize(), onBlend = onVideoBlend)
+            }
         }
-        if(motionArtwork!=null && motion.ready) {
-            MotionArtworkVideo(motionArtwork,isPlaying=true,Modifier.fillMaxSize())
+        if (softEdge) {
+            DownscaledBlur(
+                radius = { blurRadius },
+                tileMode = android.graphics.Shader.TileMode.CLAMP,
+                mask = blurMask,
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(.55f)
+                    .graphicsLayer { alpha = motion.mask.value.coerceIn(0f, 1f) },
+            ) { strip ->
+                translate(top = strip.height - mediaLayer.size.height) { drawLayer(mediaLayer) }
+            }
         }
     }
 }

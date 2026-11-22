@@ -4,6 +4,7 @@ import com.akira.app.core.artwork.*
 import com.akira.app.feature.library.*
 import com.akira.app.feature.player.*
 import com.akira.app.feature.queue.*
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.semantics.liveRegion
 
@@ -485,17 +486,23 @@ internal fun LyricsHero(
         }
     }
 
-    // Use scroll direction for transport, with a threshold preventing the player from stealing the gesture.
+    // The playback clock scrolls synchronized lines too. Only a drag should
+    // dismiss the transport before the user's inactivity timeout.
+    val lyricsDragging by listState.interactionSource.collectIsDraggedAsState()
+    val latestLyricScroll by rememberUpdatedState(onUserScroll)
+    val reducedMotion = com.akira.app.core.design.components.LocalContentMotionReduced.current
     LaunchedEffect(listState) {
         var lastIndex = listState.firstVisibleItemIndex
-        androidx.compose.runtime.snapshotFlow { listState.firstVisibleItemIndex }
-            .collect { idx ->
-                val delta = idx - lastIndex
-                if (delta != 0) {
-                    lastIndex = idx
-                    onUserScroll(if (delta < 0) -1f else 1f)
-                }
+        var lastOffset = listState.firstVisibleItemScrollOffset
+        androidx.compose.runtime.snapshotFlow {
+            Triple(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset, lyricsDragging)
+        }.collect { (index, offset, dragging) ->
+            if (dragging && (index != lastIndex || offset != lastOffset)) {
+                latestLyricScroll(if (index > lastIndex || (index == lastIndex && offset > lastOffset)) 1f else -1f)
             }
+            lastIndex = index
+            lastOffset = offset
+        }
     }
     LaunchedEffect(listState) {
         androidx.compose.runtime.snapshotFlow { listState.canScrollBackward }
@@ -514,13 +521,13 @@ internal fun LyricsHero(
         }
         previousPosition = currentPositionMs
     }
-    LaunchedEffect(activeRow, song.id, seekGeneration) {
+    LaunchedEffect(activeRow, song.id, seekGeneration, reducedMotion) {
         val row = activeRow
         if (row < 0 || row == lastScrolledRow) return@LaunchedEffect
         val previous = lastScrolledRow
         lastScrolledRow = row
         // Animate only natural advances of one to three rows while the user is not dragging.
-        val animate = previous >= 0 &&
+        val animate = !reducedMotion && previous >= 0 &&
             kotlin.math.abs(row - previous) <= 3 &&
             !listState.isScrollInProgress
         val before = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == row }?.offset

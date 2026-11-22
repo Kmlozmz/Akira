@@ -1,6 +1,8 @@
 package com.akira.app.feature.player
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -56,6 +58,17 @@ private fun PlayerTrackActionButton(label: String, ink: Color, favorite: Boolean
     val reduced = LocalContentMotionReduced.current
     val scale by animateFloatAsState(if (pressed && !reduced) .94f else 1f,
         spring(dampingRatio = .85f, stiffness = 1100f), label = "playerActionContact")
+    val activation = remember { Animatable(1f) }
+    var wasFavorite by remember { mutableStateOf(favorite) }
+    LaunchedEffect(favorite, reduced) {
+        val newlySelected = favorite && !wasFavorite
+        wasFavorite = favorite
+        if (reduced || !newlySelected) activation.snapTo(1f)
+        else {
+            activation.animateTo(1.13f, tween(85))
+            activation.animateTo(1f, spring(dampingRatio = .7f, stiffness = 560f))
+        }
+    }
     val haptics = rememberAkiraHaptics()
     SideEffect {
         source.flatSourceSurface = true
@@ -66,7 +79,7 @@ private fun PlayerTrackActionButton(label: String, ink: Color, favorite: Boolean
         .clickable(interactionSource = interactions, indication = null, role = Role.Button,
             onClick = { if (menu) source.open(onClick) else { haptics.light(); onClick() } }),
         contentAlignment = Alignment.Center) {
-        Box(Modifier.graphicsLayer { scaleX = scale; scaleY = scale }) {
+        Box(Modifier.graphicsLayer { scaleX = scale * activation.value; scaleY = scaleX }) {
             PlayerActionFace(ink, favorite, menu, faceSize, glyphSize, label)
         }
     }

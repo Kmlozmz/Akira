@@ -151,6 +151,7 @@ internal class SharedGlassMaterial private constructor(
             fields.getValue("uTr").copyInto(binding.transform)
             morph?.style?.let{binding.transform[3]=it+(binding.transform[3]-it)*sourceBlend}
             shader.setFloatUniform("uTr",binding.transform)
+            if (dark && nature != SharedGlassNature.Lens) binding.ring[0] *= .68f
             shader.setFloatUniform("uRing",binding.ring)
             shader.setFloatUniform("lensZoom",if(nature==SharedGlassNature.Lens)com.akira.app.core.design.system.AkiraDockSpec.lensZoom else 1f)
             shader.setFloatUniform("edgeDispersion", if (nature == SharedGlassNature.Lens) com.akira.app.core.design.system.AkiraDockSpec.dispersion else .0f)
@@ -168,7 +169,25 @@ internal class SharedGlassMaterial private constructor(
             val tint = maxOf(opacity.coerceIn(0f, 1f), if (readable) .12f*(1f-sourceBlend) else 0f)
             val base = fields.getValue("uTintO")[3]
             fields.getValue("uTintO").copyInto(binding.tint)
-            binding.tint[3] = base + (1 - base) * tint
+            if (dark && nature != SharedGlassNature.Lens) {
+                // A smoked surface carries through the sampled hue. Darkening in
+                // the material pass leaves foreground text and edge refraction sharp.
+                val shade = when (nature) {
+                    SharedGlassNature.Control -> .52f
+                    SharedGlassNature.Menu -> .66f
+                    SharedGlassNature.Panel -> .72f
+                    SharedGlassNature.Lens -> 0f
+                }
+                val requested = base + (1f - base) * tint
+                val liveShade = shade * (1f - requested)
+                val strength = (liveShade + requested).coerceAtLeast(.001f)
+                val carryColor = liveShade / strength
+                shader.setFloatUniform("uTintA", .055f * carryColor, .06f * carryColor, .072f * carryColor,
+                    .53f * carryColor)
+                binding.tint[3] = strength
+            } else {
+                binding.tint[3] = base + (1 - base) * tint
+            }
             shader.setFloatUniform("uTintO", binding.tint)
             with(scope) {
                 blur(blur * dp)

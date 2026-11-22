@@ -86,7 +86,8 @@ import kotlinx.coroutines.CancellationException
                 onShuffleClick = { queue.shuffled().let { q -> q.firstOrNull()?.let { onPlay(it, q) } } },
                 description = collection.description,
                 onCreatorClick = { creator -> creator.artistId?.let { id -> onChoose(ArtistItem(id, creator.name, null,
-                    shuffleEndpoint = null, radioEndpoint = null), null) } })
+                    shuffleEndpoint = null, radioEndpoint = null), null) } },
+                album = collection.item is AlbumItem)
         }
         item("feedback") { feedback() }
         items(tracks, key = { "track-${it.id}" }) { item -> OnlineDetailTrack(item, queue, current, playing, onPlay, onToggle, onMore) }
@@ -161,6 +162,10 @@ import kotlinx.coroutines.CancellationException
     fun share() { context.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND)
         .setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, artist.shareLink), artist.title)) }
     fun play() { if (queue.any { it.id == current?.id }) onToggle() else queue.firstOrNull()?.let { onPlay(it, queue) } }
+    fun shuffle() {
+        val shuffled = queue.shuffled()
+        shuffled.firstOrNull()?.let { onPlay(it, shuffled) }
+    }
     CompositionLocalProvider(LocalAppBackdrop provides backdrop,
         com.akira.app.core.design.navigation.LocalPageHeaderBackdrop provides backdrop) {
         Box(Modifier.fillMaxSize().containerTransformTarget(transitionKey, 68.5.dp).background(background.value)) {
@@ -174,10 +179,10 @@ import kotlinx.coroutines.CancellationException
                 }
                 LazyColumn(state = state, contentPadding = PaddingValues(bottom = bottom + 30.dp), modifier = Modifier.fillMaxSize()) {
                     item("masthead") { CompositionLocalProvider(LocalAppBackdrop provides artworkBackdrop) {
-                        AkiraArtistMasthead(artist.title, collection.stats ?: "YouTube Music", background.value, favorite,
+                        AkiraArtistMasthead(artist.title, collection.stats ?: "YouTube Music", favorite,
                             playing && queue.any { it.id == current?.id }, ::play,
                             onFavorite = { scope.launch { prefsRepo.setArtistFavorite(artist.title, !favorite) } },
-                            onInfo = { showInfo = true }, modifier = Modifier.padding(top = height * .56f).padding(horizontal = 30.dp))
+                            onShuffle = ::shuffle, modifier = Modifier.padding(top = height * .56f).padding(horizontal = 30.dp))
                     } }
                     item("feedback") { feedback() }
                     page.shelves.forEachIndexed { index, shelf ->
@@ -202,7 +207,7 @@ import kotlinx.coroutines.CancellationException
     }
     if (showMenu) com.akira.app.feature.collection.ArtistOptionsMenu(artist.title,collection.stats ?: "YouTube Music",favorite,
         onDismiss={showMenu=false},onPlay={queue.firstOrNull()?.let{onPlay(it,queue)}},
-        onShuffle={queue.shuffled().let{q->q.firstOrNull()?.let{onPlay(it,q)}}},
+        onShuffle=::shuffle,
         onFavorite={scope.launch{prefsRepo.setArtistFavorite(artist.title,!favorite)}},
         onAlbums=if(albumSection<0)null else ::albums,onInformation={showInfo=true},onShare=::share,
         onRadio={scope.launch {
