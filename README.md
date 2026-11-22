@@ -5,7 +5,7 @@
 <p align="center">A player for the music you keep and the music you have yet to discover.</p>
 
 <p align="center">
-  <a href="https://github.com/Kmlozmz/Akira/releases"><img src="https://img.shields.io/badge/version-1.1.0-FA243C?style=flat-square" alt="Version 1.1.0" /></a>
+  <a href="https://github.com/Kmlozmz/Akira/releases"><img src="https://img.shields.io/badge/version-1.2.0-FA243C?style=flat-square" alt="Version 1.2.0" /></a>
   <img src="https://img.shields.io/badge/Android-8.0%2B-242428?style=flat-square" alt="Android 8.0 or later" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-242428?style=flat-square" alt="GPL version 3" /></a>
   <img src="https://img.shields.io/badge/languages-ES%20%2F%20EN-242428?style=flat-square" alt="Spanish and English" />
