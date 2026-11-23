@@ -18,6 +18,9 @@ import androidx.compose.ui.unit.LayoutDirection
 
 @Immutable
 internal class ShapeProvider(val shapeBlock: () -> Shape) {
+    override fun equals(other: Any?): Boolean = other is ShapeProvider && shapeBlock === other.shapeBlock
+
+    override fun hashCode(): Int = shapeBlock.hashCode()
 
     val innerShape
         get() = shapeBlock()

@@ -10,11 +10,14 @@
 package com.akira.app.core.design.backdrop
 
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.RenderEffect
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import com.akira.app.core.design.backdrop.internal.chain
 
 sealed interface BackdropEffectScope : Density, RuntimeShaderCache {
 
@@ -39,6 +42,40 @@ internal abstract class BackdropEffectScopeImpl : BackdropEffectScope, RuntimeSh
     override var renderEffect: RenderEffect? = null
 
     private val runtimeShaderCache = RuntimeShaderCacheImpl()
+    private var lastBlur: BlurEffect? = null
+    private var blurInput: RenderEffect? = null
+    private var blurRadius = Float.NaN
+    private var blurTileMode = TileMode.Clamp
+
+    private var lastChain: RenderEffect? = null
+    private var chainInput: RenderEffect? = null
+    private var chainEffect: RenderEffect? = null
+
+    fun applyCachedBlur(radius: Float, tileMode: TileMode) {
+        val input = renderEffect
+        if (lastBlur == null || input !== blurInput || radius != blurRadius || tileMode != blurTileMode) {
+            lastBlur = BlurEffect(input, radius, radius, tileMode)
+            blurInput = input
+            blurRadius = radius
+            blurTileMode = tileMode
+        }
+        renderEffect = lastBlur
+    }
+
+    @androidx.annotation.RequiresApi(android.os.Build.VERSION_CODES.S)
+    fun chainEffect(effect: RenderEffect) {
+        val input = renderEffect
+        if (input == null) {
+            renderEffect = effect
+            return
+        }
+        if (lastChain == null || input !== chainInput || effect !== chainEffect) {
+            lastChain = input.chain(effect)
+            chainInput = input
+            chainEffect = effect
+        }
+        renderEffect = lastChain
+    }
 
     override fun obtainRuntimeShader(key: String, string: String): RuntimeShader {
         return runtimeShaderCache.obtainRuntimeShader(key, string)
@@ -81,6 +118,11 @@ internal abstract class BackdropEffectScopeImpl : BackdropEffectScope, RuntimeSh
         layoutDirection = LayoutDirection.Ltr
         padding = 0f
         renderEffect = null
+        lastBlur = null
+        blurInput = null
+        lastChain = null
+        chainInput = null
+        chainEffect = null
         runtimeShaderCache.clear()
     }
 }

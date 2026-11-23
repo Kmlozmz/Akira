@@ -16,6 +16,7 @@ import androidx.compose.runtime.neverEqualPolicy
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
@@ -38,6 +39,7 @@ import androidx.compose.ui.node.LayoutModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.ObserverModifierNode
 import androidx.compose.ui.node.observeReads
+import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.node.requireGraphicsContext
 import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.unit.Constraints
@@ -204,6 +206,7 @@ private class DrawBackdropElement(
     }
 
     override fun update(node: DrawBackdropNode) {
+        val effectsChanged = node.effects !== effects || node.shapeProvider != shapeProvider
         node.backdrop = backdrop
         node.shapeProvider = shapeProvider
         node.effects = effects
@@ -218,7 +221,7 @@ private class DrawBackdropElement(
         node.onDrawFront = onDrawFront
         node.backdropScale = backdropScale
         node.clipOutput = clipOutput
-        node.invalidateDrawCache()
+        if (effectsChanged) node.observeEffects()
     }
 
     override fun InspectorInfo.inspectableProperties() {
@@ -291,6 +294,7 @@ private class DrawBackdropNode(
 
     private var graphicsLayer: GraphicsLayer? = null
     private var surfaceClipPath: Path? = null
+    private var surfaceRoundedRect: RoundRect? = null
 
     private val layoutLayerBlock: GraphicsLayerScope.() -> Unit = {
         clip = clipOutput
@@ -393,17 +397,24 @@ private class DrawBackdropNode(
         }
 
         val filtered = effectScope.renderEffect != null || backdropScale != 1f
-        withSurfaceClip {
+        val surfaceOutline = if (clipOutput) shapeProvider.shape.createOutline(size, layoutDirection, this) else null
+        if (surfaceOutline is Outline.Rounded && surfaceRoundedRect != surfaceOutline.roundRect) {
+            val path = surfaceClipPath ?: Path().also { surfaceClipPath = it }
+            path.rewind()
+            path.addRoundRect(surfaceOutline.roundRect)
+            surfaceRoundedRect = surfaceOutline.roundRect
+        }
+        withSurfaceClip(surfaceOutline) {
             onDrawBehind?.invoke(this)
             if (filtered) drawBackdropLayer() else drawDirectBackdrop()
             onDrawSurface?.invoke(this)
         }
         drawContent()
-        onDrawFront?.let { front -> withSurfaceClip { front() } }
+        onDrawFront?.let { front -> withSurfaceClip(surfaceOutline) { front() } }
 
         exportedBackdrop?.graphicsLayer?.let { layer ->
             recordLayer(this@DrawBackdropNode, layer) {
-                withSurfaceClip {
+                withSurfaceClip(surfaceOutline) {
                     onDrawBehind?.invoke(this)
                     if (filtered) drawRecordedBackdrop() else drawDirectBackdrop()
                     onDrawSurface?.invoke(this)
@@ -414,20 +425,17 @@ private class DrawBackdropNode(
     }
 
     /** Clip the optical output, not its padded input or the outer shadow/rim. */
-    private inline fun DrawScope.withSurfaceClip(draw: DrawScope.() -> Unit) {
+    private inline fun DrawScope.withSurfaceClip(outline: Outline?, draw: DrawScope.() -> Unit) {
         // Optical thumb shaders own their alpha and padded rim.
-        if (!clipOutput) {
+        if (outline == null) {
             draw()
             return
         }
-        val outline = shapeProvider.shape.createOutline(size, layoutDirection, this)
-        val path = if (outline is Outline.Rounded) {
-            surfaceClipPath ?: Path().also { surfaceClipPath = it }
-        } else null
         val canvas = drawContext.canvas
         canvas.save()
         try {
-            canvas.clipOutline(outline, path)
+            if (outline is Outline.Rounded) canvas.clipPath(checkNotNull(surfaceClipPath))
+            else canvas.clipOutline(outline, null)
             draw()
         } finally {
             canvas.restore()
@@ -448,15 +456,12 @@ private class DrawBackdropNode(
     }
 
     override fun onObservedReadsChanged() {
-        invalidateDrawCache()
-    }
-
-    fun invalidateDrawCache() {
         observeEffects()
+        if (isAttached) invalidateDraw()
     }
 
-    private fun observeEffects() {
-        observeReads { updateEffects() }
+    fun observeEffects() {
+        if (isAttached) observeReads { updateEffects() }
     }
 
     private fun updateEffects() {
@@ -483,6 +488,7 @@ private class DrawBackdropNode(
 
         effectScope.reset()
         surfaceClipPath = null
+        surfaceRoundedRect = null
         layoutCoordinates = null
         exportedBackdrop?.layerCoordinates = null
     }

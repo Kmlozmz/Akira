@@ -11,9 +11,9 @@ package com.akira.app.core.design.backdrop.effects
 
 import androidx.compose.ui.graphics.RenderEffect
 import com.akira.app.core.design.backdrop.BackdropEffectScope
+import com.akira.app.core.design.backdrop.BackdropEffectScopeImpl
 import com.akira.app.core.design.backdrop.RuntimeShader
 import com.akira.app.core.design.backdrop.internal.RuntimeShaderEffect
-import com.akira.app.core.design.backdrop.internal.chain
 import com.akira.app.core.design.backdrop.isRenderEffectSupported
 import com.akira.app.core.design.backdrop.isRuntimeShaderSupported
 import org.intellij.lang.annotations.Language
@@ -22,7 +22,7 @@ import kotlin.contracts.ExperimentalContracts
 fun BackdropEffectScope.effect(effect: RenderEffect) {
     if (!isRenderEffectSupported()) return
 
-    renderEffect = renderEffect.chain(effect)
+    (this as BackdropEffectScopeImpl).chainEffect(effect)
 }
 
 @OptIn(ExperimentalContracts::class)
@@ -39,5 +39,5 @@ fun BackdropEffectScope.runtimeShaderEffect(
             runtimeShader = obtainRuntimeShader(key, shaderString).apply(block),
             uniformShaderName = uniformShaderName
         )
-    renderEffect = renderEffect.chain(effect)
+    effect(effect)
 }

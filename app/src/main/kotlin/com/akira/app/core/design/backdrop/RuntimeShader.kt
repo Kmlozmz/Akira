@@ -12,7 +12,9 @@ package com.akira.app.core.design.backdrop
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RenderEffect
 import androidx.compose.ui.graphics.Shader
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.toArgb
 import org.intellij.lang.annotations.Language
 
@@ -32,6 +34,14 @@ fun RuntimeShader.asAndroidRuntimeShader(): android.graphics.RuntimeShader {
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 internal class AndroidRuntimeShader(val shader: android.graphics.RuntimeShader) : RuntimeShader {
+    private var effectName: String? = null
+    private var cachedEffect: RenderEffect? = null
+
+    fun renderingEffect(input: String): RenderEffect {
+        cachedEffect?.let { if (effectName == input) return it }
+        return android.graphics.RenderEffect.createRuntimeShaderEffect(shader, input)
+            .asComposeRenderEffect().also { effectName = input; cachedEffect = it }
+    }
 
     // Dynamic material lambdas also run for stationary geometry. Avoid identical JNI uploads;
     // arrays are copied because callers reuse their uniform buffers between frames.
@@ -46,6 +56,7 @@ internal class AndroidRuntimeShader(val shader: android.graphics.RuntimeShader) 
         if (count > 1) values[1] = b
         if (count > 2) values[2] = c
         if (count > 3) values[3] = d
+        cachedEffect = null
         return true
     }
 
@@ -69,31 +80,38 @@ internal class AndroidRuntimeShader(val shader: android.graphics.RuntimeShader) 
         val old = floats[name]
         if (old != null && old.contentEquals(values)) return
         shader.setFloatUniform(name, values)
+        cachedEffect = null
         if (old != null && old.size == values.size) values.copyInto(old) else floats[name] = values.copyOf()
     }
 
     override fun setIntUniform(name: String, value: Int) {
         shader.setIntUniform(name, value)
+        cachedEffect = null
     }
 
     override fun setIntUniform(name: String, value1: Int, value2: Int) {
         shader.setIntUniform(name, value1, value2)
+        cachedEffect = null
     }
 
     override fun setIntUniform(name: String, value1: Int, value2: Int, value3: Int) {
         shader.setIntUniform(name, value1, value2, value3)
+        cachedEffect = null
     }
 
     override fun setIntUniform(name: String, value1: Int, value2: Int, value3: Int, value4: Int) {
         shader.setIntUniform(name, value1, value2, value3, value4)
+        cachedEffect = null
     }
 
     override fun setIntUniform(name: String, values: IntArray) {
         shader.setIntUniform(name, values)
+        cachedEffect = null
     }
 
     override fun setColorUniform(name: String, color: Color) {
         shader.setColorUniform(name, color.toArgb())
+        cachedEffect = null
     }
 }
 

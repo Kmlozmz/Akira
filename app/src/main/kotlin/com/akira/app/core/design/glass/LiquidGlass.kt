@@ -156,7 +156,6 @@ internal fun Modifier.renderLiquidGlass(shape: CornerBasedShape, backdrop: Backd
     readableContent: Boolean = false): Modifier {
     // Selection lenses retain Akira's production Snell optics rather than a panel/control recipe.
     val sharedMaterial = if(clearLens)null else LocalSharedGlassMaterial.current
-    val contactAmount = LocalGlassDeformation.current
     val nature = if (clearLens) SharedGlassNature.Lens else if (readableContent || LocalGlassReadableSurface.current) {
         LocalSharedGlassNature.current.let { if (it == SharedGlassNature.Control) SharedGlassNature.Panel else it }
     } else LocalSharedGlassNature.current
@@ -173,7 +172,7 @@ internal fun Modifier.renderLiquidGlass(shape: CornerBasedShape, backdrop: Backd
         }
     val opacity = LocalLiquidGlassOpacity.current
     val diffusion = LocalLiquidGlassDiffusion.current
-    val diffuse = !clearLens && (!LocalGlassIsDock.current || LocalDockBackgroundDiffusion.current)
+    val diffuse = !clearLens && (!dockReading || LocalDockBackgroundDiffusion.current)
     val redraw = LocalGlassRedrawSignal.current
     val density = LocalDensity.current
     val scale = if(glass)AkiraGlassMaterialProfile.ResolutionScale else FALLBACK_RESOLUTION_SCALE
@@ -191,8 +190,6 @@ internal fun Modifier.renderLiquidGlass(shape: CornerBasedShape, backdrop: Backd
         backdrop = scene,
         shape = { shape },
         effects = {
-            val diffusionRadius = if (glass && diffuse) diffusion().coerceIn(0f,24f) *
-                (if(reading)1f else .25f) * density.density * scale * material() else 0f
             // Filter the source once, then refract that same continuous image.
             // A separately masked sharp rim makes the capsule look laminated.
             if (sharedMaterial != null) {
@@ -200,6 +197,8 @@ internal fun Modifier.renderLiquidGlass(shape: CornerBasedShape, backdrop: Backd
                     if(clearLens)0f else opacity() * material(), if (diffuse) diffusion()*(if(reading)1f else .28f) else 0f,
                     presence(), !clearLens && reading, nature, 0f)
             } else {
+            val diffusionRadius = if (glass && diffuse) diffusion().coerceIn(0f,24f) *
+                (if(reading)1f else .25f) * density.density * scale * material() else 0f
             if (!clearLens) padding = maxOf(diffusionRadius * 2f, 26f * density.density * scale)
             if (diffusionRadius > 0f) blur(diffusionRadius)
             if (glass && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

@@ -425,7 +425,7 @@ import kotlinx.coroutines.flow.first
             }
         }
         if (homeRoot) HomeTopBar(heroProgress, homeGlass, { if (obscured) 1f else 0f }, heroHeight)
-        else if (libraryRoot) LibraryFloatingBar(onlineKindLabel(effectiveLibraryKind), headerProgress, backdrop,
+        else if (libraryRoot) LibraryFloatingBar(onlineKindLabel(effectiveLibraryKind), { headerProgress }, backdrop,
             onBack = { libraryCategoryVisible = false }, onFirst = { librarySortMenu = true }, onMore = { libraryMenu = true })
         else CompositionLocalProvider(LocalPageHeaderBackdrop provides backdrop) {
             PagePageHeader(headerTitle, if (active != null) onBack else null,

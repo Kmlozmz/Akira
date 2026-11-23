@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithCache
 import com.akira.app.core.design.backdrop.backdrops.rememberLayerBackdrop
 import com.akira.app.core.design.backdrop.backdrops.layerBackdrop
@@ -300,11 +301,9 @@ internal fun HomeTopBar(progress:()->Float,glassState:GlassState,playerSheetProg
         { ((progress() - .5f) / transitionFraction).coerceIn(0f, 1f) }
     }
     val background = MaterialTheme.colorScheme.background
-    // Native backdrop nodes must never paint beyond this header's viewport.
-    Box(Modifier.fillMaxWidth().height(headerHeight).graphicsLayer {
-        clip = true
-        compositingStrategy = CompositingStrategy.Offscreen
-    }) {
+    // Each blur band already owns its masked buffer. Keep the viewport clip
+    // without compositing the finished header into a second offscreen buffer.
+    Box(Modifier.fillMaxWidth().height(headerHeight).clipToBounds()) {
         val showOverlay by remember(progress) { derivedStateOf { progress() > .01f } }
         if (showOverlay) {
             Box(Modifier.matchParentSize().graphicsLayer { alpha = progress().coerceIn(0f, 1f) }) {

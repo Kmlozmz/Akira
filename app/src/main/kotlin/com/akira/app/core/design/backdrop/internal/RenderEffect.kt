@@ -16,7 +16,7 @@ import androidx.compose.ui.graphics.RenderEffect
 import androidx.compose.ui.graphics.asAndroidColorFilter
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import com.akira.app.core.design.backdrop.RuntimeShader
-import com.akira.app.core.design.backdrop.asAndroidRuntimeShader
+import com.akira.app.core.design.backdrop.AndroidRuntimeShader
 
 @RequiresApi(Build.VERSION_CODES.S)
 internal fun RenderEffect?.chain(other: RenderEffect): RenderEffect {
@@ -35,10 +35,7 @@ internal fun RuntimeShaderEffect(
     runtimeShader: RuntimeShader,
     uniformShaderName: String
 ): RenderEffect {
-    return android.graphics.RenderEffect.createRuntimeShaderEffect(
-        runtimeShader.asAndroidRuntimeShader(),
-        uniformShaderName
-    ).asComposeRenderEffect()
+    return (runtimeShader as AndroidRuntimeShader).renderingEffect(uniformShaderName)
 }
 
 @RequiresApi(Build.VERSION_CODES.S)

@@ -63,7 +63,7 @@ internal data class LibraryCategoryLink(val key: String, val title: String, val 
     val openAlbums = { onSelect(categories.firstOrNull { it.key.equals("albums", true) }?.key ?: categories.first().key) }
     SideEffect {
         if (activeChrome && chrome != null) {
-            chrome.category = false; chrome.collapse = 0f; chrome.scrim = 0f; chrome.backdrop = backdrop
+            chrome.category = false; chrome.collapse = HiddenLibraryHeader; chrome.scrim = HiddenLibraryHeader; chrome.backdrop = backdrop
             chrome.icon = LibraryIcons.View; chrome.description = albumLabel
             chrome.onFirst = openAlbums; chrome.onMore = { menu = true }; chrome.onProfile = { profile = true }
         }
@@ -137,10 +137,10 @@ internal data class LibraryCategoryLink(val key: String, val title: String, val 
 }
 
 /** The toolbar is a sibling of the recorded body so its glass cannot sample itself. */
-@Composable internal fun LibraryFloatingBar(title: String, collapsed: Float, backdrop: Backdrop,
+@Composable internal fun LibraryFloatingBar(title: String, collapsed: () -> Float, backdrop: Backdrop,
     onBack: () -> Unit, firstIcon: ImageVector = LibraryIcons.Filter,
     firstDescription: String = localizedText("Sort", "Ordenar"), onFirst: () -> Unit, onMore: () -> Unit,
-    scrimProgress: Float = collapsed) {
+    scrimProgress: () -> Float = collapsed) {
     val chrome = LocalLibraryChrome.current
     val activeChrome = LocalLibraryChromeActive.current
     if (chrome != null) {
@@ -156,13 +156,12 @@ internal data class LibraryCategoryLink(val key: String, val title: String, val 
     val color = MaterialTheme.colorScheme.background
     val inset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     CompositionLocalProvider(LocalPageHeaderBackdrop provides backdrop, LocalAppBackdrop provides backdrop) {
-        Box(Modifier.fillMaxWidth().height(inset + 102.dp).background(Brush.verticalGradient(
-            0f to color.copy(alpha = .98f * scrimProgress), .52f to color.copy(alpha = .88f * scrimProgress), 1f to Color.Transparent))) {
+        Box(Modifier.fillMaxWidth().height(inset + 102.dp).libraryHeaderScrim(color, scrimProgress)) {
             Row(Modifier.fillMaxWidth().padding(top = inset + AkiraNavigationMetrics.HeaderTop,
                 start = AkiraNavigationMetrics.Gutter - 4.dp, end = AkiraNavigationMetrics.Gutter),
                 verticalAlignment = Alignment.CenterVertically) {
                 PageBackButton(onBack)
-                Text(title, Modifier.weight(1f).padding(horizontal = 8.dp).graphicsLayer { alpha = collapsed },
+                Text(title, Modifier.weight(1f).padding(horizontal = 8.dp).graphicsLayer { alpha = collapsed() },
                     fontFamily = AkiraFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 LibraryActionCapsule(firstIcon, firstDescription, onFirst, onMore)
@@ -290,11 +289,12 @@ internal data class LibraryCategoryLink(val key: String, val title: String, val 
                 val list = rememberLazyListState()
                 val backdrop = rememberLayerBackdrop()
                 val density = LocalDensity.current
-                val collapse by remember(key) { derivedStateOf {
+                val collapse by remember(key, density) { derivedStateOf {
                     val index = if (key == "Albums") grid.firstVisibleItemIndex else list.firstVisibleItemIndex
                     val offset = if (key == "Albums") grid.firstVisibleItemScrollOffset else list.firstVisibleItemScrollOffset
                     if (index > 0) 1f else (offset / with(density) { 70.dp.toPx() }).coerceIn(0f, 1f)
                 } }
+                val headerProgress = remember(key, density) { { if (key == "Playlists") 1f else collapse } }
                 val atStart by remember { derivedStateOf { if (key == "Albums") grid.firstVisibleItemIndex == 0 && grid.firstVisibleItemScrollOffset == 0
                     else list.firstVisibleItemIndex == 0 && list.firstVisibleItemScrollOffset == 0 } }
                 val liveStart by rememberUpdatedState(atStart)
@@ -352,7 +352,7 @@ internal data class LibraryCategoryLink(val key: String, val title: String, val 
                             }
                         }
                     }
-                    LibraryFloatingBar(title, if (key == "Playlists") 1f else collapse, backdrop,
+                    LibraryFloatingBar(title, headerProgress, backdrop,
                         onBack = { if (folder != null) folder = null else category = null },
                         onFirst = { if (key == "Albums") sortMenu = true else onSort() }, onMore = { menu = true })
                     if (menu) AkiraContextMenu(onDismiss={menu=false},title=title,

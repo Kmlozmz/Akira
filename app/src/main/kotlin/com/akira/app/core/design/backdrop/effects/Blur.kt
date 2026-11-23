@@ -10,9 +10,9 @@
 package com.akira.app.core.design.backdrop.effects
 
 import androidx.annotation.FloatRange
-import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.TileMode
 import com.akira.app.core.design.backdrop.BackdropEffectScope
+import com.akira.app.core.design.backdrop.BackdropEffectScopeImpl
 import com.akira.app.core.design.backdrop.isRenderEffectSupported
 
 fun BackdropEffectScope.blur(
@@ -28,11 +28,5 @@ fun BackdropEffectScope.blur(
         }
     }
 
-    renderEffect =
-        BlurEffect(
-            renderEffect,
-            radius,
-            radius,
-            edgeTreatment
-        )
+    (this as BackdropEffectScopeImpl).applyCachedBlur(radius, edgeTreatment)
 }
