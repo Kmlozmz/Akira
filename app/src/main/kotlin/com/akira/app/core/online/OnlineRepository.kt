@@ -14,10 +14,12 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import com.akira.innertube.pages.RelatedPage
 import org.json.JSONObject
 import java.io.IOException
 import java.util.Locale
 import kotlin.coroutines.resume
+import kotlin.random.Random
 
 data class OnlineAccount(val connected: Boolean = false, val name: String = "", val image: String? = null)
 enum class OnlineShelfLayout { COVERS, TRACKS, RANKED_TRACKS, VIDEOS, ARTISTS }
@@ -28,7 +30,7 @@ data class OnlineCollection(val item: YTItem, val description: String? = null, v
     val creators: List<Artist> = emptyList())
 data class OnlinePage(val title: String, val shelves: List<OnlineShelf>, val continuation: String? = null,
     val collection: OnlineCollection? = null)
-data class OnlineStream(val url: String, val headers: Map<String, String>)
+data class OnlineStream(val url: String, val headers: Map<String, String>, val itag: Int)
 data class OnlineSearchCategory(val title: String, val color: Long, val endpoint: BrowseEndpoint)
 
 /** Page's provider, kept separate from the MediaStore library and its database. */
@@ -191,8 +193,10 @@ class OnlineRepository private constructor(context: Context) {
         if (_account.value != user || generation != sessionGeneration.get() || profile != historyScope) return
         synchronized(browsePages) { pages.forEach { (key, page) ->
             if (key !in browsePages) {
-                browsePages[key] = Triple(user, catalog(page), 0)
-                if (key == "home") _homePages.value = user to page
+                val restored = if (key == "home") page.copy(shelves = page.shelves.filterNot { it.title in legacyHomeShelves })
+                    else page
+                browsePages[key] = Triple(user, catalog(restored), 0)
+                if (key == "home") _homePages.value = user to restored
             }
         } }
         if (pages.isNotEmpty()) _pageRevision.update { it + 1 }
@@ -537,16 +541,18 @@ class OnlineRepository private constructor(context: Context) {
         val started = android.os.SystemClock.elapsedRealtime()
         homeEnrichmentJob?.cancel()
         val segments = linkedMapOf<String, List<OnlineShelf>>()
-        val previous = cachedPage("home", user)
+        val previous = cachedPage("home", user)?.shelves.orEmpty().filterNot {
+            it.title in legacyHomeShelves
+        }
+        val order = listOf("recent", "related", "releases", "feed", "charts", "artists", "albums", "popular")
         var continuation: String? = null
         var firstRemote = true
         fun publish(slot: String, shelves: List<OnlineShelf>, token: String? = null) = synchronized(segments) {
             if (_account.value != user || sessionGeneration.get() != generation || !_enabled.value) return@synchronized
             if (slot == "feed") continuation = token
             segments[slot] = shelves
-            val order = listOf("recent", "popular", "related", "artists", "albums", "history", "feed", "charts", "releases")
             val fresh = order.flatMap { segments[it].orEmpty() }.filter { it.items.isNotEmpty() }
-            val combined = (fresh + previous?.shelves.orEmpty()).distinctBy { it.title }.take(24)
+            val combined = (fresh + previous).distinctBy { it.title }.take(24)
             if (combined.isEmpty()) return@synchronized
             val snapshot = catalog(OnlinePage("Home", combined, continuation))
             cachePage("home", snapshot, user, fresh = false)
@@ -567,75 +573,86 @@ class OnlineRepository private constructor(context: Context) {
             _mostPlayed.value.take(18), layout = OnlineShelfLayout.RANKED_TRACKS)))
         ready()
         return supervisorScope {
-        val initialSource = seed?.takeIf { it.contentUri.startsWith("akira-youtube:") }
-            ?: _recentSongs.value.firstOrNull()?.asOnlineSong()
+        val recentSnapshot = _recentSongs.value
+        val initialSource = seed?.let(::listeningSeed) ?: recentSnapshot.firstOrNull()
+        val favorites = favoriteSeeds()
+        val frequent = _mostPlayed.value
         val home = async {
             try { withTimeout(9_000) { YouTube.home() }.also { result ->
                 result.getOrNull()?.let { publish("feed", it.sections.map { section -> section.asOnlineShelf() }, it.continuation) }
             } }
             catch(timeout: TimeoutCancellationException) { Result.failure(timeout) }
         }
-        val history = async { if (_account.value.connected) withTimeoutOrNull(6_000) {
-            YouTube.musicHistory().getOrNull()?.sections.orEmpty().flatMap { it.songs }
-        }.orEmpty() else emptyList() }.also { request -> launch { publish("recent", recentShelves(request.await())) } }
+        val history = async {
+            val songs = if (user.connected) withTimeoutOrNull(6_000) {
+                YouTube.musicHistory().getOrNull()?.sections.orEmpty().flatMap { it.songs }
+            }.orEmpty() else emptyList()
+            publish("recent", recentShelves(songs))
+            songs
+        }
         val releases = async { withTimeoutOrNull(8_000) { YouTube.explore().getOrNull()?.newReleaseAlbums }.also { items ->
             if (!items.isNullOrEmpty()) publish("releases", listOf(OnlineShelf(if (spanish) "Novedades" else "New releases", items)))
         } }
         val charts = async { withTimeoutOrNull(8_000) { YouTube.getChartsPage().getOrNull() }.also { chart ->
             publish("charts", chart?.sections.orEmpty().take(3).map { OnlineShelf(it.title, it.items) })
         } }
-        val related = async { withTimeoutOrNull(8_000) {
-            val source = initialSource ?: history.await().firstOrNull()?.asOnlineSong()
-            source?.let {
-                val id = it.id.removePrefix("youtube:")
-                // The same song radio used by Page: a bare video endpoint can be a one-song dead end for guests.
-                val next = YouTube.next(WatchEndpoint(videoId = id, playlistId = "RDAMVM$id")).getOrNull()
-                val details = next?.relatedEndpoint?.let { endpoint -> YouTube.related(endpoint).getOrNull() }
-                Triple(source, next, details)
+        val related = async {
+            val rotation = System.currentTimeMillis() / (6 * 60 * 60 * 1000L)
+            val random = Random(rotation xor historyScope.hashCode().toLong())
+            val localSeeds = listeningSeeds(favorites, frequent, recentSnapshot, initialSource, random)
+            val seeds = localSeeds.ifEmpty {
+                val remote = history.await()
+                listeningSeeds(favorites, frequent, remote, remote.firstOrNull(), random)
             }
-        } }
-        val result = home.await()
-        val page = result.getOrNull()
-        val shelves = mutableListOf<OnlineShelf>()
-        val recent = (_recentSongs.value + history.await()).distinctBy { it.id }.take(30)
-        if (recent.isNotEmpty()) shelves += OnlineShelf(if (spanish) "Escuchadas recientemente" else "Recently played", recent.take(12))
-        if (_mostPlayed.value.isNotEmpty()) shelves += OnlineShelf(if (spanish) "Más escuchadas" else "Most played",
-            _mostPlayed.value.take(18), layout = OnlineShelfLayout.RANKED_TRACKS)
-        val (source, next, detail) = related.await() ?: Triple(initialSource, null, null)
-        if (source != null) {
-            val tracks = (detail?.songs.orEmpty().ifEmpty { next?.items.orEmpty() }).filterNot { "youtube:${it.id}" == source.id }.distinctBy { it.id }.take(18)
-            if (tracks.isNotEmpty()) shelves += OnlineShelf(if (spanish) "Para seguir escuchando" else "Keep listening", tracks,
-                if (spanish) "Porque escuchaste ${source.title}" else "Because you listened to ${source.title}",
-                thumbnail = source.albumArtUri, layout = OnlineShelfLayout.TRACKS)
-            publish("related", shelves.filter { it.layout == OnlineShelfLayout.TRACKS })
-            // Some guest radio responses omit the Related tab. Its actual song metadata still identifies artists/albums.
-            val artistCandidates = detail?.artists.orEmpty().ifEmpty { tracks.flatMap { song ->
+            val radios = seeds.map { source -> async { songRadio(source.id) } }.awaitAll()
+            val played = (_recentSongs.value + history.await()).distinctBy { it.id }.take(30).mapTo(hashSetOf()) { it.id }
+            val excluded = (seeds + listOfNotNull(initialSource)).mapTo(hashSetOf()) { it.id }
+            val radioTracks = radios.map { (queue, detail) ->
+                val candidates = (detail?.songs.orEmpty() + queue).distinctBy { it.id }
+                candidates.take(10).shuffled(random) + candidates.drop(10)
+            }
+            val discoveries = recommendationTracks(radioTracks, played, excluded, limit = 18)
+            val tracks = if (discoveries.size >= 6) discoveries else recommendationTracks(
+                radioTracks + artistDiscovery(seeds), played, excluded, limit = 18,
+            )
+            val personalized = if (tracks.isEmpty()) emptyList() else listOf(OnlineShelf(
+                if (spanish) "Hecho para ti" else "Made for you",
+                tracks, if (spanish) "Según tu actividad" else "Based on your listening",
+                layout = OnlineShelfLayout.TRACKS,
+            ))
+            publish("related", personalized)
+
+            val details = radios.mapNotNull { it.second }
+            val artists = (details.flatMap { it.artists } + tracks.flatMap { song ->
                 song.artists.mapNotNull { artist -> artist.id?.takeIf(String::isNotBlank)?.let { id ->
                     ArtistItem(id, artist.name, null, shuffleEndpoint = null, radioEndpoint = null)
                 } }
-            }.distinctBy { it.id } }.take(8)
-            val artists = artistCandidates.map { artistPortraits[it.id] ?: it }
-            val albums = detail?.albums.orEmpty().ifEmpty { tracks.mapNotNull { song -> song.album?.let { album ->
+            }).distinctBy { it.id }.take(8).map { artistPortraits[it.id] ?: it }
+            val albums = (details.flatMap { it.albums } + tracks.mapNotNull { song -> song.album?.let { album ->
                 AlbumItem(album.id, "", title = album.name, artists = song.artists, thumbnail = song.thumbnail)
-            } }.distinctBy { it.id } }.take(12)
+            } }).distinctBy { it.id }.take(12)
             val artistAlbums = artists.associate { artist -> artist.id to albums.filter { album ->
                 album.artists.orEmpty().any { it.id == artist.id }
             } }.filterValues { it.isNotEmpty() }
-            if (artists.isNotEmpty()) shelves += OnlineShelf(if (spanish) "Artistas de esta mezcla" else "Artists in this mix", artists,
-                if (spanish) "Porque escuchaste ${source.title}" else "Because you listened to ${source.title}",
-                layout = OnlineShelfLayout.ARTISTS, artistAlbums = artistAlbums)
-            if (albums.isNotEmpty()) shelves += OnlineShelf(if (spanish) "Álbumes para descubrir" else "Albums to explore", albums)
-            publish("artists", shelves.filter { it.layout == OnlineShelfLayout.ARTISTS })
-            publish("albums", shelves.filter { it.items.firstOrNull() is AlbumItem })
+            publish("artists", if (artists.isEmpty()) emptyList() else listOf(OnlineShelf(
+                if (spanish) "Artistas por descubrir" else "Artists to explore", artists,
+                layout = OnlineShelfLayout.ARTISTS, artistAlbums = artistAlbums,
+            )))
+            publish("albums", if (albums.isEmpty()) emptyList() else listOf(OnlineShelf(
+                if (spanish) "Álbumes para descubrir" else "Albums to explore", albums,
+            )))
         }
-        if (recent.isNotEmpty()) shelves += OnlineShelf(if (spanish) "Historial" else "History", recent,
-            layout = OnlineShelfLayout.TRACKS)
-        shelves += page?.sections.orEmpty().map { it.asOnlineShelf() }
-        charts.await()?.sections.orEmpty().take(3).forEach { shelves += OnlineShelf(it.title, it.items) }
-        releases.await()?.takeIf { it.isNotEmpty() }?.let {
-            shelves += OnlineShelf(if (spanish) "Novedades" else "New releases", it)
+        val result = home.await()
+        val page = result.getOrNull()
+        related.await()
+        charts.await()
+        releases.await()
+        checkStreamSession(generation)
+        val unique = synchronized(segments) {
+            val fresh = order.flatMap { segments[it].orEmpty() }
+            val fallback = if (result.isFailure) previous else emptyList()
+            (fresh + fallback).filter { it.items.isNotEmpty() }.distinctBy { it.title }
         }
-        val unique = shelves.filter { it.items.isNotEmpty() }.distinctBy { it.title to it.items.first().id }
         currentCoroutineContext().ensureActive()
         if (unique.isEmpty() && result.isFailure) result.getOrThrow()
         val loaded = catalog(OnlinePage("Home", cachedArtistCollections(unique), page?.continuation))
@@ -776,30 +793,62 @@ class OnlineRepository private constructor(context: Context) {
 
     internal suspend fun shuffleRecommendations(seed: Song): List<Song> = withContext(Dispatchers.IO) {
         val id = seed.id.removePrefix("youtube:")
-        if (!seed.id.startsWith("youtube:") || !id.matches(Regex("[A-Za-z0-9_-]{11}"))) return@withContext emptyList()
+        if (!seed.id.startsWith("youtube:") || !id.matches(onlineVideoIdPattern)) return@withContext emptyList()
         val user = _account.value
-        val result = withTimeoutOrNull(7_000) {
-            ready()
-            YouTube.next(WatchEndpoint(videoId = id, playlistId = "RDAMVM$id")).getOrNull()?.items.orEmpty()
-        }.orEmpty()
-        if (user != _account.value || !_enabled.value) return@withContext emptyList()
-        result.asSequence().filter { it.id != id && it.id.matches(Regex("[A-Za-z0-9_-]{11}")) }.distinctBy { it.id }
-            .take(40).map { it.asOnlineSong() }.toList()
+        val generation = sessionGeneration.get()
+        ready()
+        val (queue, related) = songRadio(id)
+        if (user != _account.value || generation != sessionGeneration.get() || !_enabled.value) return@withContext emptyList()
+        val sources = listOf(queue, related?.songs.orEmpty())
+        val played = _recentSongs.value.take(24).mapTo(hashSetOf()) { it.id }
+        val tracks = recommendationTracks(sources, played, setOf(id), limit = 40, allowFamiliar = true)
+        if (tracks.size >= 6) return@withContext tracks.map { it.asOnlineSong() }
+        val fallback = artistDiscovery(listOfNotNull(listeningSeed(seed)))
+        if (generation != sessionGeneration.get() || !_enabled.value) return@withContext emptyList()
+        recommendationTracks(sources + fallback, played, setOf(id), limit = 40, allowFamiliar = true)
+            .map { it.asOnlineSong() }
+    }
+
+    private suspend fun songRadio(id: String): Pair<List<SongItem>, RelatedPage?> {
+        val next = withTimeoutOrNull(5_500) {
+            YouTube.next(WatchEndpoint(videoId = id, playlistId = "RDAMVM$id")).getOrNull()
+        }
+        val related = next?.relatedEndpoint?.let { endpoint ->
+            withTimeoutOrNull(2_000) { YouTube.related(endpoint).getOrNull() }
+        }
+        return next?.items.orEmpty() to related
+    }
+
+    private suspend fun artistDiscovery(seeds: List<SongItem>): List<List<SongItem>> = supervisorScope {
+        seeds.flatMap { it.artists }.mapNotNull { it.id }.filter(String::isNotBlank).distinct().take(2).map { artistId ->
+            async {
+                withTimeoutOrNull(3_000) {
+                    YouTube.artist(artistId).getOrNull()?.sections.orEmpty().flatMap { it.items }
+                        .filterIsInstance<SongItem>().take(16)
+                }.orEmpty()
+            }
+        }.awaitAll()
+    }
+
+    private fun favoriteSeeds(): List<SongItem> =
+        if (_account.value.connected) _likedIds.value.mapNotNull(knownSongs::get) else guestFavorites()
+
+    private fun listeningSeed(song: Song): SongItem? = song.takeIf { it.contentUri.startsWith("akira-youtube:") }?.let {
+        val id = song.id.removePrefix("youtube:")
+        knownSongs[id] ?: SongItem(id, it.title, listOf(Artist(it.artist, null)),
+            duration = it.durationSeconds, thumbnail = it.albumArtUri.orEmpty())
     }
 
     suspend fun roulette(seed: Song?, visible: List<SongItem>): List<Song> = withContext(Dispatchers.IO) {
         ready()
         supervisorScope {
-            val saved = if(_account.value.connected) knownSongs.values.filter { it.id in _likedIds.value }
-                else _recentSongs.value + guestFavorites()
-            val currentSeed = seed?.takeIf { it.contentUri.startsWith("akira-youtube:") }?.let {
-                knownSongs[it.id.removePrefix("youtube:")] ?: SongItem(it.id.removePrefix("youtube:"), it.title,
-                    listOf(Artist(it.artist, null)), duration = it.durationSeconds, thumbnail = it.albumArtUri.orEmpty())
-            }
-            val seeds = (listOfNotNull(currentSeed) + (saved + visible).distinctBy { it.id }.shuffled())
-                .distinctBy { it.id }.take(2)
+            val generation = sessionGeneration.get()
+            val saved = favoriteSeeds()
+            val seeds = listeningSeeds(saved, _mostPlayed.value, _recentSongs.value + visible,
+                seed?.let(::listeningSeed), Random.Default, limit = 2)
             val radios = seeds.map { song -> async {
-                withTimeoutOrNull(7_000) { YouTube.next(WatchEndpoint(videoId = song.id, playlistId = "RDAMVM${song.id}")).getOrNull()?.items }.orEmpty()
+                val (queue, related) = songRadio(song.id)
+                queue + related?.songs.orEmpty()
             } }
             val home = async { withTimeoutOrNull(7_000) { YouTube.home().getOrNull() } }
             val charts = async { withTimeoutOrNull(7_000) { YouTube.getChartsPage().getOrNull() } }
@@ -824,12 +873,12 @@ class OnlineRepository private constructor(context: Context) {
             val recommendations = home.await()?.sections.orEmpty().flatMap { it.items }.filterIsInstance<SongItem>()
             val discoveries = charts.await()?.sections.orEmpty().flatMap { it.items }.filterIsInstance<SongItem>() + albums.await()
             val similar = radios.awaitAll().flatten() + recommendations + collections.await()
-            currentCoroutineContext().ensureActive()
+            checkStreamSession(generation)
             if(discoveries.isEmpty() && similar.isEmpty()) throw IOException("Recommendation sources unavailable")
-            val familiar = (saved + visible).distinctBy { it.id }
+            val familiar = (saved + _recentSongs.value + visible).distinctBy { it.id }
             val recent = synchronized(rouletteWinners) { rouletteWinners.toSet() }
             val pool = discoveryPool(discoveries, similar, familiar, recent, seed?.id?.removePrefix("youtube:"))
-                .filter { it.id.matches(Regex("[A-Za-z0-9_-]{11}")) }
+                .filter { it.id.matches(onlineVideoIdPattern) }
             if(pool.size < 2) throw IOException("Not enough recommendations available")
             pool.forEach { knownSongs[it.id] = it }
             pool.map { it.asOnlineSong() }
@@ -937,11 +986,18 @@ class OnlineRepository private constructor(context: Context) {
         }
     }
     /** Called only from a Media3 loading thread. Persist virtual URIs, not expiring URLs. */
-    suspend fun resolve(videoId: String, refresh: Boolean = false): OnlineStream = withContext(Dispatchers.IO) {
+    suspend fun resolve(videoId: String, refresh: Boolean = false, requiredItag: Int? = null): OnlineStream = withContext(Dispatchers.IO) {
         ready()
         val generation = sessionGeneration.get()
-        val stream = streams.get(videoId, refresh) {
-            resolveStream(videoId, generation)
+        val key = requiredItag?.let { "$videoId/$it" } ?: videoId
+        if (!refresh && requiredItag != null) {
+            (streams.peek(key) ?: streams.peek(videoId)?.takeIf { it.itag == requiredItag })?.let {
+                checkStreamSession(generation)
+                return@withContext it
+            }
+        }
+        val stream = streams.get(key, refresh) {
+            resolveStream(videoId, generation, requiredItag)
         }
         checkStreamSession(generation)
         stream
@@ -953,7 +1009,7 @@ class OnlineRepository private constructor(context: Context) {
         check(_enabled.value) { "Modo online desactivado" }
     }
 
-    private suspend fun resolveStream(videoId: String, generation: Long): OnlineStream {
+    private suspend fun resolveStream(videoId: String, generation: Long, requiredItag: Int?): OnlineStream {
         checkStreamSession(generation)
         ready()
         val clients = listOf(YouTubeClient.VISIONOS, YouTubeClient.WEB_REMIX, YouTubeClient.IOS, YouTubeClient.ANDROID_VR_1_65_10)
@@ -967,7 +1023,8 @@ class OnlineRepository private constructor(context: Context) {
             if (response.playabilityStatus.status != "OK") { denied = true; continue }
             playable = true
             val formats = response.streamingData?.adaptiveFormats.orEmpty()
-                .filter { it.mimeType.startsWith("audio/") }.sortedByDescending { it.bitrate }
+                .filter { it.mimeType.startsWith("audio/") && (requiredItag == null || it.itag == requiredItag) }
+                .sortedByDescending { it.bitrate }
             val web = client == YouTubeClient.WEB_REMIX
             val headers = mapOf("User-Agent" to client.userAgent, "Accept" to "*/*",
                 "Origin" to if (web) "https://music.youtube.com" else "https://www.youtube.com",
@@ -975,7 +1032,7 @@ class OnlineRepository private constructor(context: Context) {
             for (format in formats.take(2)) {
                 checkStreamSession(generation)
                 val url = NewPipeExtractor.getStreamUrl(format, videoId) ?: format.url ?: continue
-                val stream = OnlineStream(url, headers)
+                val stream = OnlineStream(url, headers, format.itag)
                 if (!usable(stream, format.contentLength)) continue
                 checkStreamSession(generation)
                 return stream
@@ -985,8 +1042,9 @@ class OnlineRepository private constructor(context: Context) {
         checkStreamSession(generation)
         if (playable || !denied) {
             val audioItags = setOf(140, 141, 139, 249, 250, 251, 171, 172)
-            val url = NewPipeExtractor.newPipePlayer(videoId).lastOrNull { it.first in audioItags }?.second
-            val stream = url?.let { OnlineStream(it, mapOf("User-Agent" to YouTubeClient.USER_AGENT_WEB)) }
+            val stream = NewPipeExtractor.newPipePlayer(videoId)
+                .lastOrNull { (itag, _) -> itag in audioItags && (requiredItag == null || itag == requiredItag) }
+                ?.let { (itag, url) -> OnlineStream(url, mapOf("User-Agent" to YouTubeClient.USER_AGENT_WEB), itag) }
             if (stream != null && usable(stream, null)) {
                 checkStreamSession(generation)
                 return stream
@@ -1020,12 +1078,15 @@ class OnlineRepository private constructor(context: Context) {
                 })
             }
         }
-        return request(null) && (length == null || length <= 1 || run {
-            val first = minOf(length - 1, 1_048_576)
-            request(first, minOf(length - 1, first + 262_143))
-        })
+        if (!request(null)) return false
+        if (length == null) return request(1, 1)
+        if (length <= 1) return false
+        val first = minOf(length - 1, 1_048_576)
+        return request(first, minOf(length - 1, first + 262_143))
     }
     companion object {
+        private val legacyHomeShelves = setOf("Keep listening", "Para seguir escuchando", "Artists in this mix",
+            "Artistas de esta mezcla", "History", "Historial")
         @Volatile private var instance: OnlineRepository? = null
         fun get(context: Context): OnlineRepository = instance ?: synchronized(this) {
             instance ?: OnlineRepository(context.applicationContext).also { instance = it }

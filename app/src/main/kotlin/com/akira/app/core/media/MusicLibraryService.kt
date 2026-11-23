@@ -448,7 +448,7 @@ class MusicLibraryService : MediaLibraryService() {
         val online = com.akira.app.core.online.OnlineRepository.get(this)
         val http = androidx.media3.datasource.DefaultHttpDataSource.Factory()
             .setUserAgent(com.akira.innertube.models.YouTubeClient.USER_AGENT_WEB)
-            .setConnectTimeoutMs(15_000).setReadTimeoutMs(20_000)
+            .setConnectTimeoutMs(8_000).setReadTimeoutMs(8_000)
         val sourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(this, http)
         val dataSource = androidx.media3.datasource.DataSource.Factory {
             com.akira.app.core.online.OnlineDataSource(sourceFactory.createDataSource(), online)

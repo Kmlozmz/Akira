@@ -182,15 +182,42 @@ import kotlinx.coroutines.flow.first
     val libraryEntries = remember(shelves, libraryQuery, librarySort) {
         orderOnlineLibraryItems(shelves.flatMap { it.items }, libraryQuery, librarySort)
     }
-    val heroTargets = remember(shelves) { shelves.sortedBy { shelf ->
-        when {
-            shelf.reason != null -> 0
-            shelf.items.any { it is AlbumItem || it is PlaylistItem } -> 1
-            else -> 2
+    val heroTargets = remember(shelves, current?.id) {
+        val recentTitles = setOf("Recently played", "Escuchadas recientemente", "History", "Historial")
+        val personalized = setOf("Made for you", "Hecho para ti")
+        val candidates = shelves.filterNot { shelf ->
+            shelf.title in recentTitles || shelf.layout == OnlineShelfLayout.RANKED_TRACKS
         }
-    }.flatMap { shelf ->
-        shelf.items.take(2).map { it to HeroLabel(shelf.reason ?: shelf.title, shelf.thumbnail, roundCover = true) }
-    }.distinctBy { it.first.id }.take(8) }
+        val priority = candidates.sortedBy { shelf ->
+            when {
+                shelf.title in personalized -> 0
+                shelf.items.any { it is AlbumItem || it is PlaylistItem } -> 1
+                shelf.layout == OnlineShelfLayout.ARTISTS -> 2
+                shelf.reason != null -> 4
+                else -> 3
+            }
+        }
+        val ids = mutableSetOf<String>()
+        val artists = mutableSetOf<String>()
+        buildList {
+            for (index in 0..2) {
+                for (shelf in priority) {
+                    val item = shelf.items.getOrNull(index) ?: continue
+                    if (current?.id == "youtube:${item.id}" || item.id in ids) continue
+                    val artist = when (item) {
+                        is ArtistItem -> item.title
+                        is SongItem -> item.artists.firstOrNull()?.name
+                        is AlbumItem -> item.artists?.firstOrNull()?.name
+                        else -> null
+                    }?.trim()?.lowercase(java.util.Locale.ROOT)?.takeIf(String::isNotBlank)
+                    if (artist != null && !artists.add(artist)) continue
+                    ids.add(item.id)
+                    add(item to HeroLabel(shelf.reason ?: shelf.title, shelf.thumbnail, roundCover = true))
+                    if (size == 7) return@buildList
+                }
+            }
+        }
+    }
     val heroItems = remember(heroTargets, current?.id, continueLabel) { buildList {
         current?.takeIf { it.contentUri.startsWith("akira-youtube:") }?.let {
             add(HeroCarouselItem("continue", it.title, it.artist, it.albumArtUri, it, HeroLabel(continueLabel)))

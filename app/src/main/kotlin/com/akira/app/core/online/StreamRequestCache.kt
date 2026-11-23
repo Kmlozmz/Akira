@@ -23,6 +23,10 @@ internal class StreamRequestCache<T>(
 
     init { require(ttlMillis > 0 && capacity > 0) }
 
+    fun peek(key: String): T? = synchronized(lock) {
+        values[key]?.takeIf { it.expiresAt > now() }?.value
+    }
+
     suspend fun get(key: String, refresh: Boolean = false, load: suspend () -> T): T {
         val request = synchronized(lock) {
             values.entries.removeAll { it.value.expiresAt <= now() }
