@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -25,7 +26,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.filters.SdkSuppress
 import androidx.test.platform.app.InstrumentationRegistry
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 
@@ -36,6 +40,8 @@ class LivePlayerArtworkReflectionDeviceTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val bounds = AtomicReference(Rect.Zero)
         val color = mutableIntStateOf(android.graphics.Color.BLUE)
+        val sourceRecorded = CountDownLatch(1)
+        val showReflection = mutableStateOf(false)
         ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
                 activity.enableEdgeToEdge()
@@ -43,11 +49,14 @@ class LivePlayerArtworkReflectionDeviceTest {
                     val layer = rememberGraphicsLayer()
                     Box(Modifier.size(180.dp, 260.dp).background(Color.Black)
                         .onGloballyPositioned { bounds.set(it.boundsInWindow()) }) {
-                        LivePlayerArtworkReflection(layer, artwork = { null }, opacity = { 1f },
-                            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(.59f))
+                        if (showReflection.value) {
+                            LivePlayerArtworkReflection(layer, artwork = { null }, opacity = { 1f },
+                                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(.59f))
+                        }
                         Box(Modifier.fillMaxWidth().fillMaxHeight(.60f).drawWithContent {
                             layer.record { this@drawWithContent.drawContent() }
                             drawLayer(layer)
+                            sourceRecorded.countDown()
                         }) {
                             AndroidView(
                                 factory = { View(it) },
@@ -75,6 +84,8 @@ class LivePlayerArtworkReflectionDeviceTest {
                 }
                 fail("Expected the lower reflection to follow the current native artwork color")
             }
+            assertTrue("The native artwork did not draw", sourceRecorded.await(5, TimeUnit.SECONDS))
+            scenario.onActivity { showReflection.value = true }
             assertReflection(red = false)
             scenario.onActivity { color.intValue = android.graphics.Color.RED }
             assertReflection(red = true)
