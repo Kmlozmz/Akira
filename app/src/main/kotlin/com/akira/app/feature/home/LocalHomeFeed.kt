@@ -171,6 +171,7 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
             if((targetState ?: initialState)?.transitionKey==null) pageNavigationTransform(targetState != null,reducedMotion).using(null)
             else collectionContainerTransform(targetState != null,reducedMotion).using(null)
         }, label="pageLocalCollection",modifier=Modifier.fillMaxSize()) { route ->
+        NavigationBackScene(active = route == collectionRoute) {
         CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
         if(route!=null) {
             val list = route.tracks(songs)
@@ -287,6 +288,7 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
             HomeTopBar(heroProgress,homeGlassState,playerSheetProgress,heroHeight)
             }
             }
+        }
         }
         }
         }

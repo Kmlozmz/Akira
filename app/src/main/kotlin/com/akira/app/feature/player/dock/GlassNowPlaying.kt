@@ -47,6 +47,7 @@ internal fun GlassNowPlaying(
     onArtPositioned: (LayoutCoordinates, androidx.compose.ui.unit.Dp) -> Unit,
     pull: MiniPlayerPull?,
     modifier: Modifier = Modifier,
+    drawGlass: Boolean = true,
 ) {
     val ink = rememberGlassInk(contentColor)
     val resolvedContentColor = ink.color
@@ -71,9 +72,13 @@ internal fun GlassNowPlaying(
     val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
     val compact = compactFraction.coerceIn(0f, 1f)
     val expanded = 1f - compact
-    val artSize = (34f - 2f * compact).dp
-    val glyphSlot = (34f - 2f * compact).dp
-    val glyphSize = (28f - 4f * compact).dp
+    val artSize = if (drawGlass) (34f - 2f * compact).dp else 39.dp
+    val glyphSlot = if (drawGlass) (34f - 2f * compact).dp else 44.dp
+    val glyphSize = if (drawGlass) (28f - 4f * compact).dp else 24.dp
+    val classicActionShape = RoundedCornerShape(14.dp)
+    val classicActionColor = MaterialTheme.colorScheme.secondaryContainer
+    val classicActionInk = MaterialTheme.colorScheme.onSecondaryContainer
+    val classicNextColor = resolvedContentColor.copy(alpha = .10f)
 
     CompositionLocalProvider(LocalGlassDeformation provides {
         (foldDeformation()+response.amount()*.35f).coerceIn(0f,1f)
@@ -99,7 +104,8 @@ internal fun GlassNowPlaying(
                 onBlocked = onBlockedControl,
                 swipe = swipe,
             )
-            .then(response.modifier).then(modifier).then(ink.modifier).liquidGlass(surfaceShape).clip(surfaceShape)
+            .then(response.modifier).then(modifier).then(ink.modifier)
+            .then(if (drawGlass) Modifier.liquidGlass(surfaceShape).clip(surfaceShape) else Modifier)
             .onGloballyPositioned { onMiniPositioned(it) }
             .clickable(
                 interactionSource = pressSource,
@@ -169,12 +175,13 @@ internal fun GlassNowPlaying(
                     onClick = {
                         onPlayPause()
                     },
-                    modifier = Modifier.size(glyphSlot),
+                    modifier = Modifier.size(glyphSlot).then(if (drawGlass) Modifier else
+                        Modifier.background(classicActionColor, classicActionShape)),
                 ) {
                     com.akira.app.core.design.components.AkiraAnimatedGlyph(
                         icon = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                         label = localizedText(if (isPlaying) "Pause" else "Play", if (isPlaying) "Pausar" else "Reproducir"),
-                        tint = resolvedContentColor,
+                        tint = if (drawGlass) resolvedContentColor else classicActionInk,
                         modifier = Modifier.size(glyphSize),
                     )
                 }
@@ -192,6 +199,7 @@ internal fun GlassNowPlaying(
                     enabled = !controlsLocked,
                     onHoldStart = onHoldStart,
                     modifier = Modifier.width(glyphSlot * expanded).height(glyphSlot)
+                        .then(if (drawGlass) Modifier else Modifier.background(classicNextColor, classicActionShape))
                         .graphicsLayer { alpha = expanded }
                         .then(if (expanded < .5f) Modifier.clearAndSetSemantics {} else Modifier),
                 ) {

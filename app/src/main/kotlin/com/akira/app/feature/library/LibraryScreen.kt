@@ -626,8 +626,9 @@ fun LibraryScreen(
 
     val glassBackdrop = rememberAkiraGlassBackdrop()
     val dockBackdrop = rememberLayerBackdrop(graphicsLayer = glassBackdrop.layer)
-    val sampleGlass = userPrefs?.liquidGlassEnabled == true && com.akira.app.core.design.glass.isGlassSupported()
+    val sampleGlass = userPrefs?.appearanceReduceTransparency == false && com.akira.app.core.design.glass.isGlassSupported()
     val appNoticeColors=MaterialTheme.colorScheme
+    val navigationBackLayer = remember { com.akira.app.core.design.navigation.NavigationBackLayer() }
     com.akira.app.core.design.glass.ProvideGlassPreferences(userPrefs ?: com.akira.app.core.datastore.UserPreferences()) {
     androidx.compose.runtime.CompositionLocalProvider(
         LocalSearchSession provides searchSession,
@@ -640,6 +641,7 @@ fun LibraryScreen(
         com.akira.app.core.design.components.LocalContentObscured provides (isPlayerExpanded || showSettings),
         LocalAkiraGlassBackdrop provides glassBackdrop,
         LocalAppBackdrop provides dockBackdrop,
+        com.akira.app.core.design.navigation.LocalNavigationBackLayer provides navigationBackLayer,
         com.akira.app.core.design.components.LocalAkiraAccent provides androidx.compose.ui.graphics.lerp(effectivePrimary, androidx.compose.material3.MaterialTheme.colorScheme.onSurface, .5f)
     ) {
     // Immersive details own their palette. Home must keep the app palette even
@@ -681,6 +683,9 @@ fun LibraryScreen(
             val searchKeyboardFraction = (WindowInsets.ime.getBottom(dockDensity) /
                 with(dockDensity) { 160.dp.toPx() }).coerceIn(0f, 1f)
             val restingDockInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding().coerceAtLeast(15.dp) + 2.dp
+            val classicDock = !com.akira.app.core.design.glass.LocalGlassStyleEnabled.current
+            val dockPosition = if (classicDock && currentSong != null) musicService.currentPositionMs.collectAsStateWithLifecycle() else null
+            val dockDuration = if (classicDock && currentSong != null) musicService.durationMs.collectAsStateWithLifecycle() else null
             val loading by musicService.isLoading.collectAsStateWithLifecycle()
             var dockSettleJob by remember { mutableStateOf<Job?>(null) }
             val liveReduced by androidx.compose.runtime.rememberUpdatedState(homeMotionReduced)
@@ -709,7 +714,10 @@ fun LibraryScreen(
                     }
                 }
             }
-            androidx.compose.runtime.SideEffect { dockState.scroll.enabled = miniVisible && !keyboardVisible && destination != HomeDestination.SEARCH }
+            LaunchedEffect(classicDock) { if (classicDock) dockState.scroll.expand() }
+            androidx.compose.runtime.SideEffect {
+                dockState.scroll.enabled = !classicDock && miniVisible && !keyboardVisible && destination != HomeDestination.SEARCH
+            }
             Box(Modifier.fillMaxSize().nestedScroll(dockState.scroll)
                 .then(if (sampleGlass) Modifier.layerBackdrop(dockBackdrop) else Modifier)
                 .graphicsLayer {translationX=-size.width/3f*studioNavigation.rootReveal}
@@ -783,6 +791,7 @@ fun LibraryScreen(
             AnimatedContent(targetState=detailRoute, transitionSpec={
                 com.akira.app.core.design.navigation.collectionContainerTransform(targetState != null,homeMotionReduced).using(null)
             },label="libraryCollectionDetail",modifier=Modifier.fillMaxSize()) { activeDetail ->
+            com.akira.app.core.design.navigation.NavigationBackScene(active = activeDetail == detailRoute) {
             androidx.compose.runtime.CompositionLocalProvider(com.akira.app.core.design.navigation.LocalNavAnimatedContentScope provides this) {
             if (activeDetail != null) {
                 LocalCollectionDetail(activeDetail,wholeLibrary,currentSong,isPlaying,
@@ -1070,6 +1079,7 @@ fun LibraryScreen(
             }
             }
             }
+            }
             } else {
                 SettingsScreen(
                     prefsRepo = prefsRepo,
@@ -1138,12 +1148,20 @@ fun LibraryScreen(
                         else playerExpansionProgress.animateTo(1f, playerSheetAnimationSpec())
                     }
                 }, pull = dockPull, playerProgress = { playerExpansionProgress.value }, searchEnabled = detailSessions.isEmpty(),
-                modifier=Modifier.align(Alignment.BottomCenter).widthIn(max = 440.dp).fillMaxWidth()
+                classicInset = if (destination == HomeDestination.SEARCH)
+                    restingDockInset * (1f - searchKeyboardFraction) + 8.dp * searchKeyboardFraction else restingDockInset,
+                playbackFraction = {
+                    val duration = dockDuration?.value ?: 0L
+                    if (duration > 0L) (dockPosition?.value ?: 0L).toFloat() / duration else 0f
+                },
+                modifier=Modifier.align(Alignment.BottomCenter)
+                    .then(if (classicDock) Modifier else Modifier.widthIn(max = 440.dp)).fillMaxWidth()
                     .onSizeChanged { dockState.heightPx = it.height }
                     .then(if(destination == HomeDestination.SEARCH) Modifier.imePadding() else Modifier)
-                    .padding(bottom = if(destination == HomeDestination.SEARCH)
-                        restingDockInset * (1f-searchKeyboardFraction) + 8.dp * searchKeyboardFraction else restingDockInset)
-                    .padding(horizontal=16.dp)
+                    .then(if (classicDock) Modifier else Modifier
+                        .padding(bottom = if(destination == HomeDestination.SEARCH)
+                            restingDockInset * (1f-searchKeyboardFraction) + 8.dp * searchKeyboardFraction else restingDockInset)
+                        .padding(horizontal = 16.dp))
                     .then(if (!miniVisible && destination != HomeDestination.SEARCH) Modifier.clearAndSetSemantics {} else Modifier))
             }
             UnifiedPlayerContainer(
@@ -1222,6 +1240,7 @@ fun LibraryScreen(
             }
 
             com.akira.app.feature.settings.StudioNavigationHost(studioNavigation)
+            if (!isPlayerExpanded) com.akira.app.core.design.navigation.NavigationBackOverlay(navigationBackLayer)
             com.akira.app.core.design.components.AkiraNoticeHost(
                 Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
                     .padding(bottom=if(!keyboardVisible && miniVisible)

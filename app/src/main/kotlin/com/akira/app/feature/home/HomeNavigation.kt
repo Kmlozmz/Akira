@@ -20,6 +20,9 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.*
@@ -95,11 +98,14 @@ fun HomeNavigation(
     modifier: Modifier = Modifier,
     playerProgress: () -> Float = { 0f },
     searchEnabled: Boolean = true,
+    classicInset: Dp = 0.dp,
+    playbackFraction: () -> Float = { 0f },
 ) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val reduced = com.akira.app.core.design.components.LocalContentMotionReduced.current
+    val classic = !LocalGlassStyleEnabled.current
     val ink = com.akira.app.core.design.glass.rememberGlassInk()
-    val contentColor = ink.color
+    val contentColor = if (classic) MaterialTheme.colorScheme.onBackground else ink.color
     val selectedContentColor = Color(com.akira.app.core.design.system.AkiraDockSpec.accentArgb)
     val haptics = rememberHaptics()
     val currentSelect by rememberUpdatedState(onSelect)
@@ -111,7 +117,7 @@ fun HomeNavigation(
         fontFamily = com.akira.app.core.design.theme.CurrentAkiraFontFamily,
         fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
     val surface: @Composable () -> Modifier = {
-        Modifier.liquidGlass(rememberDockGlassShape())
+        if (classic) Modifier else Modifier.liquidGlass(rememberDockGlassShape())
     }
     val search = LocalSearchSession.current
     val searchActive = selected == HomeDestination.SEARCH && searchEnabled && search != null
@@ -133,7 +139,7 @@ fun HomeNavigation(
                 artworkVisible = artworkVisible,
                 onMiniPositioned = { state.reportMini(inline, it) },
                 onArtPositioned = { coords, corner -> state.reportArtwork(inline, coords, corner) },
-                pull = pull, modifier = accessoryModifier.graphicsLayer {
+                pull = pull, drawGlass = !classic, modifier = accessoryModifier.graphicsLayer {
                     // Keep the soft shadow outside the capsule while it fades.
                     compositingStrategy = CompositingStrategy.ModulateAlpha
                     alpha = dockMiniReveal(playerProgress()) * (1f-editingFraction)
@@ -141,14 +147,14 @@ fun HomeNavigation(
                 })
         }
     }
-    FloatingTabBar(
+    val bar: @Composable (Modifier) -> Unit = { barModifier -> FloatingTabBar(
         selectedTabKey = selected,
-        navigationModifier = Modifier.then(ink.modifier).graphicsLayer {
+        navigationModifier = (if (classic) Modifier else ink.modifier).graphicsLayer {
             compositingStrategy = CompositingStrategy.ModulateAlpha
             alpha = dockNavigationReveal(playerProgress())
         },
         scrollConnection = state.scroll,
-        modifier = modifier.fillMaxWidth(),
+        modifier = barModifier.fillMaxWidth(),
         tabBarContentModifier = surface,
         liveAccessory = if (song == null) null else accessory,
         replacement = if (search != null && (searchActive || searchFraction > .001f)) DockNavigationReplacement(
@@ -161,7 +167,7 @@ fun HomeNavigation(
             accessoryBackgroundColor = Color.Transparent, indicatorColor = glassIndicatorColor().copy(alpha = .5f)),
         elevations = FloatingTabBarDefaults.elevations(inlineElevation = 0.dp, expandedElevation = 0.dp),
         sizes = FloatingTabBarDefaults.sizes(tabBarContentPadding = PaddingValues(4.dp),
-            tabExpandedContentPadding = PaddingValues(vertical = 5.5.dp), componentSpacing = 10.dp),
+            tabExpandedContentPadding = PaddingValues(vertical = 5.5.dp), componentSpacing = if (classic) 0.dp else 10.dp),
         contentKey = remember(contentColor, selectedContentColor, labels) { listOf(contentColor, selectedContentColor, labels) },
     ) {
         group.forEachIndexed { i, destination ->
@@ -186,4 +192,24 @@ fun HomeNavigation(
                 maxLines = 1, modifier = Modifier.padding(top = 1.dp))
         }, onClick = { haptics.play(Haptic.Select); currentSelect(HomeDestination.SEARCH) }, indication = null)
     }
+    }
+    if (classic) {
+        Box(modifier.fillMaxWidth(), contentAlignment = androidx.compose.ui.Alignment.BottomCenter) {
+            val track = contentColor.copy(alpha = .14f)
+            val progress = MaterialTheme.colorScheme.primary
+            Box(Modifier.matchParentSize().graphicsLayer { alpha = dockNavigationReveal(playerProgress()) }
+                .classicDockSurface().then(if (song == null || searchActive) Modifier else Modifier.drawBehind {
+                    val inset = 16.dp.toPx()
+                    val y = 3.dp.toPx()
+                    val length = (size.width - 2 * inset).coerceAtLeast(0f)
+                    val thickness = 2.dp.toPx()
+                    drawLine(track, Offset(inset, y), Offset(inset + length, y), thickness, StrokeCap.Round)
+                    val amount = playbackFraction().coerceIn(0f, 1f)
+                    if (amount > 0f) drawLine(progress, Offset(inset, y), Offset(inset + length * amount, y),
+                        thickness, StrokeCap.Round)
+                }))
+            bar(Modifier.widthIn(max = 560.dp).padding(start = 8.dp, end = 8.dp,
+                top = if (song != null && !searchActive) 6.dp else 0.dp, bottom = classicInset))
+        }
+    } else bar(modifier)
 }

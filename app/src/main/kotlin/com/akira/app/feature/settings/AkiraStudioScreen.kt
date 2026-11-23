@@ -39,6 +39,7 @@ internal val LocalStudioNavigation = staticCompositionLocalOf<StudioNavigationSt
 
 @Composable internal fun StudioNavigationHost(state: StudioNavigationState) {
     val active = state.active
+    CompositionLocalProvider(LocalNavigationBackPriority provides 1) {
     PageNavigationHost(target=active,backTarget=state.entries.dropLast(1).lastOrNull(),
         backEnabled=active!=null,onBack={active?.onBack?.invoke()},
         forward={from,to->(to?.depth ?: -1)>(from?.depth ?: -1)},modifier=Modifier.fillMaxSize(),
@@ -49,6 +50,7 @@ internal val LocalStudioNavigation = staticCompositionLocalOf<StudioNavigationSt
             else -> 0f
         }}) { entry ->
         if(entry!=null) entry.render()
+    }
     }
 }
 
@@ -86,7 +88,9 @@ internal val LocalStudioNavigation = staticCompositionLocalOf<StudioNavigationSt
         }
     }
     if(navigator==null) {
-        Dialog(onDismissRequest=onBack,properties=DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false)) { render() }
+        Dialog(onDismissRequest=onBack,properties=DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false)) {
+            CompositionLocalProvider(LocalNavigationBackLayer provides null) { render() }
+        }
     } else {
         val entry=remember(navigator) { StudioEntry(java.util.UUID.randomUUID().toString(),navigator.entries.size,scroll) }
         SideEffect { entry.render=render; entry.onBack=onBack; entry.title=title }

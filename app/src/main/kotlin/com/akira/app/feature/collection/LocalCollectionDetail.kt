@@ -66,6 +66,7 @@ fun LocalCollectionDetail(initial: DetailPage, library: List<Song>, current: Son
             (EnterTransition.None togetherWith (scaleOut(tween(ContainerOpenMillis,easing=ContainerCloseEasing),targetScale=.92f)+fadeOut(tween(ContainerOpenMillis,easing=ContainerCloseEasing),targetAlpha=.45f))).using(null)
         else ((scaleIn(tween(ContainerCloseMillis,easing=ContainerCloseEasing),initialScale=.92f)+fadeIn(tween(ContainerCloseMillis),initialAlpha=.45f)) togetherWith ExitTransition.None).using(null)
     }, modifier=modifier.fillMaxSize(), label="localArtistAlbum") { pages ->
+        com.akira.app.core.design.navigation.NavigationBackScene(active = pages == stack) {
         val page = pages.last()
         pageStates.SaveableStateProvider(pages.joinToString("/") { "${it.artist}:${it.albumKey}:${it.title}:${it.transitionKey}" }) {
         key(page) {
@@ -94,6 +95,7 @@ fun LocalCollectionDetail(initial: DetailPage, library: List<Song>, current: Son
                     else LocalAlbumPage(page,tracks,library,current,playing,bottom,onPlay,onTogglePlay,onMore,::back,open)
                 }
             }
+        }
         }
         }
     }

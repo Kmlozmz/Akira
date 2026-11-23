@@ -1207,10 +1207,10 @@ private fun shiftBrightness(rgb: Int, minValue: Float, maxValue: Float, maxSatur
  * shades bent sharply where a stop sat, which read as a visible edge; an eased curve has no corner
  * to see, and the paint is dithered so it doesn't band either.
  */
-private fun easedShade(height: Float, light: Boolean, alphaAt: (Float) -> Float): android.graphics.LinearGradient {
+private fun easedShade(height: Float, base: Int, alphaAt: (Float) -> Float): android.graphics.LinearGradient {
     val steps = 24
     val positions = FloatArray(steps + 1) { it / steps.toFloat() }
-    val colors = IntArray(steps + 1) { android.graphics.Color.argb((alphaAt(positions[it]) * 255f).roundToInt(), if(light)255 else 0, if(light)255 else 0, if(light)255 else 0) }
+    val colors = IntArray(steps + 1) { (base and 0x00FFFFFF) or ((alphaAt(positions[it]) * 255f).roundToInt() shl 24) }
     return android.graphics.LinearGradient(0f, 0f, 0f, height, colors, positions, Shader.TileMode.CLAMP)
 }
 
@@ -1473,7 +1473,9 @@ private fun GachaPage(
     onRoll: () -> Unit,
 ) {
     val context = LocalContext.current
-    val lightMode = MaterialTheme.colorScheme.background == Color.White
+    val background = MaterialTheme.colorScheme.background
+    val lightMode = background.luminance() > .5f
+    val shadeBase = if (lightMode) background.toArgb() else android.graphics.Color.BLACK
     val motionReduced = LocalContentMotionReduced.current
     val preparing = state.phase == GachaPhase.Preparing
     val rolling = state.phase == GachaPhase.Rolling || preparing
@@ -1741,14 +1743,17 @@ private fun GachaPage(
                     .drawWithCache {
                         val h = size.height
                         val shadePaint = android.graphics.Paint().apply { isDither = true }
-                        val top = easedShade(h, lightMode) { y -> 0.85f * (1f - smoothstep(0f, TopShadeEnd, y)).let { it * it } }
-                        val bottom = easedShade(h, lightMode) { y -> smoothstep(BottomShadeStart, 1f, y) }
+                        val top = easedShade(h, shadeBase) { y -> 0.85f * (1f - smoothstep(0f, TopShadeEnd, y)).let { it * it } }
+                        val bottom = easedShade(h, shadeBase) { y ->
+                            if (lightMode) .84f * smoothstep(.48f, .74f, y) + .16f * smoothstep(.74f, .94f, y)
+                            else smoothstep(BottomShadeStart, 1f, y)
+                        }
                         onDrawBehind {
                             drawIntoCanvas { canvas ->
                                 shadePaint.shader = top
                                 canvas.nativeCanvas.drawRect(0f, 0f, size.width, h * TopShadeEnd, shadePaint)
                                 shadePaint.shader = bottom
-                                canvas.nativeCanvas.drawRect(0f, h * BottomShadeStart, size.width, h, shadePaint)
+                                canvas.nativeCanvas.drawRect(0f, h * (if (lightMode) .48f else BottomShadeStart), size.width, h, shadePaint)
                             }
                         }
                     }

@@ -83,6 +83,15 @@ private val HeaderCollapseDistance = 68.dp
 @OptIn(ExperimentalFoundationApi::class)
 @Composable fun AkiraBackButton(onBack: () -> Unit, modifier: Modifier = Modifier,
     collapseProgress: Float = 1f, onLongClick: (() -> Unit)? = null, haptic: Boolean = true) {
+    Box(modifier) {
+        NavigationBackSlot(placeholder = { Spacer(Modifier.size(AkiraNavigationMetrics.Target)) }) {
+            DrawBackButton(onBack, onLongClick, haptic)
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable private fun DrawBackButton(onBack: () -> Unit, onLongClick: (() -> Unit)?, haptic: Boolean) {
     val haptics = rememberAkiraHaptics()
     val ink = com.akira.app.core.design.glass.rememberGlassInk(MaterialTheme.colorScheme.onSurface)
     val pageColor = MaterialTheme.colorScheme.background
@@ -91,7 +100,7 @@ private val HeaderCollapseDistance = 68.dp
     val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val response=rememberAkiraPressResponse(false,referenceContact=true)
     CompositionLocalProvider(com.akira.app.core.design.glass.LocalGlassDeformation provides response.amount) {
-    Box(modifier.then(ink.modifier).then(response.modifier).size(AkiraNavigationMetrics.Target), contentAlignment = Alignment.Center) {
+    Box(ink.modifier.then(response.modifier).size(AkiraNavigationMetrics.Target), contentAlignment = Alignment.Center) {
         Box(Modifier.size(AkiraNavigationMetrics.BackSurface).akiraNavigationSurface(CircleShape, backdrop))
         Box(Modifier.matchParentSize().clip(CircleShape).combinedClickable(interactionSource=interaction, indication=null,
             onClick={ if(haptic)haptics.light(); onBack() }, onLongClick=onLongClick),
@@ -167,5 +176,8 @@ private val HeaderCollapseDistance = 68.dp
     SideEffect {onProgress(from,to,fraction)}
     transition.AnimatedContent(transitionSpec={(navigationTransform?.invoke(initialState,targetState,reduced)
         ?: pageNavigationTransform(forward(initialState,targetState),reduced)).using(null)},
-        modifier=modifier, content=content)
+        modifier=modifier) { page ->
+        val scope = this
+        NavigationBackScene(active = page == target) { scope.content(page) }
+    }
 }

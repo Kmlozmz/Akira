@@ -15,6 +15,8 @@ import com.akira.app.core.i18n.LocalStrings
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -22,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.akira.app.core.design.navigation.AkiraBackButton
+import com.akira.app.core.design.navigation.NavigationBackSlot
 import com.akira.app.core.design.theme.CurrentAkiraFontFamily
 
 @Composable internal fun settingsSurfaceColor():Color =
@@ -43,12 +46,19 @@ import com.akira.app.core.design.theme.CurrentAkiraFontFamily
     Box(modifier.fillMaxWidth().height(topInset+88.dp)) {
         Box(Modifier.matchParentSize().background(Brush.verticalGradient(0f to background,.7f to background,.99f to background.copy(alpha=0f))))
         Layout(modifier=Modifier.fillMaxWidth().padding(top=topInset+14.dp,start=20.dp,end=20.dp).height(48.dp),content={
-            if(glass) AkiraBackButton(onBack,haptic=false) else Row(
-                Modifier.heightIn(min=48.dp).clickable(interactionSource=interaction,indication=null,role=Role.Button,onClick=onBack),
-                verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(2.dp)) {
-                Icon(androidx.compose.ui.res.painterResource(com.akira.app.R.drawable.ic_navigation_back),null,Modifier.size(24.dp),tint=MaterialTheme.colorScheme.primary)
-                Text(backLabel,fontFamily=CurrentAkiraFontFamily,fontSize=17.sp,color=MaterialTheme.colorScheme.primary,
-                    maxLines=1,overflow=TextOverflow.Ellipsis)
+            if (glass) AkiraBackButton(onBack, haptic = false) else {
+                val classicBack: @Composable (Boolean) -> Unit = { interactive ->
+                    Row(Modifier.heightIn(min = 48.dp).then(if (interactive)
+                        Modifier.clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onBack)
+                    else Modifier.alpha(0f).clearAndSetSemantics {}),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Icon(androidx.compose.ui.res.painterResource(com.akira.app.R.drawable.ic_navigation_back),
+                            null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+                        Text(backLabel, fontFamily = CurrentAkiraFontFamily, fontSize = 17.sp,
+                            color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                NavigationBackSlot(placeholder = { classicBack(false) }) { classicBack(true) }
             }
             Text(title,fontFamily=CurrentAkiraFontFamily,fontSize=17.sp,fontWeight=FontWeight.SemiBold,
                 maxLines=1,overflow=TextOverflow.Ellipsis,color=MaterialTheme.colorScheme.onSurface)
