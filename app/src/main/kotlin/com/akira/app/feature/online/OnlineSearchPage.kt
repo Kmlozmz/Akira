@@ -45,7 +45,7 @@ import kotlinx.coroutines.sync.withPermit
     val coverRequests = remember(account) { Semaphore(3) }
     var library by remember(account) { mutableStateOf(repository.cachedPage("search-library-index", account)) }
     var libraryComplete by remember(account) { mutableStateOf(repository.hasFreshPage("search-library-index", account)) }
-    var filteredLibrary by remember(account) { mutableStateOf<OnlinePage?>(null) }
+    var filteredLibrary by remember(account, session.query, session.kind, library) { mutableStateOf<OnlinePage?>(null) }
     var filteringLibrary by remember(account) { mutableStateOf(false) }
     val librarySearch = remember(account) { OnlineLibrarySearchCache() }
     val requestKey = "search:${session.query}:${session.kind}"
@@ -117,7 +117,7 @@ import kotlinx.coroutines.sync.withPermit
     LaunchedEffect(session.submit) { if (session.submit > 0) repository.rememberSearch(session.query) }
     LaunchedEffect(session.editing) { if (session.editing) category = null }
     BackHandler(category != null && !session.editing) { category = null }
-    LaunchedEffect(account, library, session.query, session.library) {
+    LaunchedEffect(account, library, query, kind, session.library) {
         val source = library
         if (!session.library || source == null) {
             filteringLibrary = false
@@ -130,8 +130,7 @@ import kotlinx.coroutines.sync.withPermit
                 ?: withContext(Dispatchers.Default) { OnlineLibrarySearchIndex.build(source) }.also {
                     librarySearch.source = source; librarySearch.index = it
                 }
-            val query = session.query
-            filteredLibrary = withContext(Dispatchers.Default) { index.filter(query) }
+            filteredLibrary = withContext(Dispatchers.Default) { index.filter(query, kind) }
         } finally { if (currentCoroutineContext().isActive) filteringLibrary = false }
     }
     val page = if (session.library) filteredLibrary else request.page
@@ -169,11 +168,11 @@ import kotlinx.coroutines.sync.withPermit
         }
     }
     val resultContent: LazyListScope.() -> Unit = {
-        if (!session.library && category == null) item("search-kinds") { OnlineSearchKinds(session.kind) { session.kind = it } }
+        if (category == null) item("search-kinds") { OnlineSearchKinds(session.kind) { session.kind = it } }
         if (loading && page == null) item("search-loading") { SearchLoading() }
         failure?.let { problem -> item("search-error") { OnlineLoadFeedback(problem, page != null, { revision++ }, onSettings) } }
         if (!loading && failure == null && page != null && page.shelves.all { it.items.isEmpty() }) item("search-empty") {
-            SearchEmpty(localizedText("No results", "Sin resultados"))
+            SearchEmpty(localizedText("No matches. Try another search or filter.", "Sin resultados. Prueba otra búsqueda o filtro."))
         }
         onlineBrowseSections(page?.shelves.orEmpty(), true, false, current, playing, "search-results", ::choose, onMore)
         if (loading && page != null) item("search-refreshing") { SearchLoading() }

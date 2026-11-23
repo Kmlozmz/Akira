@@ -94,7 +94,7 @@ internal fun rememberPlayerArtworkMotion(expansion: Animatable<Float,*>,
 @Composable
 internal fun PlayerArtworkSurface(motion: PlayerArtworkMotion, song: Song,
     expansion: Animatable<Float,*>, fullWidthPx: Float, motionArtwork: MotionArtwork?=null,
-    artworkVisible: Boolean = true,
+    showMotionArtwork: Boolean,
     mediaLayer: GraphicsLayer,
     onVideoBlend: (Float) -> Unit,
 ) {
@@ -102,9 +102,6 @@ internal fun PlayerArtworkSurface(motion: PlayerArtworkMotion, song: Song,
     val outline=remember(motion,density) {
         ElasticGlassShape({motion.radius.value},{0f},{androidx.compose.ui.geometry.Offset.Zero},density)
     }
-    val reduced = LocalContentMotionReduced.current
-    val visibility = animateFloatAsState(if (artworkVisible) 1f else 0f,
-        tween(if (reduced) 0 else 180), label = "playerArtworkVisibility")
     val needsMask by remember(motion) { derivedStateOf { motion.mask.value>.001f || motion.target?.mask==1f } }
     val softEdge = needsMask && android.os.Build.VERSION.SDK_INT >= 31
     val blurMask = remember {
@@ -117,7 +114,7 @@ internal fun PlayerArtworkSurface(motion: PlayerArtworkMotion, song: Song,
     }
     val blurRadius = with(density) { 29.dp.toPx() }
     Box(Modifier.graphicsLayer {
-        alpha=if(motion.ready)playerArtworkSettledAlpha(expansion.value) * visibility.value else 0f
+        alpha=if(motion.ready)playerArtworkSettledAlpha(expansion.value) else 0f
         translationX=motion.bounds.value.left;translationY=motion.bounds.value.top
         shape=outline
         shadowElevation=24.dp.toPx()*(1f-motion.mask.value).coerceIn(0f,1f)*
@@ -148,7 +145,11 @@ internal fun PlayerArtworkSurface(motion: PlayerArtworkMotion, song: Song,
                 },tint=Color.White)
             }
             if(motionArtwork!=null && motion.ready) {
-                MotionArtworkVideo(motionArtwork, isPlaying = true, Modifier.fillMaxSize(), onBlend = onVideoBlend)
+                // Keep the prepared decoder, but only show video once the active
+                // anchor belongs to the full player. Detail thumbnails are static.
+                val visible = showMotionArtwork && motion.target?.radiusPx == 0f
+                MotionArtworkVideo(motionArtwork, isPlaying = visible, Modifier.fillMaxSize()
+                    .graphicsLayer { alpha = if (visible) 1f else 0f }, onBlend = onVideoBlend)
             }
         }
         if (softEdge) {

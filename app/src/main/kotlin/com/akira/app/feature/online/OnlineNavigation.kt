@@ -19,7 +19,8 @@ internal data class OnlineRoute(val item: YTItem, val transitionKey: String? = n
 
 @Composable fun OnlineScreen(repository: OnlineRepository, destination: HomeDestination,
     current: Song?, playing: Boolean, bottomPadding: Dp,
-    onPlay: (Song, List<Song>) -> Unit, onTogglePlay: () -> Unit, obscured: Boolean,
+    onPlay: (Song, List<Song>) -> Unit, onSearchPlay: (Song, List<Song>) -> Unit = onPlay,
+    onTogglePlay: () -> Unit, obscured: Boolean,
     playbackError: Boolean = false, requestedItem: YTItem? = null, onRequestConsumed: () -> Unit = {},
     onMore: (Song) -> Unit = {}, onSettings: () -> Unit = {}) {
     val account by repository.account.collectAsStateWithLifecycle()
@@ -44,7 +45,7 @@ internal data class OnlineRoute(val item: YTItem, val transitionKey: String? = n
                 val settled = !transition.isRunning && !shared.isTransitionActive
                 CompositionLocalProvider(LocalSharedTransitionScope provides shared, LocalNavAnimatedContentScope provides this) {
                     pages.SaveableStateProvider(path.joinToString("/") { "${it.item::class.simpleName}:${it.item.id}:${it.transitionKey}" }) {
-                        OnlinePageScreen(repository, destination, current, playing, bottomPadding, onPlay, onTogglePlay,
+                        OnlinePageScreen(repository, destination, current, playing, bottomPadding, onPlay, onSearchPlay, onTogglePlay,
                             obscured || path != routes || !settled, playbackError, path.lastOrNull(), path.size, settled,
                             onOpen = { item, source ->
                                 if(routes.lastOrNull()?.item?.id != item.id) routes = routes + OnlineRoute(item, source)

@@ -4,6 +4,15 @@ import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import com.akira.app.core.media.MediaItemMapper.queueIdentity
+import com.akira.app.core.model.Song
+import kotlin.random.Random
+
+internal fun shuffledPlaylistIndexes(count: Int, first: Int, random: Random = Random.Default): IntArray =
+    if (first !in 0 until count) IntArray(0)
+    else (listOf(first) + (0 until count).filterNot { it == first }.shuffled(random)).toIntArray()
+
+internal fun rouletteQueue(winner: Song, pool: List<Song>, random: Random = Random.Default): List<Song> =
+    listOf(winner) + pool.distinctBy { it.id }.filterNot { it.id == winner.id }.shuffled(random)
 
 internal fun remainingQueueIndexes(order: List<Int>, currentIndex: Int): List<Int> {
     val position = order.indexOf(currentIndex)
@@ -89,6 +98,8 @@ internal object QueueOrder {
 }
 
 internal object QueueEditCommand {
+    const val INITIAL_SHUFFLE = "akira_initial_shuffle"
+    const val REQUIRE_SHUFFLED_ENTRY = "akira_require_shuffled_entry"
     const val SERVICE_ORDER = "akira_queue_occurrence_order"
     const val SERVICE_SHUFFLE = "akira_queue_shuffle"
     const val ACTION = "com.akira.app.EDIT_QUEUE"

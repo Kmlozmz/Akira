@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Search
@@ -26,8 +27,12 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.akira.app.core.design.components.*
 import com.akira.app.core.design.motion.rememberAkiraBouncingFling
+import com.akira.app.core.design.util.rememberAkiraHaptics
 import com.akira.app.core.model.Song
 import com.akira.app.feature.home.components.HomeTrackRow
+import com.akira.app.feature.collection.localAlbumKey
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable internal fun SearchPage(online: Boolean, bottomPadding: Dp, onSettings: () -> Unit,
     recent: List<String>, onRecent: (String) -> Unit, onClear: () -> Unit,
@@ -55,7 +60,7 @@ import com.akira.app.feature.home.components.HomeTrackRow
                 browse()
             } else Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 Box(Modifier.fillMaxWidth().background(colors.background).padding(horizontal = 24.dp, vertical = 12.dp)) {
-                    if (online) AkiraSegmentedControl(listOf("catalog" to "Akira Music", "library" to localizedText("Library", "Biblioteca")),
+                    if (online) AkiraSegmentedControl(listOf("catalog" to localizedText("Online catalog", "Catálogo en línea"), "library" to localizedText("Your library", "Tu biblioteca")),
                         if (session.library) "library" else "catalog", { session.library = it == "library" },
                         cornerRadius = 50.dp, indicatorRadius = 50.dp,
                         indicatorColor = colors.surfaceContainerHighest, selectedTextColor = colors.onSurface)
@@ -67,9 +72,9 @@ import com.akira.app.feature.home.components.HomeTrackRow
                     Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(Icons.Rounded.Search, null, Modifier.size(42.dp), tint = colors.onSurfaceVariant.copy(alpha = .6f))
-                        Text(localizedText("No Recent Searches", "No hay búsquedas recientes"), fontWeight = FontWeight.SemiBold,
+                        Text(localizedText("Find your next song", "Encuentra tu próxima canción"), fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.titleLarge)
-                        Text(localizedText("Your recent searches will appear here.", "Tus búsquedas recientes aparecerán aquí."),
+                        Text(localizedText("Search by song, album or artist.", "Busca por canción, álbum o artista."),
                             style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                     }
                 } else LazyColumn(state = resultsList, modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -95,6 +100,19 @@ import com.akira.app.feature.home.components.HomeTrackRow
         }
         Box(Modifier.fillMaxWidth().height(status + 10.dp).background(Brush.verticalGradient(
             listOf(colors.background, colors.background.copy(alpha = .97f), Color.Transparent))))
+    }
+}
+
+@Composable internal fun SearchResultFilters(options: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val haptics = rememberAkiraHaptics()
+    LazyRow(contentPadding = PaddingValues(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(options, key = { it.first }) { (key, label) ->
+            FilterChip(selected == key, { if (selected != key) { haptics.light(); onSelect(key) } }, label = { Text(label) },
+                border = null, shape = CircleShape, colors = FilterChipDefaults.filterChipColors(
+                    containerColor = colors.surfaceContainer, selectedContainerColor = colors.primary,
+                    selectedLabelColor = colors.onPrimary))
+        }
     }
 }
 
@@ -126,13 +144,29 @@ import com.akira.app.feature.home.components.HomeTrackRow
         preferences.edit().putString("recent", org.json.JSONArray(recent).toString()).apply()
     }
     LaunchedEffect(session.submit) { if (session.submit > 0) rememberQuery(session.query) }
-    val albums = remember(songs) { songs.distinctBy { it.albumId to (it.album to it.artist) }.take(24) }
-    val filtered = remember(songs, session.query) { songs.filter { song -> session.query.split(Regex("\\s+")).all { word ->
-        listOf(song.title, song.artist, song.album, song.genre).any { it.contains(word, true) }
-    } } }
+    val query = session.query
+    val albums = remember(songs) { songs.distinctBy(::localAlbumKey).take(24).chunked(2) }
+    val index by produceState<Pair<List<Song>, LocalSearchIndex>?>(null, songs) {
+        value = songs to withContext(Dispatchers.Default) { LocalSearchIndex.build(songs) }
+    }
+    val searchIndex = index?.takeIf { it.first == songs }?.second
+    val result by produceState<Triple<LocalSearchIndex, String, List<Song>>?>(null, searchIndex, query) {
+        value = if (searchIndex == null || query.isBlank()) null else
+            Triple(searchIndex, query, withContext(Dispatchers.Default) { searchIndex.search(query) })
+    }
+    val filtered = result?.takeIf { it.first === searchIndex && it.second == query }?.third
+    val terms = remember(query) { normalizeSearchText(query).split(' ').filter(String::isNotEmpty) }
+    val matchingArtists = remember(filtered, terms) { filtered.orEmpty().filter { song ->
+        val artist = normalizeSearchText(song.artist)
+        artist.isNotBlank() && terms.all { it in artist }
+    }.distinctBy { it.artist } }
+    val matchingAlbums = remember(filtered, terms) { filtered.orEmpty().filter { song ->
+        val album = normalizeSearchText(song.album)
+        album.isNotBlank() && terms.all { it in album }
+    }.distinctBy(::localAlbumKey) }
     SearchPage(false, bottomPadding, onSettings, recent, ::rememberQuery,
         { recent = emptyList(); preferences.edit().remove("recent").apply() }, browse = {
-            items(albums.chunked(2), key = { "local-${it.first().id}" }) { row ->
+            items(albums, key = { "local-${it.first().id}" }) { row ->
                 Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     row.forEach { song -> SearchCategoryCard(song.album.ifBlank { song.artist }, song.albumArtUri,
                         MaterialTheme.colorScheme.primaryContainer, Modifier.weight(1f)) { onAlbum(song) } }
@@ -141,8 +175,22 @@ import com.akira.app.feature.home.components.HomeTrackRow
             }
             if (songs.isEmpty()) item("local-empty") { SearchEmpty(localizedText("No music on this phone", "No hay música en este teléfono")) }
         }, results = {
-            if (filtered.isEmpty()) item("no-results") { SearchEmpty(localizedText("No results", "Sin resultados")) }
-            val artists = filtered.distinctBy { it.artist }.filter { it.artist.contains(session.query, true) }.take(4)
+            val kind = session.kind.takeUnless { it == "playlists" } ?: "all"
+            item("local-search-filters") {
+                SearchResultFilters(listOf("all" to localizedText("All", "Todo"), "songs" to localizedText("Songs", "Canciones"),
+                    "albums" to localizedText("Albums", "Álbumes"), "artists" to localizedText("Artists", "Artistas")),
+                    kind) { session.kind = it }
+            }
+            val artists = if (kind == "artists") matchingArtists else if (kind == "all") matchingArtists.take(3) else emptyList()
+            val albumResults = if (kind == "albums") matchingAlbums else if (kind == "all") matchingAlbums.take(3) else emptyList()
+            val tracks = if (kind == "all" || kind == "songs") filtered.orEmpty() else emptyList()
+            if (filtered == null) item("local-search-loading") {
+                Box(Modifier.fillMaxWidth().padding(vertical = 28.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(Modifier.size(24.dp))
+                }
+            } else if (artists.isEmpty() && albumResults.isEmpty() && tracks.isEmpty()) {
+                item("no-results") { SearchEmpty(localizedText("No matches. Try a different title, artist or album.", "Sin resultados. Prueba con otro título, artista o álbum.")) }
+            }
             if (artists.isNotEmpty()) {
                 item("artists-title") { SearchSectionTitle(localizedText("Artists", "Artistas")) }
                 items(artists, key = { "artist-${it.artist}" }) { song ->
@@ -152,10 +200,19 @@ import com.akira.app.feature.home.components.HomeTrackRow
                         modifier = Modifier.clickable { rememberQuery(session.query); onArtist(song.artist) })
                 }
             }
-            if (filtered.isNotEmpty()) item("songs-title") { SearchSectionTitle(localizedText("Songs", "Canciones")) }
-            items(filtered, key = { "song-${it.id}" }) { song -> Box(Modifier.padding(horizontal = 24.dp)) {
+            if (albumResults.isNotEmpty()) {
+                item("albums-title") { SearchSectionTitle(localizedText("Albums", "Álbumes")) }
+                items(albumResults, key = { "album-${localAlbumKey(it)}" }) { song ->
+                    ListItem(headlineContent = { Text(song.album) }, supportingContent = { Text(song.artist) },
+                        leadingContent = { AsyncImage(song.albumArtUri, null, contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp))) },
+                        modifier = Modifier.clickable { rememberQuery(query); onAlbum(song) })
+                }
+            }
+            if (tracks.isNotEmpty()) item("songs-title") { SearchSectionTitle(localizedText("Songs", "Canciones")) }
+            items(tracks, key = { "song-${it.id}" }) { song -> Box(Modifier.padding(horizontal = 24.dp)) {
                 HomeTrackRow(song.albumArtUri, song.title, song.artist, current?.id == song.id, playing,
-                    { rememberQuery(session.query); if (current?.id == song.id) onTogglePlay() else onPlay(song, filtered) },
+                    { rememberQuery(query); if (current?.id == song.id) onTogglePlay() else onPlay(song, tracks) },
                     { onMore(song) }, { onMore(song) })
             } }
         })

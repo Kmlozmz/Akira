@@ -29,6 +29,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.akira.innertube.models.*
 import com.akira.app.core.model.Song
+import com.akira.app.core.media.rouletteQueue
 import com.akira.app.core.online.*
 import com.akira.app.feature.home.HomeDestination
 import com.akira.app.feature.home.HomeTopBar
@@ -46,23 +47,23 @@ import kotlinx.coroutines.flow.first
 /** Same Page cards/carousel as local Home, with account-scoped online data. */
 @Composable internal fun OnlinePageScreen(repository: OnlineRepository, destination: HomeDestination,
     current: Song?, playing: Boolean, bottomPadding: androidx.compose.ui.unit.Dp,
-    onPlay: (Song, List<Song>) -> Unit, onTogglePlay: () -> Unit, obscured: Boolean,
+    onPlay: (Song, List<Song>) -> Unit, onSearchPlay: (Song, List<Song>) -> Unit, onTogglePlay: () -> Unit, obscured: Boolean,
     playbackError: Boolean, route: OnlineRoute?, depth: Int, navigationSettled: Boolean,
     onOpen: (YTItem, String?) -> Unit, onBack: () -> Unit,
     onMore: (Song) -> Unit = {}, onSettings: () -> Unit = {}) {
     val body: @Composable () -> Unit = { OnlinePageScreenBody(repository, destination, current, playing,
-        bottomPadding, onPlay, onTogglePlay, obscured, playbackError, route, depth, navigationSettled, onOpen, onBack, onMore, onSettings) }
+        bottomPadding, onPlay, onSearchPlay, onTogglePlay, obscured, playbackError, route, depth, navigationSettled, onOpen, onBack, onMore, onSettings) }
     if (destination == HomeDestination.LIBRARY && route == null) LibraryChromeHost(body) else body()
 }
 
 @Composable private fun OnlinePageScreenBody(repository: OnlineRepository, destination: HomeDestination,
     current: Song?, playing: Boolean, bottomPadding: androidx.compose.ui.unit.Dp,
-    onPlay: (Song, List<Song>) -> Unit, onTogglePlay: () -> Unit, obscured: Boolean,
+    onPlay: (Song, List<Song>) -> Unit, onSearchPlay: (Song, List<Song>) -> Unit, onTogglePlay: () -> Unit, obscured: Boolean,
     playbackError: Boolean, route: OnlineRoute?, depth: Int, navigationSettled: Boolean,
     onOpen: (YTItem, String?) -> Unit, onBack: () -> Unit,
     onMore: (Song) -> Unit = {}, onSettings: () -> Unit = {}) {
     if (destination == HomeDestination.SEARCH && route == null) {
-        OnlineSearchPage(repository, current, playing, bottomPadding, onPlay, onTogglePlay, onOpen, onMore, onSettings)
+        OnlineSearchPage(repository, current, playing, bottomPadding, onSearchPlay, onTogglePlay, onOpen, onMore, onSettings)
         return
     }
     val account by repository.account.collectAsStateWithLifecycle()
@@ -345,7 +346,7 @@ import kotlinx.coroutines.flow.first
                             if (current?.id == song.id) onTogglePlay() else onPlay(song, (listOf(song) + songs.map { it.asOnlineSong() }).distinctBy { it.id })
                         } else heroTargets.firstOrNull { "online-${it.first.id}" == hero.key }?.first?.let { choose(it, hero.transitionKey) }
                     },
-                    onRandomPlay = { song -> repository.recordRouletteChoice(song); onPlay(song, (listOf(song) + rouletteSongs).distinctBy { it.id }) },
+                    onRandomPlay = { song -> repository.recordRouletteChoice(song); onPlay(song, rouletteQueue(song, rouletteSongs)) },
                     heroScrollProgressProvider = heroProgress, held = { obscured || heroProgress() > .08f }, isLoading = loading,
                     prepareRandom = { repository.roulette(liveCurrent, songs).also { rouletteSongs = it; rouletteFailed = false } },
                     onRandomFailure = { rouletteFailed = true }) } }

@@ -299,9 +299,9 @@ private fun HeroPager(items: List<HeroCarouselItem>, gachaPool: List<Song>, curr
                 gacha.candidates = reconcileGachaCandidates(gacha.candidates, pool, GachaCandidates)
                 gacha.candidates = if(gacha.candidates.size < minOf(GachaCandidates, pool.size) && fresh != null)
                     pickGachaCandidates(pool) else refreshHiddenCandidates(gacha, pool)
-                // Online selection uses the entire fetched pool, including tracks outside the visible reel.
-                val selected = fresh?.let { tracks -> tracks.filterNot { it.id == gacha.result?.id }.ifEmpty { tracks }.random() }
-                if(selected != null && gacha.candidates.none { it.id == selected.id }) {
+                // The reel previews a subset; every eligible track can win a spin.
+                val selected = pool.distinctBy { it.id }.filterNot { it.id == gacha.result?.id }.random()
+                if(gacha.candidates.none { it.id == selected.id }) {
                     val hidden = gacha.candidates.indices.filter { abs(reelDistance(it, gacha.reel.value, gacha.candidates.size)) > 2.5f }
                     if(hidden.isEmpty()) gacha.candidates = pickGachaCandidates(pool.filterNot { it.id == selected.id }).take(GachaCandidates - 1) + selected
                     else gacha.candidates = gacha.candidates.toMutableList().also { it[hidden.random()] = selected }
@@ -310,7 +310,7 @@ private fun HeroPager(items: List<HeroCarouselItem>, gachaPool: List<Song>, curr
                 sounds.prepare()
                 val candidates = gacha.candidates
                 val count = candidates.size
-                val winner = selected?.let { chosen -> candidates.indexOfFirst { it.id == chosen.id } } ?: candidates.indices.random()
+                val winner = candidates.indexOfFirst { it.id == selected.id }
                 // a random length every time, nine seconds at the most
                 val duration = if (motionReduced) 0 else Random.nextInt(GachaMinRollMillis, GachaMaxRollMillis + 1)
                 val start = gacha.reel.value.roundToInt()

@@ -767,6 +767,26 @@ class OnlineRepository private constructor(context: Context) {
             catalog(OnlinePage("Library", pages.filterNotNull()))
         }
     }
+    internal fun cachedShuffleTracks(): List<Song> {
+        val user = _account.value
+        return (listOf("home", "library:songs", "search-library-index").flatMap { key ->
+            cachedPage(key, user)?.shelves.orEmpty().flatMap { it.items }.filterIsInstance<SongItem>()
+        } + _recentSongs.value).distinctBy { it.id }.take(60).map { it.asOnlineSong() }
+    }
+
+    internal suspend fun shuffleRecommendations(seed: Song): List<Song> = withContext(Dispatchers.IO) {
+        val id = seed.id.removePrefix("youtube:")
+        if (!seed.id.startsWith("youtube:") || !id.matches(Regex("[A-Za-z0-9_-]{11}"))) return@withContext emptyList()
+        val user = _account.value
+        val result = withTimeoutOrNull(7_000) {
+            ready()
+            YouTube.next(WatchEndpoint(videoId = id, playlistId = "RDAMVM$id")).getOrNull()?.items.orEmpty()
+        }.orEmpty()
+        if (user != _account.value || !_enabled.value) return@withContext emptyList()
+        result.asSequence().filter { it.id != id && it.id.matches(Regex("[A-Za-z0-9_-]{11}")) }.distinctBy { it.id }
+            .take(40).map { it.asOnlineSong() }.toList()
+    }
+
     suspend fun roulette(seed: Song?, visible: List<SongItem>): List<Song> = withContext(Dispatchers.IO) {
         ready()
         supervisorScope {

@@ -61,19 +61,8 @@ internal fun onlineKinds() = listOf("all", "songs", "artists", "albums", "playli
     "playlists" -> "Playlists"
     else -> localizedText("All", "Todo")
 }
-@Composable internal fun OnlineSearchKinds(selected: String, onSelect: (String) -> Unit) {
-    val haptics = rememberAkiraHaptics()
-    LazyRow(contentPadding = PaddingValues(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(onlineKinds()) { kind ->
-            FilterChip(selected == kind, { if (selected != kind) { haptics.light(); onSelect(kind) } },
-                label = { Text(onlineKindLabel(kind)) }, border = null, shape = CircleShape,
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary))
-        }
-    }
-}
+@Composable internal fun OnlineSearchKinds(selected: String, onSelect: (String) -> Unit) =
+    com.akira.app.feature.search.SearchResultFilters(onlineKinds().map { it to onlineKindLabel(it) }, selected, onSelect)
 @Composable internal fun OnlineLibraryKinds(selected: String, connected: Boolean = true, onSelect: (String) -> Unit) {
     val haptics = rememberAkiraHaptics()
     Box(Modifier.padding(horizontal = 24.dp)) {

@@ -370,9 +370,6 @@ internal fun NowPlayingExpandedScreen(
     val isFavorite by favoriteFlow.collectAsStateWithLifecycle(initialValue=song.isFavorite)
     var isLyricsOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     var isQueueOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
-    var queueReading by remember(isQueueOpen, song.id) { mutableStateOf(false) }
-    var queueCanScrollBack by remember(isQueueOpen) { mutableStateOf(false) }
-    var queueListTopPx by remember { mutableFloatStateOf(0f) }
     var showOptionsSheet by remember { mutableStateOf(false) }
     var showSleepTimerSheet by remember { mutableStateOf(false) }
     val sleepRemaining by SleepTimerBus.remainingMs.collectAsStateWithLifecycle()
@@ -456,9 +453,9 @@ internal fun NowPlayingExpandedScreen(
             showControlsOnScroll = false
         }
     }
-    LaunchedEffect(isQueueOpen, isLyricsOpen, hideScrubber, showControlsOnScroll, queueReading) {
+    LaunchedEffect(isQueueOpen, isLyricsOpen, hideScrubber, showControlsOnScroll) {
         if (com.akira.app.BuildConfig.DEBUG) android.util.Log.d("AkiraMotion",
-            "detail=${if (isQueueOpen) "queue" else if (isLyricsOpen) "lyrics" else "player"} controls=${playerControlsVisible(true, isQueueOpen, isLyricsOpen, loadedLyrics.hasLyrics, hideScrubber, showControlsOnScroll, queueReading)}")
+            "detail=${if (isQueueOpen) "queue" else if (isLyricsOpen) "lyrics" else "player"} controls=${playerControlsVisible(true, isQueueOpen, isLyricsOpen, loadedLyrics.hasLyrics, hideScrubber, showControlsOnScroll)}")
     }
     LaunchedEffect(isSeeking) {
         if (isSeeking && detailScrollActive) hideScrubber = false
@@ -699,12 +696,11 @@ internal fun NowPlayingExpandedScreen(
                         trackedY = 0f
                         // A drag starting above the lyrics belongs to the sheet.
                         val startYInRoot = sheetRootTopPx.floatValue + startOffset.y
-                        startedInHeader = startYInRoot < if (isQueueOpen) queueListTopPx else lyricsListTopPx
+                        startedInHeader = startYInRoot < lyricsListTopPx
                     },
                     onVerticalDrag = { change, dragAmount ->
                         // Preserve lyric scrolling when earlier lines remain.
-                        val listOwnsGesture = !startedInHeader &&
-                            ((isLyricsOpen && lyricsAtTopBoundary) || (isQueueOpen && queueCanScrollBack))
+                        val listOwnsGesture = isLyricsOpen && lyricsAtTopBoundary && !startedInHeader
                         if (listOwnsGesture) {
                             change.consume()
                             hideScrubber = true
@@ -795,7 +791,7 @@ internal fun NowPlayingExpandedScreen(
             LivePlayerArtworkReflection(
                 mediaLayer = mediaLayer,
                 artwork = { artworkMotion.target?.bounds },
-                opacity = { videoBlend.floatValue },
+                opacity = { if (artworkMotion.target?.radiusPx == 0f) videoBlend.floatValue else 0f },
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(.59f),
             )
         }
@@ -804,7 +800,7 @@ internal fun NowPlayingExpandedScreen(
         // a visually transparent part of its texture still owns pointer hit testing.
         PlayerArtworkSurface(artworkMotion, song, playerExpansionProgress, config.screenWidthDp * density.density,
             motionArtwork = videoArtwork,
-            artworkVisible = !isQueueOpen || !queueReading,
+            showMotionArtwork = mainPortrait,
             mediaLayer = mediaLayer,
             onVideoBlend = { videoBlend.floatValue = it },
         )
@@ -841,12 +837,10 @@ internal fun NowPlayingExpandedScreen(
                         indication = null
                     ) {
                         playHapticFeedback()
-                        if (isQueueOpen && queueReading) queueReading = false else onClose()
+                        onClose()
                     }
                     .semantics {
-                        contentDescription = if (isQueueOpen && queueReading) {
-                            if (strings.locale.startsWith("es")) "Mostrar controles" else "Show playback controls"
-                        } else if (strings.locale.startsWith("es")) "Cerrar reproductor" else "Close player"
+                        contentDescription = if (strings.locale.startsWith("es")) "Cerrar reproductor" else "Close player"
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -863,7 +857,7 @@ internal fun NowPlayingExpandedScreen(
                 else -> ExpandedPage.PLAYER
             }
             val detailEntrance = remember(page, playerMotionReduced) {
-                Animatable(if (page == ExpandedPage.PLAYER || playerMotionReduced) 1f else 0f)
+                Animatable(if (page != ExpandedPage.LYRICS || playerMotionReduced) 1f else 0f)
             }
             LaunchedEffect(detailEntrance) {
                 if (detailEntrance.value < 1f) detailEntrance.animateTo(1f, tween(220, delayMillis = 35))
@@ -873,10 +867,6 @@ internal fun NowPlayingExpandedScreen(
                         ExpandedPage.QUEUE -> {
                             QueueHero(
                                 currentSong = song.copy(isFavorite=isFavorite),
-                                reading = queueReading,
-                                onUserScroll = { delta -> queueReading = delta > 0f },
-                                onListTopChanged = { queueListTopPx = it },
-                                onScrollBoundary = { queueCanScrollBack = it },
                                 queue = queue,
                                 currentPlayingIndex = currentMediaItemIndex,
                                 isShuffleActive = isShuffleActive,
@@ -917,7 +907,7 @@ internal fun NowPlayingExpandedScreen(
                                 onRestoreItem = { idx, s ->
                                     musicService.insertQueueItem(idx, s)
                                 },
-                                thumbModifier = artworkAnchor(14.dp, isQueueOpen && !queueReading),
+                                thumbModifier = artworkAnchor(14.dp, isQueueOpen),
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -931,7 +921,7 @@ internal fun NowPlayingExpandedScreen(
                         lyricsLoading = lyricsLoading,
                         onlineLyricsEnabled = onlineLyricsEnabled,
                         lyricsProvider = selectedLyricsProvider.name,
-                        showSourcesControl = playerControlsVisible(true, isQueueOpen, isLyricsOpen, loadedLyrics.hasLyrics, hideScrubber, showControlsOnScroll, queueReading),
+                        showSourcesControl = playerControlsVisible(true, isQueueOpen, isLyricsOpen, loadedLyrics.hasLyrics, hideScrubber, showControlsOnScroll),
                         onOpenLyricsSources = { haptics.click(); showLyricsSources = true },
                         onRetryLyrics = { if(!lyricsLoading) {haptics.click();lyricsLoading=true;lyricsRequestVersion++} },
                         lyricsLookupFailed=lyricsLookupFailed,
@@ -1130,7 +1120,7 @@ internal fun NowPlayingExpandedScreen(
             // Remove hidden detail controls from layout and input, rather than only fading them.
             Box(Modifier.fillMaxWidth().then(if(landscape || compactPortrait)Modifier.verticalScroll(rememberScrollState()) else Modifier)) {
             androidx.compose.animation.AnimatedVisibility(
-                visible = playerControlsVisible(true, isQueueOpen, isLyricsOpen, loadedLyrics.hasLyrics, hideScrubber, showControlsOnScroll, queueReading),
+                visible = playerControlsVisible(true, isQueueOpen, isLyricsOpen, loadedLyrics.hasLyrics, hideScrubber, showControlsOnScroll),
                 enter = expandVertically(if (playerMotionReduced) snap() else spring(.90f, 650f), expandFrom = Alignment.Bottom) +
                     fadeIn(tween(if (playerMotionReduced) 0 else 175)),
                 exit = shrinkVertically(if (playerMotionReduced) snap() else spring(.93f, 760f), shrinkTowards = Alignment.Bottom) +

@@ -1,13 +1,15 @@
 package com.akira.app.core.media
 
 import androidx.media3.common.*
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.ShuffleOrder
 
 /** Expose only committed playlist state to MediaSession (including its legacy
  * system queue). Commands and the current AudioTrack keep their original owner.
  * Hundreds of shuffled removals must not send hundreds of full Binder queues.
  */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-internal class QueueTransactionPlayer(player: Player, private val onExplicitPause: () -> Unit = {}) : ForwardingPlayer(player) {
+internal class QueueTransactionPlayer(private val player: Player, private val onExplicitPause: () -> Unit = {}) : ForwardingPlayer(player) {
     override fun pause() { onExplicitPause(); super.pause() }
     override fun stop() { onExplicitPause(); super.stop() }
     override fun clearMediaItems() { onExplicitPause(); super.clearMediaItems() }
@@ -17,7 +19,35 @@ internal class QueueTransactionPlayer(player: Player, private val onExplicitPaus
     override fun setMediaItems(items: List<MediaItem>) { onExplicitPause(); super.setMediaItems(items) }
     override fun setMediaItems(items: List<MediaItem>, resetPosition: Boolean) { onExplicitPause(); super.setMediaItems(items, resetPosition) }
     override fun setMediaItems(items: List<MediaItem>, index: Int, positionMs: Long) {
-        onExplicitPause(); super.setMediaItems(items, index, positionMs)
+        onExplicitPause()
+        val shuffle = player as? ExoPlayer
+        if (shuffle == null || !shuffle.shuffleModeEnabled ||
+            items.getOrNull(index)?.requestMetadata?.extras?.getBoolean(QueueEditCommand.INITIAL_SHUFFLE) != true
+        ) {
+            super.setMediaItems(items, index, positionMs)
+            return
+        }
+        begin()
+        try {
+            super.setMediaItems(items, index, positionMs)
+            shuffle.startShuffleAt(index)
+        } finally {
+            end()
+        }
+    }
+
+    override fun setShuffleModeEnabled(shuffleModeEnabled: Boolean) {
+        val deck = player as? ExoPlayer
+        if (deck != null && shuffleModeEnabled && !deck.shuffleModeEnabled) {
+            deck.startShuffleAt(deck.currentMediaItemIndex)
+        }
+        super.setShuffleModeEnabled(shuffleModeEnabled)
+    }
+
+    private fun ExoPlayer.startShuffleAt(index: Int) {
+        if (index !in 0 until mediaItemCount) return
+        val order = shuffledPlaylistIndexes(mediaItemCount, index)
+        setShuffleOrder(ShuffleOrder.DefaultShuffleOrder(order, System.nanoTime()))
     }
     override fun setPlayWhenReady(playWhenReady: Boolean) {
         if (!playWhenReady) onExplicitPause()

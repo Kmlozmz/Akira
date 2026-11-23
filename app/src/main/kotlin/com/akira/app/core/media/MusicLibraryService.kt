@@ -707,6 +707,11 @@ class MusicLibraryService : MediaLibraryService() {
     /** Main-thread transaction: edits the actual traversal and preserves the current audio item. */
     private fun editPlaybackQueue(args: Bundle): SessionResult {
         val start=android.os.SystemClock.elapsedRealtime()
+        val requiredEntry = args.getString(QueueEditCommand.REQUIRE_SHUFFLED_ENTRY)
+        if (requiredEntry != null && (!activeDeck.shuffleModeEnabled ||
+                (0 until activeDeck.mediaItemCount).none { activeDeck.getMediaItemAt(it).queueIdentity() == requiredEntry })) {
+            return SessionResult(SessionResult.RESULT_SUCCESS)
+        }
         val deletionSourceOnline = if (args.getString(QueueEditCommand.OP) == "DELETE_SONG")
             activeDeck.currentMediaItem?.toSong()?.contentUri?.startsWith("akira-youtube:") else null
         if (::crossfadeEngine.isInitialized) crossfadeEngine.prepareQueueEdit()
@@ -718,8 +723,11 @@ class MusicLibraryService : MediaLibraryService() {
         val order = playbackQueueIndexes(player).map { player.getMediaItemAt(it).queueIdentity() }
         val current = player.currentMediaItem?.queueIdentity()
         @Suppress("DEPRECATION")
-        val additions = args.getParcelableArrayList<Bundle>(QueueEditCommand.ITEMS).orEmpty().map { bundle ->
+        val existingSongs = if (requiredEntry != null) (0 until player.mediaItemCount)
+            .mapTo(HashSet()) { player.getMediaItemAt(it).mediaId } else null
+        val additions = args.getParcelableArrayList<Bundle>(QueueEditCommand.ITEMS).orEmpty().mapNotNull { bundle ->
             val item = MediaItem.fromBundle(bundle)
+            if (existingSongs?.add(item.mediaId) == false) return@mapNotNull null
             val uri = item.localConfiguration?.uri ?: item.requestMetadata.mediaUri
             require(uri?.scheme in setOf("content", "file", "akira-youtube"))
             item.buildUpon().setUri(uri).build()
@@ -776,13 +784,7 @@ class MusicLibraryService : MediaLibraryService() {
                 }
             }
         }
-        if (args.getBoolean("start_added_item") && additions.isNotEmpty()) {
-            val addedEntry = additions.first().queueIdentity()
-            val selectedIndex = (0 until player.mediaItemCount).first { player.getMediaItemAt(it).queueIdentity() == addedEntry }
-            player.seekToDefaultPosition(selectedIndex)
-            player.prepare()
-            player.play()
-        } else if (player.mediaItemCount > 0 && player.playbackState == Player.STATE_IDLE) player.prepare()
+        if (player.mediaItemCount > 0 && player.playbackState == Player.STATE_IDLE) player.prepare()
         SessionResult(SessionResult.RESULT_SUCCESS)
     } catch (e: Exception) {
         com.akira.app.core.logging.AkiraLog.e("Queue", "Queue edit rejected: ${e.javaClass.simpleName}", e)

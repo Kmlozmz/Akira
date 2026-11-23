@@ -419,8 +419,7 @@ fun LibraryScreen(
         scope.launch {
             prefsRepo.savePlaybackState(selection.song.id, 0L)
         }
-        musicService.mediaController?.shuffleModeEnabled = selection.shuffle
-        musicService.playSong(selection.song, selection.queue)
+        musicService.playSong(selection.song, selection.queue, shuffle = selection.shuffle)
     }
 
     fun playCollection(collection: List<Song>, shuffle: Boolean) {
@@ -737,6 +736,13 @@ fun LibraryScreen(
                     com.akira.app.feature.online.OnlineScreen(onlineRepository, screen, currentSong, isPlaying,
                         with(dockDensity) { dockState.heightPx.toDp() },
                         onPlay = { song, queue -> localCurrentSong = song; musicService.playSong(song, queue) },
+                        onSearchPlay = { song, results ->
+                            localCurrentSong = song
+                            val shuffled = musicService.mediaController?.shuffleModeEnabled ?: isShuffleActive
+                            val queue = if (shuffled) (results + onlineRepository.cachedShuffleTracks()).distinctBy { it.id } else results
+                            musicService.playSong(song, queue, shuffle = shuffled,
+                                recommend = if (shuffled) ({ onlineRepository.shuffleRecommendations(song) }) else null)
+                        },
                         playbackError = playbackError,
                         requestedItem = if (screen == destination) onlineCollection else null,
                         onRequestConsumed = { onlineCollection = null },
@@ -752,9 +758,7 @@ fun LibraryScreen(
                     onTogglePlay={togglePlayPause()},
                     onRandomPlay={song ->
                         localCurrentSong=song
-                        val existing=musicService.currentQueue.value
-                        if(existing.isNotEmpty()) musicService.playHomeSelection(song)
-                        else musicService.playSong(song,wholeLibrary.shuffled())
+                        musicService.playSong(song, com.akira.app.core.media.rouletteQueue(song, wholeLibrary))
                     },
                     onMore={songForOptions=it},onSettings={openSettings()},onRetry=libraryViewModel::retryLoad,
                     scrollToTopRequest=homeScrollRequest,playerSheetProgress={playerExpansionProgress.value}, sources=homeFeedSources)
@@ -762,7 +766,10 @@ fun LibraryScreen(
             } else if (screen == HomeDestination.SEARCH && selectedAlbumFilter == null && selectedArtistFilter == null) {
                 LocalSearchPage(wholeLibrary, currentSong, isPlaying,
                     with(dockDensity) { dockState.heightPx.toDp() },
-                    onPlay = { song, queue -> localCurrentSong = song; musicService.playSong(song, queue) },
+                    onPlay = { song, results ->
+                        val shuffled = musicService.mediaController?.shuffleModeEnabled ?: isShuffleActive
+                        playSong(song, if (shuffled) wholeLibrary else results, shuffled)
+                    },
                     onTogglePlay = { togglePlayPause() }, onMore = { songForOptions = it },
                     onAlbum = { song -> selectedAlbumFilter = song.album; selectedAlbumKey = albumKeyOf(song) },
                     onArtist = { name -> selectedArtistFilter = name }, onSettings = { openSettings() })

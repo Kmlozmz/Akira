@@ -17,6 +17,7 @@ import com.akira.app.core.media.MediaItemMapper.toSong
 import com.akira.app.core.media.MediaItemMapper.queueIdentity
 import com.akira.app.core.model.Song
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -261,19 +262,47 @@ class MusicServiceConnection(
         progressJob = null
     }
 
-    fun playSong(song: Song, queue: List<Song> = listOf(song)) {
+    private var shuffleRecommendations: Job? = null
+
+    fun playSong(
+        song: Song,
+        queue: List<Song> = listOf(song),
+        shuffle: Boolean? = null,
+        recommend: (suspend () -> List<Song>)? = null,
+    ) {
+        shuffleRecommendations?.cancel()
         _playbackError.value = false
         val controller = mediaController
         if (controller == null) {
-            pendingCommand = { playSong(song, queue) }
+            pendingCommand = { playSong(song, queue, shuffle, recommend) }
             return
         }
-        val mediaItems = queue.map { it.toMediaItem() }
-        val startIndex = queue.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
+        val tracks = if (queue.any { it.id == song.id }) queue else listOf(song) + queue
+        val mediaItems = tracks.map { it.toMediaItem() }.toMutableList()
+        val startIndex = tracks.indexOfFirst { it.id == song.id }
+        val shuffled = shuffle ?: controller.shuffleModeEnabled
+        if (controller.shuffleModeEnabled != shuffled) controller.shuffleModeEnabled = shuffled
+        if (shuffled) {
+            val start = mediaItems[startIndex]
+            val extras = android.os.Bundle(start.requestMetadata.extras ?: android.os.Bundle.EMPTY)
+            extras.putBoolean(QueueEditCommand.INITIAL_SHUFFLE, true)
+            mediaItems[startIndex] = start.buildUpon().setRequestMetadata(start.requestMetadata.buildUpon()
+                .setExtras(extras).build()).build()
+        }
 
         controller.setMediaItems(mediaItems, startIndex, /* startPositionMs = */ 0L)
         controller.prepare()
         controller.play()
+        if (shuffled && recommend != null) {
+            val entry = mediaItems[startIndex].queueIdentity()
+            shuffleRecommendations = scope.launch {
+                val tracks = try { recommend() }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (_: Exception) { emptyList() }
+                if (tracks.isEmpty() || mediaController !== controller || !controller.shuffleModeEnabled) return@launch
+                insert(tracks.shuffled().map { it.toMediaItem() }, "END", requiredShuffledEntry = entry)
+            }
+        }
     }
 
     fun togglePlayPause() {
@@ -420,10 +449,11 @@ class MusicServiceConnection(
         })
     }
 
-    private fun insert(items: List<MediaItem>, mode: String, target: String? = null) {
+    private fun insert(items: List<MediaItem>, mode: String, target: String? = null, requiredShuffledEntry: String? = null) {
         editQueue(android.os.Bundle().apply {
             putString(QueueEditCommand.OP, "INSERT"); putString(QueueEditCommand.MODE, mode)
             putString(QueueEditCommand.TARGET, target)
+            putString(QueueEditCommand.REQUIRE_SHUFFLED_ENTRY, requiredShuffledEntry)
             putParcelableArrayList(QueueEditCommand.ITEMS, ArrayList(items.map { it.toBundle() }))
         })
     }
@@ -433,18 +463,6 @@ class MusicServiceConnection(
         val item = song.toMediaItem()
         insert(listOf(item), "NEXT")
         return item.toSong().queueEntryId
-    }
-
-    /** The Home reel starts its local result in the same queue transaction.
-     * Waiting for the service avoids skipping before INSERT has actually run. */
-    fun playHomeSelection(song: Song) {
-        val item = song.toMediaItem()
-        editQueue(android.os.Bundle().apply {
-            putString(QueueEditCommand.OP, "INSERT")
-            putString(QueueEditCommand.MODE, "NEXT")
-            putBoolean("start_added_item", true)
-            putParcelableArrayList(QueueEditCommand.ITEMS, arrayListOf(item.toBundle()))
-        })
     }
 
     fun addToQueue(song: Song): String? {
@@ -526,6 +544,7 @@ class MusicServiceConnection(
     }
 
     fun release() {
+        shuffleRecommendations?.cancel()
         _audioFormat.value = null
         speedBeforeHold?.let {mediaController?.playbackParameters=it}
         temporarySpeedOwners.clear();speedBeforeHold=null
