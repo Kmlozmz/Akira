@@ -96,6 +96,10 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
     val favorites=songIndex.favorites
     val forgotten = remember(favorites, stats) { favorites.filter { (statsMap[songIndex.keyById[it.id]]?.lastPlayedAt ?: 0) < System.currentTimeMillis() - 90L*86400000 }.take(20) }
     val albums=songIndex.albums
+    val featuredAlbum = remember(albums, forgotten) {
+        val forgottenAlbum = forgotten.firstOrNull { it.album.isNotBlank() }?.let(::localAlbumKey)
+        albums.firstOrNull { localAlbumKey(it.first()) == forgottenAlbum } ?: albums.firstOrNull()
+    }
     val artists=songIndex.artists
     val entriesByPlaylist = remember(playlistEntries) { playlistEntries.groupBy { it.playlistId } }
     val userLists = remember(playlists, entriesByPlaylist, songs) {
@@ -146,7 +150,8 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
     val reveal = rememberRevealSeenState()
     val scope = rememberCoroutineScope()
     LaunchedEffect(scrollToTopRequest) { if(scrollToTopRequest>0) { collectionRoute=null;listState.animateScrollToItem(0) } }
-    val heroHeight = with(LocalDensity.current) { (LocalConfiguration.current.screenHeightDp * HeroHeightFraction).dp.toPx() }
+    val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 76.dp
+    val heroHeight = with(LocalDensity.current) { (topInset + CompactHomeFeatureHeight).toPx() }
     val heroProgress = remember(listState,heroHeight) { { if(listState.firstVisibleItemIndex>0)1f else (listState.firstVisibleItemScrollOffset/heroHeight).coerceIn(0f,1f) } }
     val homeGlassState = remember { GlassState() }
     val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()+if(current!=null)166.dp else 90.dp
@@ -189,9 +194,27 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
             Box(Modifier.fillMaxSize()) {
             val elastic=rememberAkiraBouncingEffect(pinTopContent=true,allowTopPull=false)
             LazyColumn(state=listState,overscrollEffect=elastic,modifier=Modifier.glassRoot(homeGlassState, isActive = { heroProgress() > 0f }),contentPadding=PaddingValues(bottom=bottom), flingBehavior = com.akira.app.core.design.motion.rememberAkiraBouncingFling()) {
-                item("hero") { CompositionLocalProvider(LocalAkiraMediaPull provides {elastic?.topPull?:0f}) { HeroCarousel(heroItems,songs,current?.id,playing,
-                    onItemClick={ item -> if(item.opensPage)collectionRoute=item.collectionRoute else item.song?.let { if(it.id==current?.id)onTogglePlay() else onPlay(it,songs) } },
-                    onRandomPlay=onRandomPlay,heroScrollProgressProvider=heroProgress,held={obscured||heroProgress()>.08f||elastic?.isInProgress==true},isLoading=!initialized && !loadFailed) } }
+                item("featured") {
+                    Column(Modifier.padding(top = topInset, bottom = 20.dp, start = HomeContentInset, end = HomeContentInset)) {
+                        val album = featuredAlbum
+                        val track = album?.firstOrNull() ?: recent.firstOrNull() ?: added.firstOrNull()
+                        if (track != null) {
+                            val tracks = album ?: songs
+                            val title = if (album != null) track.album else track.title
+                            val reason = when {
+                                album != null && album.any { it in forgotten } -> localizedText("An album to rediscover", "Un álbum para redescubrir")
+                                album != null -> albumLabel
+                                recent.isNotEmpty() -> continueLabel
+                                else -> addedLabel
+                            }
+                            HomeFeaturedMusic(title, reason, track.albumArtUri,
+                                if (current?.id == track.id && playing) localizedText("Pause", "Pausar") else localizedText("Play", "Reproducir"),
+                                compact = true, onAction = {
+                                    if (track.id == current?.id) onTogglePlay() else onPlay(track, tracks)
+                                })
+                        }
+                    }
+                }
                 if (initialized && loadFailed) {
                     item("refresh-error") { com.akira.app.feature.library.LibraryRefreshError(onRetry, Modifier.padding(HomeContentInset)) }
                 }
@@ -219,6 +242,18 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
                         item("space$key"){Spacer(Modifier.height(34.dp))}
                     }
                     cards("recent",recentLabel,recent.take(15))
+                    if (heroItems.isNotEmpty()) {
+                        item("explore-hero") {
+                            HeroCarousel(heroItems, songs, current?.id, playing,
+                                onItemClick = { item ->
+                                    if (item.opensPage) collectionRoute = item.collectionRoute
+                                    else item.song?.let { if (it.id == current?.id) onTogglePlay() else onPlay(it, songs) }
+                                },
+                                onRandomPlay = onRandomPlay,
+                                held = { obscured || elastic?.isInProgress == true ||
+                                    listState.layoutInfo.visibleItemsInfo.none { it.key == "explore-hero" } })
+                        }
+                    }
                     if(most.isNotEmpty()) {
                         item("ranktitle"){HomeSectionTitle(localizedText("Most Played","Más escuchadas"),onClick={openCollection("most-played",repeatLabel,most)})}
                         item("ranks") {

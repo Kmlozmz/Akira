@@ -23,7 +23,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -234,7 +233,13 @@ import kotlinx.coroutines.flow.first
         }
         add(HeroCarouselItem("online-roulette", "", isGacha = true))
     } }
-    val heroHeight = with(LocalDensity.current) { (LocalConfiguration.current.screenHeightDp * HeroHeightFraction).dp.toPx() }
+    val featured = remember(shelves) {
+        val personal = shelves.firstOrNull { it.title == "Made for you" || it.title == "Hecho para ti" }
+        personal?.items?.firstOrNull()?.let { it to HeroLabel(personal.reason ?: personal.title) }
+            ?: heroTargets.firstOrNull()
+    }
+    val featuredInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 76.dp
+    val heroHeight = with(LocalDensity.current) { (featuredInset + EditorialHomeFeatureHeight).toPx() }
     val heroProgress = remember(list, heroHeight) { {
         if (list.firstVisibleItemIndex > 0) 1f else (list.firstVisibleItemScrollOffset / heroHeight).coerceIn(0f, 1f)
     } }
@@ -367,21 +372,18 @@ import kotlinx.coroutines.flow.first
                 }
             }
             run {
-                if (homeRoot) item("hero") { key(account) { HeroCarousel(if (loading && page == null) emptyList() else heroItems, songs.map { it.asOnlineSong() }, current?.id, playing,
-                    onItemClick = { hero ->
-                        if (hero.key == "continue") hero.song?.let { song ->
-                            if (current?.id == song.id) onTogglePlay() else onPlay(song, (listOf(song) + songs.map { it.asOnlineSong() }).distinctBy { it.id })
-                        } else heroTargets.firstOrNull { "online-${it.first.id}" == hero.key }?.first?.let { choose(it, hero.transitionKey) }
-                    },
-                    onRandomPlay = { song -> repository.recordRouletteChoice(song); onPlay(song, rouletteQueue(song, rouletteSongs)) },
-                    heroScrollProgressProvider = heroProgress, held = { obscured || heroProgress() > .08f }, isLoading = loading,
-                    prepareRandom = { repository.roulette(liveCurrent, songs).also { rouletteSongs = it; rouletteFailed = false } },
-                    onRandomFailure = { rouletteFailed = true }) } }
-                if(homeRoot && rouletteFailed) item("roulette-error") {
-                    Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(localizedText("Couldn't get new suggestions.", "No se pudieron obtener nuevas sugerencias."), style = MaterialTheme.typography.titleSmall)
-                        Text(localizedText("Try the roulette again in a moment.", "Vuelve a girar la ruleta en unos momentos."),
-                            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (homeRoot) item("featured") {
+                    Column(Modifier.padding(top = featuredInset, bottom = 20.dp, start = HomeContentInset, end = HomeContentInset)) {
+                        if (featured != null) {
+                            val (entry, label) = featured
+                            val action = when {
+                                entry !is SongItem -> localizedText("Open", "Abrir")
+                                playing && current?.id == "youtube:${entry.id}" -> localizedText("Pause", "Pausar")
+                                else -> localizedText("Play", "Reproducir")
+                            }
+                            HomeFeaturedMusic(entry.title, label.text, entry.thumbnail, action, compact = false,
+                                onAction = { choose(entry, null) })
+                        }
                     }
                 }
                 if(searchRoot && query.isBlank() && recentSearches.isNotEmpty()) item("recent-searches") {
@@ -429,7 +431,37 @@ import kotlinx.coroutines.flow.first
                 if (libraryRoot) onlineLibrarySections(libraryEntries, libraryQuery, current, playing, sourcePrefix, ::choose, onMore)
                 else if (browseRoot) onlineBrowseSections(shelves, destination == HomeDestination.SEARCH, query.isBlank(),
                     current, playing, sourcePrefix, ::choose, onMore)
-                else onlineHomeSections(shelves, current, playing, sourcePrefix, ::choose, onMore)
+                else {
+                    val firstShelves = 2
+                    if (homeRoot) {
+                        onlineHomeSections(shelves.take(firstShelves), current, playing, sourcePrefix, ::choose, onMore)
+                        if (page != null) item("explore-hero") { key(account) {
+                            val featuredKey = featured?.first?.let { "online-${it.id}" }
+                            HeroCarousel(remember(heroItems, featuredKey) { heroItems.filterNot { it.key == featuredKey } },
+                                playableQueue, current?.id, playing,
+                                onItemClick = { hero ->
+                                    if (hero.key == "continue") hero.song?.let { song ->
+                                        if (current?.id == song.id) onTogglePlay()
+                                        else onPlay(song, (listOf(song) + playableQueue).distinctBy { it.id })
+                                    } else heroTargets.firstOrNull { "online-${it.first.id}" == hero.key }?.first?.let { choose(it, hero.transitionKey) }
+                                },
+                                onRandomPlay = { song -> repository.recordRouletteChoice(song); onPlay(song, rouletteQueue(song, rouletteSongs)) },
+                                held = { obscured || list.layoutInfo.visibleItemsInfo.none { it.key == "explore-hero" } },
+                                prepareRandom = { repository.roulette(liveCurrent, songs).also { rouletteSongs = it; rouletteFailed = false } },
+                                onRandomFailure = { rouletteFailed = true })
+                        } }
+                        if (rouletteFailed) item("roulette-error") {
+                            Column(Modifier.padding(horizontal = HomeContentInset), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(localizedText("Couldn't get new suggestions.", "No se pudieron obtener nuevas sugerencias."), style = MaterialTheme.typography.titleSmall)
+                                Text(localizedText("Try the roulette again in a moment.", "Vuelve a girar la ruleta en unos momentos."),
+                                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                    val sectionOffset = if (homeRoot) firstShelves else 0
+                    onlineHomeSections(shelves.drop(sectionOffset), current, playing, sourcePrefix, ::choose, onMore,
+                        startSection = sectionOffset)
+                }
                 if (homeRoot || libraryRoot || searchRoot) {
                     if (loadingMore) item("more-loading") { Box(Modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(Modifier.size(24.dp))
