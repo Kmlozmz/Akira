@@ -11,7 +11,13 @@ data class LibraryUiState(
 internal fun librarySnapshot(
     raw: List<Song>?, favoriteIds: Set<String>, failed: Boolean, include: (Song) -> Boolean
 ): LibraryUiState = if (raw == null) LibraryUiState(loadFailed = failed) else LibraryUiState(
-    songs = raw.filter(include).map { it.copy(isFavorite = it.id in favoriteIds) },
+    songs = buildList {
+        for (song in raw) {
+            if (!include(song)) continue
+            val favorite = song.id in favoriteIds
+            add(if (song.isFavorite == favorite) song else song.copy(isFavorite = favorite))
+        }
+    },
     initialized = true,
     loadFailed = failed
 )

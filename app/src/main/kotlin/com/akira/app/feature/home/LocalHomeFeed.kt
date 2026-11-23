@@ -96,9 +96,13 @@ fun LocalHomeFeed(songs: List<Song>, initialized: Boolean, loadFailed: Boolean, 
     val forgotten = remember(favorites, stats) { favorites.filter { (statsMap[songIndex.keyById[it.id]]?.lastPlayedAt ?: 0) < System.currentTimeMillis() - 90L*86400000 }.take(20) }
     val albums=songIndex.albums
     val artists=songIndex.artists
-    val userLists = remember(playlists, playlistEntries, songs) { playlists.map { list ->
-        HomePlaylist(list.id, list.title, playlistEntries.filter { it.playlistId == list.id }.mapNotNull { byKey[it.songKey] ?: byId[it.songKey] })
-    }.filter { it.songs.isNotEmpty() } }
+    val entriesByPlaylist = remember(playlistEntries) { playlistEntries.groupBy { it.playlistId } }
+    val userLists = remember(playlists, entriesByPlaylist, songs) {
+        playlists.mapNotNull { list ->
+            val tracks = entriesByPlaylist[list.id]?.mapNotNull { byKey[it.songKey] ?: byId[it.songKey] }.orEmpty()
+            if (tracks.isEmpty()) null else HomePlaylist(list.id, list.title, tracks)
+        }
+    }
     val continueLabel = localizedText("Continue", "Continuar")
     val repeatLabel = localizedText("On repeat", "En repetición")
     val favoriteLabel = localizedText("Don't forget these songs", "No olvides estas canciones")

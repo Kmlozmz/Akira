@@ -559,47 +559,6 @@ fun LibraryScreen(
         }
     }
 
-    val albumsList = remember(searchFilteredSongs) {
-        searchFilteredSongs.groupBy { albumKeyOf(it) }
-            .map { (_, songs) ->
-                val albumName = songs.firstOrNull()?.album?.ifBlank { "Unknown Album" } ?: "Unknown Album"
-                AlbumItem(
-                    key = albumKeyOf(songs.first()),
-                    name = albumName,
-                    artist = songs.firstOrNull()?.artist ?: "Unknown Artist",
-                    songCount = songs.size,
-                    artUri = songs.firstOrNull { !it.albumArtUri.isNullOrBlank() }?.albumArtUri
-                )
-            }.sortedBy { it.name.lowercase() }
-    }
-
-    val artistsList = remember(searchFilteredSongs) {
-        searchFilteredSongs.groupBy { it.artist.ifBlank { "Unknown Artist" } }
-            .map { (artistName, songs) ->
-                ArtistItem(
-                    name = artistName,
-                    songCount = songs.size,
-                    artUri = songs.firstOrNull { !it.albumArtUri.isNullOrBlank() }?.albumArtUri,
-                    covers = songs.mapNotNull { it.albumArtUri }.distinct().take(4),
-                    albumCount = songs.map { albumKeyOf(it) }.distinct().size
-                )
-            }.sortedBy { it.name.lowercase() }
-    }
-
-    val foldersList = remember(searchFilteredSongs) {
-        searchFilteredSongs.groupBy { folderKeyOf(it) }
-            .map { (_, songs) ->
-                val dir = folderKeyOf(songs.first())
-                FolderItem(
-                    key = dir,
-                    name = dir.substringAfterLast('/').ifBlank { dir.ifBlank { "Internal Storage" } },
-                    path = dir,
-                    songCount = songs.size,
-                    covers = songs.mapNotNull { it.albumArtUri }.distinct().take(4)
-                )
-            }.sortedBy { it.name.lowercase() }
-    }
-
     val studioNavigation = remember { com.akira.app.feature.settings.StudioNavigationState() }
     val dockState = rememberAkiraDockState()
     val homeMotionReduced = com.akira.app.core.design.components.rememberContentMotionReduced()
@@ -1018,12 +977,37 @@ fun LibraryScreen(
                         }
 
                         pageRoute[0] == "Albums" -> {
+                            val albumsList = remember(searchFilteredSongs) {
+                                searchFilteredSongs.groupBy { albumKeyOf(it) }
+                                    .map { (_, songs) ->
+                                        val albumName = songs.firstOrNull()?.album?.ifBlank { "Unknown Album" } ?: "Unknown Album"
+                                        AlbumItem(
+                                            key = albumKeyOf(songs.first()),
+                                            name = albumName,
+                                            artist = songs.firstOrNull()?.artist ?: "Unknown Artist",
+                                            songCount = songs.size,
+                                            artUri = songs.firstOrNull { !it.albumArtUri.isNullOrBlank() }?.albumArtUri
+                                        )
+                                    }.sortedBy { it.name.lowercase() }
+                            }
                             AlbumCollectionView(albumsList, libraryBottomClearance) { album ->
                                 selectedAlbumFilter = album.name; selectedAlbumKey = album.key
                             }
                         }
 
                         pageRoute[0] == "Artists" -> {
+                            val artistsList = remember(searchFilteredSongs) {
+                                searchFilteredSongs.groupBy { it.artist.ifBlank { "Unknown Artist" } }
+                                    .map { (artistName, songs) ->
+                                        ArtistItem(
+                                            name = artistName,
+                                            songCount = songs.size,
+                                            artUri = songs.firstOrNull { !it.albumArtUri.isNullOrBlank() }?.albumArtUri,
+                                            covers = songs.mapNotNull { it.albumArtUri }.distinct().take(4),
+                                            albumCount = songs.map { albumKeyOf(it) }.distinct().size
+                                        )
+                                    }.sortedBy { it.name.lowercase() }
+                            }
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = libraryBottomClearance),
@@ -1041,6 +1025,19 @@ fun LibraryScreen(
                         }
 
                         pageRoute[0] == "Folders" -> {
+                            val foldersList = remember(searchFilteredSongs) {
+                                searchFilteredSongs.groupBy { folderKeyOf(it) }
+                                    .map { (_, songs) ->
+                                        val dir = folderKeyOf(songs.first())
+                                        FolderItem(
+                                            key = dir,
+                                            name = dir.substringAfterLast('/').ifBlank { dir.ifBlank { "Internal Storage" } },
+                                            path = dir,
+                                            songCount = songs.size,
+                                            covers = songs.mapNotNull { it.albumArtUri }.distinct().take(4)
+                                        )
+                                    }.sortedBy { it.name.lowercase() }
+                            }
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = libraryBottomClearance),

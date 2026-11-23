@@ -1,7 +1,9 @@
 package com.akira.app.feature.player
 
 import android.os.SystemClock
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
@@ -15,7 +17,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
-import com.akira.app.preview.AudioPreviewActivity
 import java.util.concurrent.atomic.AtomicReference
 import org.junit.Assert.fail
 import org.junit.Test
@@ -25,8 +26,9 @@ class PlayerRhythmLightingDeviceTest {
     fun shiftingALightKeepsTheBottomAndLeadingEdgeCovered() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val bounds = AtomicReference(Rect.Zero)
-        ActivityScenario.launch(AudioPreviewActivity::class.java).use { scenario ->
+        ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
+                activity.enableEdgeToEdge()
                 activity.setContent {
                     Box(Modifier.size(180.dp, 260.dp)
                         .onGloballyPositioned { bounds.set(it.boundsInWindow()) }

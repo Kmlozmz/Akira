@@ -256,17 +256,35 @@ internal data class LibraryCategoryLink(val key: String, val title: String, val 
                 var folder by rememberSaveable { mutableStateOf<String?>(null) }
                 BackHandler(folder != null && !obscured) { folder = null }
                 val filtered = remember(songs, query, sort, folder) {
-                    sortSongs(songs.filter { song -> (folder == null || song.path.substringBeforeLast('/') == folder) &&
-                        (query.isBlank() || listOf(song.title, song.artist, song.album).any { it.contains(query, true) }) }, sort)
+                    val matches = if (folder == null && query.isBlank()) songs else songs.filter { song ->
+                        (folder == null || song.path.substringBeforeLast('/') == folder) &&
+                            (query.isBlank() || song.title.contains(query, true) ||
+                                song.artist.contains(query, true) || song.album.contains(query, true))
+                    }
+                    sortSongs(matches, sort)
                 }
-                val albums = remember(filtered, albumSort) { filtered.groupBy(::localAlbumKey).values.map { group -> group.maxBy { it.dateAddedSec } }.let { entries ->
+                val albums = if (key == "Albums" && initialized) remember(filtered, albumSort) {
+                    val newestByAlbum = LinkedHashMap<String, Song>()
+                    for (song in filtered) {
+                        val albumKey = localAlbumKey(song)
+                        val current = newestByAlbum[albumKey]
+                        if (current == null || song.dateAddedSec > current.dateAddedSec) newestByAlbum[albumKey] = song
+                    }
+                    val entries = newestByAlbum.values
                     val ordered = when (albumSort.field) {
                         SortField.ARTIST -> entries.sortedBy { it.artist.lowercase() }
                         SortField.DATE_ADDED -> entries.sortedBy { it.dateAddedSec }
                         else -> entries.sortedBy { it.album.lowercase() }
                     }
                     if (albumSort.ascending) ordered else ordered.reversed()
-                } }
+                } else emptyList()
+                val categoryRows = if (initialized && folder == null) remember(key, filtered) {
+                    when (key) {
+                        "Artists" -> filtered.distinctBy { it.artist }
+                        "Folders" -> filtered.distinctBy { it.path.substringBeforeLast('/') }
+                        else -> emptyList()
+                    }
+                } else emptyList()
                 val title = folder?.substringAfterLast('/') ?: categories.first { it.key == key }.title
                 val grid = rememberLazyGridState()
                 val list = rememberLazyListState()
@@ -324,9 +342,9 @@ internal data class LibraryCategoryLink(val key: String, val title: String, val 
                                 if (key == "Tracks" || folder != null) items(filtered, key = { it.id }) { song ->
                                     LocalSongSwipeRow(song) { SongRowItem(song, current?.id == song.id, playing && current?.id == song.id,
                                         { onPlay(song, filtered) }, { onMore(song) }) }
-                                } else if (key == "Artists") items(filtered.distinctBy { it.artist }, key = { it.artist }) { artist ->
+                                } else if (key == "Artists") items(categoryRows, key = { it.artist }) { artist ->
                                     LibraryCategoryRow(artist.artist, artist.albumArtUri, true) { onArtist(artist.artist) }
-                                } else items(filtered.distinctBy { it.path.substringBeforeLast('/') }, key = { it.path.substringBeforeLast('/') }) { song ->
+                                } else items(categoryRows, key = { it.path.substringBeforeLast('/') }) { song ->
                                     val path = song.path.substringBeforeLast('/')
                                     LibraryCategoryRow(path.substringAfterLast('/'), song.albumArtUri, false) { folder = path }
                                 }

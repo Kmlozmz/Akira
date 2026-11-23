@@ -150,6 +150,17 @@ Online mode remains in development. Catalog access, recommendations and account 
 
 </details>
 
+## Building from source
+
+Use JDK 21, Android SDK Platform 36, Build Tools 36.0.0, and NDK 28.2.13676358. Build the local Flutter AAR described in the [UI bridge guide](ui_bridge/README.md) before running Gradle.
+
+```powershell
+.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :providers:innertube:testDebugUnitTest
+.\gradlew.bat :app:connectedDebugAndroidTest
+```
+
+The first command exports the APK to `app/build/distributions/debug/`. Connect an Android device for the second command. Debug uses the package `com.akira.app.debug` and can be installed alongside the public app. The maintained JVM and device regression suites are in `app/src/regressionTest` and `app/src/regressionAndroidTest`.
+
 ## Reporting an issue
 
 Open an [issue](https://github.com/Kmlozmz/Akira/issues) and include:

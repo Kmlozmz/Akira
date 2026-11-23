@@ -173,12 +173,18 @@ internal fun sortSongs(songs: List<Song>, order: SortOrder): List<Song> {
     if (songs.size < 2) return songs
 
     val collator = Collator.getInstance().apply { strength = Collator.SECONDARY }
-    fun key(text: String): CollationKey =
+    val keys = HashMap<String, CollationKey>()
+    fun key(text: String): CollationKey = keys.getOrPut(text) {
         collator.getCollationKey(text.trimStart { !it.isLetterOrDigit() }.ifEmpty { text })
+    }
 
-    class Keyed(val song: Song, val title: CollationKey, val artist: CollationKey, val album: CollationKey)
+    class Keyed(val song: Song, val title: CollationKey, val artist: CollationKey?, val album: CollationKey?)
 
-    val keyed = songs.map { Keyed(it, key(it.title), key(it.artist), key(it.album)) }
+    val needsAlbum = order.field == SortField.ARTIST || order.field == SortField.ALBUM
+    val needsArtist = needsAlbum || order.field == SortField.TITLE
+    val keyed = songs.map { song ->
+        Keyed(song, key(song.title), if (needsArtist) key(song.artist) else null, if (needsAlbum) key(song.album) else null)
+    }
 
     val comparator: Comparator<Keyed> = when (order.field) {
         SortField.TITLE -> compareBy<Keyed> { it.title }.thenBy { it.artist }
