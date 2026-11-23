@@ -30,9 +30,8 @@ import com.akira.innertube.models.*
 
 /** Keeps the provider's shelf structure while sharing the local Home components. */
 internal fun LazyListScope.onlineHomeSections(shelves: List<OnlineShelf>, current: Song?, playing: Boolean,
-    sourcePrefix: String, choose: (YTItem, String?) -> Unit, onMore: (Song) -> Unit, startSection: Int = 0) {
-    shelves.forEachIndexed { index, shelf ->
-        val section = index + startSection
+    sourcePrefix: String, choose: (YTItem, String?) -> Unit, onMore: (Song) -> Unit) {
+    shelves.forEachIndexed { section, shelf ->
         item("section-$section") {
             HomeSectionTitle(shelf.title, label = shelf.reason, thumbnail = shelf.thumbnail?.let { url -> {
                 AsyncImage(url, null, Modifier.size(38.dp).clip(CircleShape), contentScale = ContentScale.Crop)
