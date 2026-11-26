@@ -42,6 +42,8 @@ import com.akira.app.core.logging.AkiraLog
 import com.akira.app.core.media.CrossfadeShape
 import com.akira.app.core.media.CurveSpec
 import com.akira.app.core.model.Song
+import com.akira.app.feature.appearance.AppearanceDestination
+import com.akira.app.feature.appearance.AppearanceEngineWarmup
 import com.akira.app.core.design.glass.LocalAppBackdrop
 import com.akira.app.core.design.backdrop.backdrops.layerBackdrop
 import com.akira.app.core.design.backdrop.backdrops.rememberLayerBackdrop
@@ -52,6 +54,7 @@ import com.akira.app.core.design.rendering.*
 import com.akira.app.feature.home.components.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -68,6 +71,15 @@ fun SettingsScreen(prefsRepo: UserPreferencesRepository, onBack: () -> Unit, mod
     val navigation = parentNavigation ?: remember { StudioNavigationState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val appearanceEngine = remember(context.applicationContext) { AppearanceEngineWarmup(context) }
+    DisposableEffect(appearanceEngine) { onDispose { appearanceEngine.dispose() } }
+    LaunchedEffect(appearanceEngine, section, editor) {
+        if (section == null && editor == null) {
+            appearanceEngine.start()
+            delay(320)
+            appearanceEngine.prepare()
+        }
+    }
     val strings = LocalStrings.current
     val haptics = rememberAkiraHaptics()
     val list = rememberLazyListState()
@@ -101,9 +113,7 @@ fun SettingsScreen(prefsRepo: UserPreferencesRepository, onBack: () -> Unit, mod
                     item("sections-$group") { SettingsGroup {
                         categories.forEach { category ->
                             SettingsRow(category.icon(),strings.ui(category.title),"",
-                                { if(category==SettingsSection.APPEARANCE)
-                                    context.startActivity(Intent(context,com.akira.app.feature.appearance.AppearanceActivity::class.java))
-                                  else section=category },Modifier.testTag("settings-section-${category.name}"),
+                                { section = category }, Modifier.testTag("settings-section-${category.name}"),
                                 leading=if(category==SettingsSection.LIBRARY) ({Icon(androidx.compose.ui.res.painterResource(com.akira.app.R.drawable.ic_navigation_library_filled),null,Modifier.size(23.dp),tint=category.tint())}) else null,
                                 iconTint=category.tint())
                         }
@@ -119,7 +129,8 @@ fun SettingsScreen(prefsRepo: UserPreferencesRepository, onBack: () -> Unit, mod
             // Back can arrive before the native selector window gains focus.
             val closeSection = { if (editor != null) editor = null else section = null }
             section?.let { category ->
-                if (category == SettingsSection.APPEARANCE) AppearanceScreen(current, prefsRepo, previewSongs, previewSong, closeSection)
+                if (category == SettingsSection.APPEARANCE) AppearanceDestination(appearanceEngine,
+                    previewSongs.ifEmpty { listOfNotNull(previewSong?.takeUnless { it.contentUri.startsWith("akira-youtube:") }) }, closeSection)
                 else AkiraStudioScreen(strings.ui(category.title), closeSection) {
                     Column(Modifier.fillMaxWidth().verticalScroll(LocalPageScrollState.current ?: rememberScrollState(),
                         flingBehavior = rememberAkiraBouncingFling()).padding(top = 80.dp)

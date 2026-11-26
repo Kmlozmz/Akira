@@ -25,7 +25,8 @@ import com.akira.app.core.design.backdrop.backdrops.layerBackdrop
 
 /** Subpages stay in the same Android window so enter, pop and predictive back
  * use Page's actual Compose transition, including an interrupted return. */
-internal class StudioEntry(val id: String, val depth: Int, val scroll: androidx.compose.foundation.ScrollState) {
+internal class StudioEntry(val id: String, val depth: Int, val scroll: androidx.compose.foundation.ScrollState,
+    val enterReady: State<Boolean>?) {
     var render by mutableStateOf<@Composable () -> Unit>({})
     var onBack: () -> Unit = {}
     var title: String = ""
@@ -43,6 +44,12 @@ internal val LocalStudioNavigation = staticCompositionLocalOf<StudioNavigationSt
     PageNavigationHost(target=active,backTarget=state.entries.dropLast(1).lastOrNull(),
         backEnabled=active!=null,onBack={active?.onBack?.invoke()},
         forward={from,to->(to?.depth ?: -1)>(from?.depth ?: -1)},modifier=Modifier.fillMaxSize(),
+        enterReady={it?.enterReady},
+        navigationTransform={from,to,reduced ->
+            val forward = (to?.depth ?: -1) > (from?.depth ?: -1)
+            val stage = forward && to?.enterReady != null
+            pageNavigationTransform(forward, reduced && !stage, stageIncomingFrame = stage)
+        },
         onProgress={from,to,fraction -> state.rootReveal=when {
             from==null && to!=null -> PagePushEasing.transform(fraction)
             from!=null && to==null -> 1f-PagePushEasing.transform(fraction)
@@ -56,6 +63,8 @@ internal val LocalStudioNavigation = staticCompositionLocalOf<StudioNavigationSt
 
 @Composable internal fun AkiraStudioScreen(title: String, onBack: () -> Unit,
     trailing: @Composable (() -> Unit)? = null, headerProgress: State<Float>? = null,
+    embeddedHeader: (@Composable () -> Unit)? = null,
+    enterReady: State<Boolean>? = null,
     content: @Composable ColumnScope.() -> Unit) {
     val navigator = LocalStudioNavigation.current
     // The registration stays composed while another studio page covers this
@@ -75,14 +84,16 @@ internal val LocalStudioNavigation = staticCompositionLocalOf<StudioNavigationSt
             com.akira.app.core.design.glass.LocalAppBackdrop provides headerBackdrop,
             com.akira.app.core.design.components.LocalAkiraOverlayBackdrop provides headerBackdrop) {
         Box(Modifier.fillMaxSize().semantics { paneTitle=title; isTraversalGroup=true }
-            .background(MaterialTheme.colorScheme.background).pointerInput(Unit) { detectTapGestures {} }.systemBarsPadding()) {
+            .background(MaterialTheme.colorScheme.background).pointerInput(Unit) { detectTapGestures {} }
+            .then(if (embeddedHeader == null) Modifier.systemBarsPadding() else Modifier)) {
             Column(Modifier.widthIn(max=720.dp).fillMaxSize().align(Alignment.TopCenter)
                 .then(if (glass) Modifier.layerBackdrop(headerBackdrop) else Modifier)
                 .background(MaterialTheme.colorScheme.background)) {
                 CompositionLocalProvider(LocalPageScrollState provides scroll,
                     com.akira.app.core.design.glass.LocalAppBackdrop provides controlsBackdrop) { content() }
             }
-            SettingsPageHeader(title,onBack,Modifier.widthIn(max=720.dp).align(Alignment.TopCenter),trailing=trailing,backLabel=parentLabel)
+            if (embeddedHeader != null) embeddedHeader()
+            else SettingsPageHeader(title,onBack,Modifier.widthIn(max=720.dp).align(Alignment.TopCenter),trailing=trailing,backLabel=parentLabel)
             com.akira.app.core.design.components.AkiraNoticeHost(Modifier.align(Alignment.BottomCenter).padding(bottom=8.dp),priority=2)
         }
         }
@@ -92,7 +103,7 @@ internal val LocalStudioNavigation = staticCompositionLocalOf<StudioNavigationSt
             CompositionLocalProvider(LocalNavigationBackLayer provides null) { render() }
         }
     } else {
-        val entry=remember(navigator) { StudioEntry(java.util.UUID.randomUUID().toString(),navigator.entries.size,scroll) }
+        val entry=remember(navigator) { StudioEntry(java.util.UUID.randomUUID().toString(),navigator.entries.size,scroll,enterReady) }
         SideEffect { entry.render=render; entry.onBack=onBack; entry.title=title }
         DisposableEffect(navigator,entry) {
             navigator.entries.add(entry)

@@ -41,25 +41,10 @@ import com.akira.app.core.design.theme.CurrentAkiraFontFamily
     topInset:androidx.compose.ui.unit.Dp=0.dp,trailing:(@Composable ()->Unit)?=null,
     backLabel:String=LocalStrings.current.settingsTitle) {
     val background=MaterialTheme.colorScheme.background
-    val glass=com.akira.app.core.design.glass.LocalGlassStyleEnabled.current
-    val interaction=remember{MutableInteractionSource()}
     Box(modifier.fillMaxWidth().height(topInset+88.dp)) {
         Box(Modifier.matchParentSize().background(Brush.verticalGradient(0f to background,.7f to background,.99f to background.copy(alpha=0f))))
         Layout(modifier=Modifier.fillMaxWidth().padding(top=topInset+14.dp,start=20.dp,end=20.dp).height(48.dp),content={
-            if (glass) AkiraBackButton(onBack, haptic = false) else {
-                val classicBack: @Composable (Boolean) -> Unit = { interactive ->
-                    Row(Modifier.heightIn(min = 48.dp).then(if (interactive)
-                        Modifier.clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onBack)
-                    else Modifier.alpha(0f).clearAndSetSemantics {}),
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Icon(androidx.compose.ui.res.painterResource(com.akira.app.R.drawable.ic_navigation_back),
-                            null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
-                        Text(backLabel, fontFamily = CurrentAkiraFontFamily, fontSize = 17.sp,
-                            color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-                NavigationBackSlot(placeholder = { classicBack(false) }) { classicBack(true) }
-            }
+            SettingsBackControl(backLabel, onBack)
             Text(title,fontFamily=CurrentAkiraFontFamily,fontSize=17.sp,fontWeight=FontWeight.SemiBold,
                 maxLines=1,overflow=TextOverflow.Ellipsis,color=MaterialTheme.colorScheme.onSurface)
             Box { trailing?.invoke() }
@@ -76,4 +61,25 @@ import com.akira.app.core.design.theme.CurrentAkiraFontFamily
             }
         }
     }
+}
+
+@Composable
+internal fun SettingsBackControl(label: String, onBack: () -> Unit) {
+    if (com.akira.app.core.design.glass.LocalGlassStyleEnabled.current) {
+        AkiraBackButton(onBack, haptic = false)
+        return
+    }
+    val interaction = remember { MutableInteractionSource() }
+    val classicBack: @Composable (Boolean) -> Unit = { interactive ->
+        Row(Modifier.heightIn(min = 48.dp).then(if (interactive)
+            Modifier.clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onBack)
+        else Modifier.alpha(0f).clearAndSetSemantics {}),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            Icon(androidx.compose.ui.res.painterResource(com.akira.app.R.drawable.ic_navigation_back),
+                null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+            Text(label, fontFamily = CurrentAkiraFontFamily, fontSize = 17.sp,
+                color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+    NavigationBackSlot(placeholder = { classicBack(false) }) { classicBack(true) }
 }

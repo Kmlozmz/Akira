@@ -36,7 +36,8 @@ class AkiraAppearancePage extends StatelessWidget {
       child: ReviewScaffold(
         settings: s,
         title: s.tr('Appearance', 'Apariencia'),
-        backLabel: 'Settings',
+        back: false,
+        captureOnlyInGlass: true,
         body: (context) => ListView(
           padding: reviewInsets(context),
           children: [
@@ -679,6 +680,8 @@ class _StylePage extends StatelessWidget {
     return ReviewScaffold(
       settings: s,
       title: s.tr('Style', 'Estilo'),
+      back: false,
+      captureOnlyInGlass: true,
       body: (_) => ListView(
         padding: reviewInsets(context),
         children: [
@@ -984,7 +987,11 @@ class _ToggleRow extends StatelessWidget {
       if (!last)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: SizedBox(width: double.infinity, height: 1, child: ColoredBox(color: settings.divider)),
+          child: SizedBox(
+            width: double.infinity,
+            height: 1,
+            child: ColoredBox(color: settings.divider),
+          ),
         ),
     ],
   );

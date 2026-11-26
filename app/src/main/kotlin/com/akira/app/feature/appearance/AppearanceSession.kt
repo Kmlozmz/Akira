@@ -1,13 +1,10 @@
 package com.akira.app.feature.appearance
 
-import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
-import android.os.Bundle
 import android.provider.OpenableColumns
 import android.util.AtomicFile
 import android.util.Size
@@ -18,9 +15,11 @@ import com.akira.app.core.data.library.LibraryCache
 import com.akira.app.core.datastore.AppearanceEdit
 import com.akira.app.core.datastore.UserPreferences
 import com.akira.app.core.design.motion.InteractionPreferences
-import io.flutter.embedding.android.FlutterActivity
+import com.akira.app.core.model.Song
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.dart.DartExecutor
+import io.flutter.embedding.engine.renderer.FlutterUiDisplayListener
+import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,56 +35,75 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.Locale
 
-private object AppearanceEngine {
-    private var engine: FlutterEngine? = null
-    fun get(context: Context): FlutterEngine = engine ?: FlutterEngine(context.applicationContext).also {
-        engine = it
-    }
-}
+internal enum class AppearanceRoute { ROOT, PAGE, MODAL }
 
-class AppearanceActivity : FlutterActivity(), AppearanceHost {
+/** Owns the Flutter content for one studio entry. Navigation chrome stays in Compose. */
+internal class AppearanceSession(
+    private val context: Context,
+    val engine: FlutterEngine,
+    private val previewSongs: List<Song>,
+    private val pickFontDocument: () -> Unit,
+    private val onClose: () -> Unit,
+    private val onReady: () -> Unit,
+    onRoute: (AppearanceRoute) -> Unit,
+) : AppearanceHost {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val repository get() = (application as AkiraApplication).preferencesRepository
+    private val repository get() = (context.applicationContext as AkiraApplication).preferencesRepository
     private var fontRequest: ((Result<FontData?>) -> Unit)? = null
-    private var client: AppearanceClient? = null
-    private var attached = false
-
-    override fun provideFlutterEngine(context: Context): FlutterEngine = AppearanceEngine.get(context)
-    override fun shouldDestroyEngineWithHost(): Boolean = false
-
-    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        super.configureFlutterEngine(flutterEngine)
-        val messenger = flutterEngine.dartExecutor.binaryMessenger
-        AppearanceHost.setUp(messenger, this)
-        client = AppearanceClient(messenger)
-        if (!flutterEngine.dartExecutor.isExecutingDart) {
-            flutterEngine.dartExecutor.executeDartEntrypoint(DartExecutor.DartEntrypoint.createDefault())
-        } else {
-            scope.launch { runCatching { client?.refresh() } }
+    private val messenger = engine.dartExecutor.binaryMessenger
+    private val channel = MethodChannel(messenger, "akira/appearance/navigation")
+    private var pageReady = false
+    private var displaying = false
+    private val displayListener = object : FlutterUiDisplayListener {
+        override fun onFlutterUiDisplayed() {
+            displaying = true
+            if (pageReady) onReady()
         }
+
+        override fun onFlutterUiNoLongerDisplayed() { displaying = false }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        attached = true
+    init {
+        AppearanceHost.setUp(messenger, this)
+        engine.renderer.addIsDisplayingFlutterUiListener(displayListener)
+        channel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "route" -> {
+                    val route = when (call.arguments) {
+                        "modal" -> AppearanceRoute.MODAL
+                        "page" -> AppearanceRoute.PAGE
+                        else -> AppearanceRoute.ROOT
+                    }
+                    onRoute(route)
+                    result.success(null)
+                }
+                "ready" -> {
+                    pageReady = true
+                    if (displaying) onReady()
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
+        engine.dartExecutor.executeDartEntrypoint(DartExecutor.DartEntrypoint.createDefault())
+        val client = AppearanceClient(messenger)
         scope.launch {
             repository.userPreferences.map(::snapshot).distinctUntilChanged().collect { preferences ->
-                runCatching { client?.preferencesChanged(preferences) }
+                runCatching { client.preferencesChanged(preferences) }
             }
         }
     }
 
-    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
-        AppearanceHost.setUp(flutterEngine.dartExecutor.binaryMessenger, null)
-        super.cleanUpFlutterEngine(flutterEngine)
-    }
+    fun pop() = channel.invokeMethod("pop", null)
 
-    override fun onDestroy() {
-        attached = false
+    fun dispose() {
+        engine.renderer.removeIsDisplayingFlutterUiListener(displayListener)
+        AppearanceHost.setUp(messenger, null)
+        channel.setMethodCallHandler(null)
         fontRequest?.invoke(Result.success(null))
         fontRequest = null
         scope.cancel()
-        super.onDestroy()
+        engine.destroy()
     }
 
     private fun snapshot(p: UserPreferences) = VisualPreferences(
@@ -104,7 +122,7 @@ class AppearanceActivity : FlutterActivity(), AppearanceHost {
         glassOpacity = p.liquidGlassOpacity.toDouble(),
         diffusion = p.liquidGlassDiffusion.toDouble(),
         dockDiffusion = p.dockLiquidGlassEnabled,
-        locale = if (p.language == "SYSTEM") resources.configuration.locales[0].toLanguageTag() else p.language.lowercase(Locale.ROOT),
+        locale = if (p.language == "SYSTEM") context.resources.configuration.locales[0].toLanguageTag() else p.language.lowercase(Locale.ROOT),
         fontId = p.appearanceFontId.takeIf { it.isNotEmpty() }
     )
 
@@ -133,26 +151,25 @@ class AppearanceActivity : FlutterActivity(), AppearanceHost {
             preferences.fullscreenArtwork, preferences.animatedArtwork,
             preferences.glassOpacity.toFloat(), preferences.diffusion.toFloat(), preferences.dockDiffusion, preferences.fontId
         ))
-        InteractionPreferences.setReducedMotion(this@AppearanceActivity, preferences.reduceMotion)
+        InteractionPreferences.setReducedMotion(context, preferences.reduceMotion)
         snapshot(repository.userPreferences.first())
     }
 
     override fun preview(callback: (Result<List<MusicPreview>>) -> Unit) = asyncResult(callback) {
-        val scanner = MediaStoreScanner(this@AppearanceActivity)
+        val scanner = MediaStoreScanner(context)
         if (!scanner.hasStoragePermission()) return@asyncResult emptyList()
         val prefs = repository.userPreferences.first()
-        val cached = LibraryCache(this@AppearanceActivity).read()
-        val songs = if (cached.isNotEmpty()) cached else scanner.scanLocalSongs(
-            prefs.minDurationSeconds, prefs.excludedFolderPaths, prefs.whitelistedSongIds)
+        val songs = previewSongs.ifEmpty { LibraryCache(context).read() }
         withContext(Dispatchers.IO) {
-            songs.filter { passesLibraryFilters(it, prefs.minDurationSeconds, prefs.excludedFolderPaths, prefs.whitelistedSongIds) }
+            songs.asSequence().filter { passesLibraryFilters(it, prefs.minDurationSeconds, prefs.excludedFolderPaths, prefs.whitelistedSongIds) }
                 .distinctBy { it.albumArtUri ?: it.album }.take(3).map { song -> MusicPreview(song.id, song.title, song.artist,
-                    song.album, song.durationMs, artwork(song)) }
+                    song.album, song.durationMs, artwork(song)) }.toList()
         }
     }
 
     private fun artwork(song: com.akira.app.core.model.Song): ByteArray? {
         val uri = song.albumArtUri?.let(Uri::parse)
+        val contentResolver = context.contentResolver
         val thumbnail = if (uri != null && Build.VERSION.SDK_INT >= 29) runCatching {
             contentResolver.loadThumbnail(uri, Size(384, 384), null)
         }.getOrNull() else null
@@ -168,7 +185,7 @@ class AppearanceActivity : FlutterActivity(), AppearanceHost {
         }.getOrNull() } ?: runCatching {
             val retriever = android.media.MediaMetadataRetriever()
             val bytes = try {
-                retriever.setDataSource(this, Uri.parse(song.contentUri))
+                retriever.setDataSource(context, Uri.parse(song.contentUri))
                 retriever.embeddedPicture
             } finally { retriever.release() } ?: return@runCatching null
             val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -188,7 +205,7 @@ class AppearanceActivity : FlutterActivity(), AppearanceHost {
 
     private fun fontFile(id: String?): File {
         require(id != null && Regex("[0-9a-f]{64}").matches(id))
-        return File(File(filesDir, "appearance-fonts"), "$id.ttf")
+        return File(File(context.filesDir, "appearance-fonts"), "$id.ttf")
     }
 
     override fun readFont(callback: (Result<FontData?>) -> Unit) = asyncResult(callback) {
@@ -204,25 +221,21 @@ class AppearanceActivity : FlutterActivity(), AppearanceHost {
         if (fontRequest != null) { callback(Result.failure(FlutterError("busy", "A font picker is already open", null))); return }
         fontRequest = callback
         try {
-            startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE)
-                type = "*/*"
-                putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("font/ttf", "font/otf", "application/x-font-ttf", "application/x-font-opentype", "application/octet-stream"))
-            }, 1401)
+            pickFontDocument()
         } catch (_: Exception) {
             fontRequest = null
             callback(Result.failure(FlutterError("font-picker", "No font picker is available", null)))
         }
     }
 
-    @Deprecated("Activity result bridge retained for FlutterActivity ownership")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != 1401) return
+    fun onFontResult(uri: Uri?) {
         val callback = fontRequest ?: return
         fontRequest = null
-        val uri = data?.data
-        if (resultCode != Activity.RESULT_OK || uri == null) { callback(Result.success(null)); return }
+        if (uri == null) {
+            callback(Result.success(null))
+            return
+        }
+        val contentResolver = context.contentResolver
         asyncResult(callback) { withContext(Dispatchers.IO) {
             val bytes = contentResolver.openInputStream(uri)?.use { stream ->
                 val output = ByteArrayOutputStream()
@@ -239,7 +252,7 @@ class AppearanceActivity : FlutterActivity(), AppearanceHost {
             require(tag == listOf(0, 1, 0, 0) || tag == listOf(79, 84, 84, 79))
             val id = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
                 .joinToString("") { "%02x".format(it) }
-            val temporary = File(cacheDir, "appearance-font-import.tmp")
+            val temporary = File(context.cacheDir, "appearance-font-import.tmp")
             try {
                 temporary.writeBytes(bytes)
                 Typeface.createFromFile(temporary)
@@ -256,5 +269,5 @@ class AppearanceActivity : FlutterActivity(), AppearanceHost {
         } }
     }
 
-    override fun close() { if (attached) finish() }
+    override fun close() { onClose() }
 }

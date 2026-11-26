@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'appearance/appearance_page.dart';
@@ -8,7 +9,9 @@ import 'laboratory/review/laboratory.dart' show ReviewCapabilities;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(AkiraAppearanceApp(settings: AkiraAppearanceSettings(AppearanceHost())));
+  runApp(
+    AkiraAppearanceApp(settings: AkiraAppearanceSettings(AppearanceHost())),
+  );
 }
 
 class AkiraAppearanceApp extends StatefulWidget {
@@ -25,10 +28,30 @@ class AkiraAppearanceApp extends StatefulWidget {
 
 class _AkiraAppearanceAppState extends State<AkiraAppearanceApp>
     with WidgetsBindingObserver {
+  static const _navigation = MethodChannel('akira/appearance/navigation');
+  final _navigator = GlobalKey<NavigatorState>();
+  final _routes = _AppearanceRoutes();
+  bool _signaledInitialPage = false;
+
+  void _signalInitialPage(BuildContext context) {
+    final settings = widget.settings;
+    if (_signaledInitialPage || (!settings.ready && settings.saveError == null)) {
+      return;
+    }
+    _signaledInitialPage = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // The optional artwork preview can arrive after the settings are usable.
+      if (mounted && context.mounted) await _navigation.invokeMethod<void>('ready');
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _navigation.setMethodCallHandler((call) async {
+      if (call.method == 'pop') await _navigator.currentState?.maybePop();
+    });
     widget.settings.initialize();
   }
 
@@ -41,6 +64,7 @@ class _AkiraAppearanceAppState extends State<AkiraAppearanceApp>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     widget.settings.dispose();
+    _navigation.setMethodCallHandler(null);
     super.dispose();
   }
 
@@ -50,6 +74,8 @@ class _AkiraAppearanceAppState extends State<AkiraAppearanceApp>
     builder: (context, _) {
       final s = widget.settings;
       return MaterialApp(
+        navigatorKey: _navigator,
+        navigatorObservers: [_routes],
         debugShowCheckedModeBanner: false,
         title: 'Akira',
         locale: Locale(s.spanish ? 'es' : 'en'),
@@ -65,16 +91,19 @@ class _AkiraAppearanceAppState extends State<AkiraAppearanceApp>
           ),
           splashFactory: NoSplash.splashFactory,
         ),
-        builder: (context, child) => ReviewCapabilities(
-          shaders: widget.shaders,
-          child: MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              disableAnimations:
-                  s.reduceMotion || MediaQuery.disableAnimationsOf(context),
+        builder: (context, child) {
+          _signalInitialPage(context);
+          return ReviewCapabilities(
+            shaders: widget.shaders,
+            child: MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                disableAnimations:
+                    s.reduceMotion || MediaQuery.disableAnimationsOf(context),
+              ),
+              child: child!,
             ),
-            child: child!,
-          ),
-        ),
+          );
+        },
         home: s.ready
             ? AkiraAppearancePage(settings: s)
             : Scaffold(
@@ -104,4 +133,14 @@ class _AkiraAppearanceAppState extends State<AkiraAppearanceApp>
       );
     },
   );
+}
+
+class _AppearanceRoutes extends NavigatorObserver {
+  @override
+  void didChangeTop(Route<dynamic> topRoute, Route<dynamic>? previousTopRoute) {
+    final route = topRoute is PopupRoute
+        ? 'modal'
+        : topRoute.isFirst ? 'root' : 'page';
+    _AkiraAppearanceAppState._navigation.invokeMethod<void>('route', route);
+  }
 }

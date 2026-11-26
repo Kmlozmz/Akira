@@ -142,6 +142,7 @@ class ReviewScaffold extends StatefulWidget {
     this.shaders = true,
     this.action,
     this.sceneForeground,
+    this.captureOnlyInGlass = false,
   });
   final AppearanceSettings settings;
   final String title;
@@ -150,6 +151,7 @@ class ReviewScaffold extends StatefulWidget {
   final String backLabel;
   final Widget? action;
   final Widget? sceneForeground;
+  final bool captureOnlyInGlass;
   @override
   State<ReviewScaffold> createState() => _ReviewScaffoldState();
 }
@@ -177,6 +179,7 @@ class _ReviewScaffoldState extends State<ReviewScaffold> {
           settings.style == 'Glass' &&
           !settings.reduceTransparency;
       final captureEnabled =
+          (!widget.captureOnlyInGlass || glass) &&
           shaders &&
           (context
                   .dependOnInheritedWidgetOfExactType<ReviewCapabilities>()

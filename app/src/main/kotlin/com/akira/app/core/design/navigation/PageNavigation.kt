@@ -7,12 +7,15 @@ import com.akira.app.core.design.components.*
 import com.akira.app.core.design.motion.*
 import com.akira.app.core.design.rendering.*
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -41,11 +44,14 @@ val LocalPageScrollState = staticCompositionLocalOf<ScrollState?> { null }
 val PageCollapseEasing = CubicBezierEasing(.57f, .53f, 0f, 1f)
 internal val PagePushEasing = CubicBezierEasing(.22f,.7f,.18f,1f)
 
-fun pageNavigationTransform(forward: Boolean, reduced: Boolean = false): ContentTransform {
+fun pageNavigationTransform(forward: Boolean, reduced: Boolean = false, stageIncomingFrame: Boolean = false): ContentTransform {
     if (reduced) return EnterTransition.None togetherWith ExitTransition.None
     // A page pushes the previous page away. Neither page dissolves in place.
     val timing=tween<IntOffset>(300,easing=PagePushEasing)
-    return (slideInHorizontally(timing) { if (forward) it else -(it*com.akira.app.core.design.system.AkiraPageMotionSpec.backgroundTravel).toInt() } togetherWith
+    return (slideInHorizontally(timing) { width ->
+        if (forward) (width - if (stageIncomingFrame) 1 else 0).coerceAtLeast(0)
+        else -(width*com.akira.app.core.design.system.AkiraPageMotionSpec.backgroundTravel).toInt()
+    } togetherWith
         slideOutHorizontally(timing) { if (forward) -(it*com.akira.app.core.design.system.AkiraPageMotionSpec.backgroundTravel).toInt() else it }).apply {
             targetContentZIndex=if(forward)1f else -1f
         }
@@ -91,7 +97,8 @@ private val HeaderCollapseDistance = 68.dp
 }
 
 @OptIn(ExperimentalFoundationApi::class)
-@Composable private fun DrawBackButton(onBack: () -> Unit, onLongClick: (() -> Unit)?, haptic: Boolean) {
+@Composable internal fun DrawBackButton(onBack: () -> Unit, onLongClick: (() -> Unit)? = null,
+    haptic: Boolean = true, enabled: Boolean = true) {
     val haptics = rememberAkiraHaptics()
     val ink = com.akira.app.core.design.glass.rememberGlassInk(MaterialTheme.colorScheme.onSurface)
     val pageColor = MaterialTheme.colorScheme.background
@@ -102,7 +109,7 @@ private val HeaderCollapseDistance = 68.dp
     CompositionLocalProvider(com.akira.app.core.design.glass.LocalGlassDeformation provides response.amount) {
     Box(ink.modifier.then(response.modifier).size(AkiraNavigationMetrics.Target), contentAlignment = Alignment.Center) {
         Box(Modifier.size(AkiraNavigationMetrics.BackSurface).akiraNavigationSurface(CircleShape, backdrop))
-        Box(Modifier.matchParentSize().clip(CircleShape).combinedClickable(interactionSource=interaction, indication=null,
+        Box(Modifier.matchParentSize().clip(CircleShape).combinedClickable(enabled=enabled,interactionSource=interaction, indication=null,
             onClick={ if(haptic)haptics.light(); onBack() }, onLongClick=onLongClick),
             contentAlignment = Alignment.Center) {
             Icon(painterResource(R.drawable.ic_navigation_back), localizedText("Back", "Atrás"),
@@ -153,13 +160,35 @@ private val HeaderCollapseDistance = 68.dp
     onBack: () -> Unit, forward: (T,T) -> Boolean, modifier: Modifier = Modifier,
     onProgress: (T,T,Float) -> Unit = {_,_,_->},
     navigationTransform: ((T,T,Boolean) -> ContentTransform)? = null,
+    enterReady: ((T) -> State<Boolean>?)? = null,
     content: @Composable AnimatedContentScope.(T) -> Unit) {
     val state = remember { SeekableTransitionState(target) }
     val currentBack by rememberUpdatedState(onBack)
     val currentTarget by rememberUpdatedState(target)
     val reduced = LocalContentMotionReduced.current
-    LaunchedEffect(target) {state.animateTo(target)}
-    PredictiveBackHandler(enabled = backEnabled) { events ->
+    val readiness = enterReady?.invoke(target)
+    var staging by remember { mutableStateOf(false) }
+    LaunchedEffect(target) {
+        if (readiness?.value == false) {
+            staging = true
+            try {
+                // Compose the real destination at the start of its slide. The texture
+                // gets a visible pixel to attach to while the outgoing page stays put.
+                state.seekTo(0f, target)
+                withTimeoutOrNull(1800L) { snapshotFlow { readiness.value }.first { it } }
+                withFrameNanos { }
+            } finally {
+                staging = false
+            }
+            if (reduced) {
+                state.snapTo(target)
+                return@LaunchedEffect
+            }
+        }
+        state.animateTo(target)
+    }
+    BackHandler(enabled = backEnabled && staging, onBack = currentBack)
+    PredictiveBackHandler(enabled = backEnabled && !staging) { events ->
         try {
             events.collect { state.seekTo(it.progress.coerceIn(0f,1f),backTarget) }
             currentBack()
@@ -178,6 +207,6 @@ private val HeaderCollapseDistance = 68.dp
         ?: pageNavigationTransform(forward(initialState,targetState),reduced)).using(null)},
         modifier=modifier) { page ->
         val scope = this
-        NavigationBackScene(active = page == target) { scope.content(page) }
+        NavigationBackScene(active = page == if (staging) from else target) { scope.content(page) }
     }
 }

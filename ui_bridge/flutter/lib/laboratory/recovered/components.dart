@@ -1,11 +1,13 @@
 import 'render_bindings.dart';
 import 'regional_capture_stage.dart';
+
 import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inotes_recovered/inotes_recovered.dart';
+
 import 'path_keys.dart';
 import 'path_paint.dart';
 
@@ -30,7 +32,11 @@ class RecoveredLabModel extends ChangeNotifier {
   String get defaultInterfaceFont => recoveredFont;
   String get interfaceFont => defaultInterfaceFont;
   double get interfaceScale => 1;
-  void configureMaterial(Map<String, Object?> fields, {bool dock = false, bool readable = false}) {}
+  void configureMaterial(
+    Map<String, Object?> fields, {
+    bool dock = false,
+    bool readable = false,
+  }) {}
   void change(VoidCallback update) {
     update();
     notifyListeners();
@@ -375,41 +381,47 @@ class NativeGlassStageState extends State<NativeGlassStage> {
   ui.Image? mip;
   int generation = -1;
   String? error;
+  bool _loading = false;
   @override
   void initState() {
     super.initState();
     if (widget.enableShaders) _load();
   }
 
+  @override
+  void didUpdateWidget(NativeGlassStage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.enableShaders && !oldWidget.enableShaders && lean == null) {
+      _load();
+    }
+  }
+
   Future<void> _load() async {
+    if (_loading) return;
+    _loading = true;
     try {
       final programs = await Future.wait([
         loadRecoveredProgram('glass_lean'),
         loadRecoveredProgram('glass_mip'),
       ]);
-      final dark =
-          jsonDecode(
-                await rootBundle.loadString(
-                  'assets/recovered_components/dark.json',
-                ),
-              )
-              as Map<String, dynamic>;
-      final light =
-          jsonDecode(
-                await rootBundle.loadString(
-                  'assets/recovered_components/light.json',
-                ),
-              )
-              as Map<String, dynamic>;
+      final dark = jsonDecode(
+        await rootBundle.loadString('assets/recovered_components/dark.json'),
+      ) as Map<String, dynamic>;
+      final light = jsonDecode(
+        await rootBundle.loadString('assets/recovered_components/light.json'),
+      ) as Map<String, dynamic>;
       if (!mounted) return;
       setState(() {
         lean = programs[0];
         chain = RecoveredMipChain(programs[1]);
         darkRecipes = dark;
         lightRecipes = light;
+        error = null;
       });
     } catch (e) {
       if (mounted) setState(() => error = '$e');
+    } finally {
+      _loading = false;
     }
   }
 

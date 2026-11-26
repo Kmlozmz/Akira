@@ -159,9 +159,15 @@ enum class AkiraMenuStyle { Actions, Choices }
                         color=MaterialTheme.colorScheme.onSurfaceVariant)
                     groups.filter { it.isNotEmpty() }.forEachIndexed { index, group ->
                         if (index > 0 || quickActions.isNotEmpty()) {
-                            if (classic) Spacer(Modifier.height(if (dense) 8.dp else 12.dp)) else HorizontalDivider(
-                                Modifier.padding(horizontal = 16.dp, vertical = if (index == 0) 0.dp else if (dense) 4.dp else 8.dp),
-                                thickness = .5.dp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .14f))
+                            HorizontalDivider(
+                                Modifier.padding(horizontal = 16.dp, vertical = when {
+                                    classic -> if (dense) 3.dp else 5.dp
+                                    index == 0 -> 0.dp
+                                    dense -> 4.dp
+                                    else -> 8.dp
+                                }),
+                                thickness = .5.dp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (classic) .25f else .14f))
                         }
                         group.forEach { MenuActionRow(it, false, dense, enabled = presentation?.closing == null, style = style) { activate(it) } }
                     }
