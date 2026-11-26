@@ -222,8 +222,8 @@ internal data class LibraryCategoryLink(val key: String, val title: String, val 
     }
 }
 
-@Composable internal fun LibraryBrowseScreen(songs: List<Song>, current: Song?, playing: Boolean, bottom: Dp,
-    musicService: MusicServiceConnection, sort: SortOrder, onSort: () -> Unit, onSettings: () -> Unit,
+@Composable internal fun LibraryBrowseScreen(songs: List<Song>, orderedSongs: List<Song>, current: Song?, playing: Boolean, bottom: Dp,
+    musicService: MusicServiceConnection, onSort: () -> Unit, onSettings: () -> Unit,
     onAlbum: (Song) -> Unit, onArtist: (String) -> Unit, onPlay: (Song, List<Song>) -> Unit,
     onMore: (Song) -> Unit, initialized: Boolean, failed: Boolean, onRetry: () -> Unit) {
     var category by rememberSaveable { mutableStateOf<String?>(null) }
@@ -254,13 +254,12 @@ internal data class LibraryCategoryLink(val key: String, val title: String, val 
                 var sortMenu by remember { mutableStateOf(false) }
                 var folder by rememberSaveable { mutableStateOf<String?>(null) }
                 BackHandler(folder != null && !obscured) { folder = null }
-                val filtered = remember(songs, query, sort, folder) {
-                    val matches = if (folder == null && query.isBlank()) songs else songs.filter { song ->
+                val filtered = remember(orderedSongs, query, folder) {
+                    if (folder == null && query.isBlank()) orderedSongs else orderedSongs.filter { song ->
                         (folder == null || song.path.substringBeforeLast('/') == folder) &&
                             (query.isBlank() || song.title.contains(query, true) ||
                                 song.artist.contains(query, true) || song.album.contains(query, true))
                     }
-                    sortSongs(matches, sort)
                 }
                 val albums = if (key == "Albums" && initialized) remember(filtered, albumSort) {
                     val newestByAlbum = LinkedHashMap<String, Song>()
@@ -336,10 +335,10 @@ internal data class LibraryCategoryLink(val key: String, val title: String, val 
                             }
                             else -> LazyColumn(state = list, modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = bottom), flingBehavior = rememberAkiraBouncingFling()) {
-                                item("header") { LibraryBrowseHeading(title, query, { query = it }, searchVisible,
+                                item("header", contentType = "header") { LibraryBrowseHeading(title, query, { query = it }, searchVisible,
                                     if (key == "Tracks" || folder != null) ({ play(false) }) else null,
                                     if (key == "Tracks" || folder != null) ({ play(true) }) else null) }
-                                if (key == "Tracks" || folder != null) items(filtered, key = { it.id }) { song ->
+                                if (key == "Tracks" || folder != null) items(filtered, key = { it.id }, contentType = { "track" }) { song ->
                                     LocalSongSwipeRow(song) { SongRowItem(song, current?.id == song.id, playing && current?.id == song.id,
                                         { onPlay(song, filtered) }, { onMore(song) }) }
                                 } else if (key == "Artists") items(categoryRows, key = { it.artist }) { artist ->

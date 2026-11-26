@@ -122,13 +122,18 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     val allSongs: StateFlow<List<Song>> = librarySnapshot.map { it.songs }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Loading and tracks travel together, so a delayed filter/sort cannot expose a false empty state.
-    val uiState: StateFlow<LibraryUiState> = combine(librarySnapshot, currentSortOrder, searchQuery) { snapshot, order, query ->
+    // Both library routes share the same ordered snapshot, computed before entering Songs.
+    val orderedLibrary: StateFlow<LibraryUiState> = combine(librarySnapshot, currentSortOrder) { snapshot, order ->
+        snapshot.copy(songs = sortSongs(snapshot.songs, order))
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, LibraryUiState())
+
+    // Loading and tracks travel together, so a delayed filter cannot expose a false empty state.
+    val uiState: StateFlow<LibraryUiState> = combine(orderedLibrary, searchQuery) { snapshot, query ->
         val filtered = if (query.isBlank()) snapshot.songs else snapshot.songs.filter {
             it.title.contains(query, ignoreCase = true) || it.artist.contains(query, ignoreCase = true) ||
                 it.album.contains(query, ignoreCase = true)
         }
-        snapshot.copy(songs = sortSongs(filtered, order))
+        if (filtered === snapshot.songs) snapshot else snapshot.copy(songs = filtered)
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, LibraryUiState())
 
     val songs: StateFlow<List<Song>> = uiState.map { it.songs }

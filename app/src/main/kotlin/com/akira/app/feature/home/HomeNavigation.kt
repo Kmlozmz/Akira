@@ -9,6 +9,7 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Settings
@@ -21,8 +22,13 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.*
@@ -36,6 +42,10 @@ import com.akira.app.core.design.glass.*
 import com.akira.app.feature.player.dock.navigation.*
 import com.akira.app.feature.search.LocalSearchSession
 import com.akira.app.feature.search.SearchDock
+import com.akira.app.feature.player.rememberAmbientPhase
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 data class AkiraDockAnchor(val mini: Rect, val artwork: Rect, val corner: Dp)
 
@@ -87,7 +97,7 @@ fun HomeNavigation(
     state: AkiraDockState,
     song: Song?,
     isPlaying: Boolean,
-    isLoading: Boolean,
+    isLoading: Boolean = false,
     artworkVisible: Boolean,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
@@ -100,13 +110,17 @@ fun HomeNavigation(
     searchEnabled: Boolean = true,
     classicInset: Dp = 0.dp,
     playbackFraction: () -> Float = { 0f },
+    trackAccent: Color? = null,
+    loadingState: State<Boolean>? = null,
 ) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val reduced = com.akira.app.core.design.components.LocalContentMotionReduced.current
     val classic = !LocalGlassStyleEnabled.current
     val ink = com.akira.app.core.design.glass.rememberGlassInk()
     val contentColor = if (classic) MaterialTheme.colorScheme.onBackground else ink.color
-    val selectedContentColor = Color(com.akira.app.core.design.system.AkiraDockSpec.accentArgb)
+    val classicAccent = trackAccent?.let { classicTonalAccent(it, darkSurface = contentColor.luminance() > .5f) }
+    val selectedContentColor = if (classic && classicAccent != null) classicAccent
+        else Color(com.akira.app.core.design.system.AkiraDockSpec.accentArgb)
     val haptics = rememberHaptics()
     val currentSelect by rememberUpdatedState(onSelect)
     val currentSelected by rememberUpdatedState(selected)
@@ -132,7 +146,9 @@ fun HomeNavigation(
     val accessory: @Composable (Modifier, Float) -> Unit = { accessoryModifier, compactFraction ->
         val inline = state.scroll.isInline
         song?.let { current ->
-            GlassNowPlaying(song = current, compactFraction = compactFraction, isPlaying = isPlaying, isLoading = isLoading,
+            GlassNowPlaying(song = current, compactFraction = compactFraction, isPlaying = isPlaying,
+                isLoading = loadingState?.value ?: isLoading,
+                classicAccent = classicAccent.takeIf { classic },
                 contentColor = contentColor, onPlayPause = onPlayPause, onNext = onNext,
                 onPrevious = onPrevious, onExpand = onExpand, controlsLocked = false, onBlockedControl = {},
                 onHoldStart = onHoldStart,
@@ -164,52 +180,135 @@ fun HomeNavigation(
                 heightOverride = navigationHeight, drawHomeSurface = false, active = searchActive)
         } else null,
         colors = FloatingTabBarDefaults.colors(backgroundColor = Color.Transparent,
-            accessoryBackgroundColor = Color.Transparent, indicatorColor = glassIndicatorColor().copy(alpha = .5f)),
+            accessoryBackgroundColor = Color.Transparent,
+            indicatorColor = if (classic) (classicAccent ?: MaterialTheme.colorScheme.primary).copy(alpha = .20f)
+                else glassIndicatorColor().copy(alpha = .5f)),
         elevations = FloatingTabBarDefaults.elevations(inlineElevation = 0.dp, expandedElevation = 0.dp),
-        sizes = FloatingTabBarDefaults.sizes(tabBarContentPadding = PaddingValues(4.dp),
-            tabExpandedContentPadding = PaddingValues(vertical = 5.5.dp), componentSpacing = if (classic) 0.dp else 10.dp),
-        contentKey = remember(contentColor, selectedContentColor, labels) { listOf(contentColor, selectedContentColor, labels) },
+        sizes = FloatingTabBarDefaults.sizes(
+            tabBarContentPadding = if (classic) PaddingValues(horizontal = 4.dp, vertical = 2.dp) else PaddingValues(4.dp),
+            tabExpandedContentPadding = if (classic) PaddingValues(vertical = 4.dp) else PaddingValues(vertical = 5.5.dp),
+            componentSpacing = if (classic) 2.dp else 10.dp),
+        iconOnlyIndicator = classic,
+        contentKey = remember(classic, contentColor, selectedContentColor, labels) {
+            listOf(classic, contentColor, selectedContentColor, labels)
+        },
     ) {
         group.forEachIndexed { i, destination ->
             tab(key = destination, icon = {
-                val tint = if (currentSelected == destination) selectedContentColor else contentColor.copy(alpha = .65f)
-                val semantics = Modifier.size(25.dp,28.dp).semantics { role = Role.Tab; this.selected = currentSelected == destination }
+                val selected = currentSelected == destination
+                val tint = if (selected) selectedContentColor else contentColor.copy(alpha = if (classic) .74f else .65f)
+                val semantics = (if (classic) Modifier.size(22.dp) else Modifier.size(25.dp, 28.dp))
+                    .semantics { role = Role.Tab; this.selected = selected }
                 if (destination == HomeDestination.SETTINGS) Icon(Icons.Rounded.Settings, labels[i], tint = tint, modifier = semantics)
                 else Icon(painterResource(if (destination == HomeDestination.HOME) R.drawable.ic_navigation_home_filled else R.drawable.ic_navigation_library_filled), labels[i], tint = tint, modifier = semantics)
             }, title = {
+                val labelTint = if (currentSelected == destination) selectedContentColor
+                    else contentColor.copy(alpha = if (classic) .74f else .65f)
                 Text(labels[i], style = labelStyle,
-                    color = if (currentSelected == destination) selectedContentColor else contentColor.copy(alpha = .65f),
+                    color = labelTint,
                     maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 1.dp))
+                    modifier = Modifier.padding(top = if (classic) 3.dp else 1.dp))
             }, onClick = { if (currentSelected != destination) haptics.play(Haptic.Select); currentSelect(destination) }, indication = null)
         }
         standaloneTab(key = HomeDestination.SEARCH, icon = {
-            Icon(painterResource(R.drawable.ic_navigation_search_outline), labels[3], tint = if(currentSelected == HomeDestination.SEARCH) selectedContentColor else contentColor.copy(alpha = .65f),
-                modifier = Modifier.size(25.dp,28.dp).semantics { role = Role.Tab; this.selected = currentSelected == HomeDestination.SEARCH })
+            val selected = currentSelected == HomeDestination.SEARCH
+            Icon(painterResource(R.drawable.ic_navigation_search_outline), labels[3],
+                tint = if (selected) selectedContentColor else contentColor.copy(alpha = if (classic) .74f else .65f),
+                modifier = (if (classic) Modifier.size(22.dp) else Modifier.size(25.dp, 28.dp))
+                    .semantics { role = Role.Tab; this.selected = selected })
         }, title = {
+            val labelTint = if (currentSelected == HomeDestination.SEARCH) selectedContentColor
+                else contentColor.copy(alpha = if (classic) .74f else .65f)
             Text(labels[3], style = labelStyle,
-                color = if (currentSelected == HomeDestination.SEARCH) selectedContentColor else contentColor.copy(alpha = .65f),
-                maxLines = 1, modifier = Modifier.padding(top = 1.dp))
+                color = labelTint,
+                maxLines = 1, modifier = Modifier.padding(top = if (classic) 3.dp else 1.dp))
         }, onClick = { haptics.play(Haptic.Select); currentSelect(HomeDestination.SEARCH) }, indication = null)
     }
     }
     if (classic) {
         Box(modifier.fillMaxWidth(), contentAlignment = androidx.compose.ui.Alignment.BottomCenter) {
-            val track = contentColor.copy(alpha = .14f)
-            val progress = MaterialTheme.colorScheme.primary
+            val progress = classicAccent ?: MaterialTheme.colorScheme.primary
+            val track = progress.copy(alpha = .18f)
             Box(Modifier.matchParentSize().graphicsLayer { alpha = dockNavigationReveal(playerProgress()) }
-                .classicDockSurface().then(if (song == null || searchActive) Modifier else Modifier.drawBehind {
-                    val inset = 16.dp.toPx()
-                    val y = 3.dp.toPx()
-                    val length = (size.width - 2 * inset).coerceAtLeast(0f)
-                    val thickness = 2.dp.toPx()
-                    drawLine(track, Offset(inset, y), Offset(inset + length, y), thickness, StrokeCap.Round)
-                    val amount = playbackFraction().coerceIn(0f, 1f)
-                    if (amount > 0f) drawLine(progress, Offset(inset, y), Offset(inset + length * amount, y),
-                        thickness, StrokeCap.Round)
-                }))
-            bar(Modifier.widthIn(max = 560.dp).padding(start = 8.dp, end = 8.dp,
-                top = if (song != null && !searchActive) 6.dp else 0.dp, bottom = classicInset))
+                .classicDockSurface(trackAccent))
+            if (song != null && !searchActive) {
+                val visible by remember(playerProgress) {
+                    derivedStateOf { dockNavigationReveal(playerProgress()) > .001f }
+                }
+                val waveHeight = animateFloatAsState(if (isPlaying && !reduced) 1f else 0f,
+                    if (reduced) snap() else tween(145), label = "classicProgressWave")
+                val moving by remember(visible, isPlaying) {
+                    derivedStateOf { visible && (isPlaying || waveHeight.value > .001f) }
+                }
+                val phase = rememberAmbientPhase(moving, radiansPerSecond = 3.3f)
+                Box(Modifier.align(androidx.compose.ui.Alignment.TopCenter).fillMaxWidth().height(11.dp)
+                    .graphicsLayer { alpha = dockNavigationReveal(playerProgress()) }
+                    .classicPlaybackProgress(track, progress, playbackFraction, { phase.value }, { waveHeight.value }))
+            }
+            bar(Modifier.widthIn(max = 560.dp).padding(start = 4.dp, end = 4.dp,
+                top = if (song != null && !searchActive) 10.dp else 0.dp, bottom = classicInset))
         }
     } else bar(modifier)
+}
+
+/** Keeps Classic dock accents chromatic rather than double-washing toward white. */
+private fun classicTonalAccent(color: Color, darkSurface: Boolean): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+    return if (hsv[1] > .08f) {
+        if (darkSurface) Color.hsv(hsv[0], hsv[1].coerceIn(.40f, .72f), .94f)
+        else Color.hsv(hsv[0], hsv[1].coerceIn(.45f, .85f), .48f)
+    } else {
+        if (darkSurface) lerp(color, Color.White, .40f) else lerp(color, Color.Black, .36f)
+    }
+}
+
+private fun Modifier.classicPlaybackProgress(
+    track: Color, progress: Color, fraction: () -> Float, phase: () -> Float, waveHeight: () -> Float,
+) = drawWithCache {
+    val start = 16.dp.toPx()
+    val length = (size.width - 2f * start).coerceAtLeast(0f)
+    val center = size.height * .5f
+    val maxAmplitude = 2.4.dp.toPx()
+    val wavelength = 32.dp.toPx()
+    val frequency = (2f * PI.toFloat()) / wavelength
+    val step = wavelength * .25f
+    val strokeWidth = 3.5.dp.toPx()
+    val trackStrokeWidth = 3.0.dp.toPx()
+    val stroke = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+    val wave = Path()
+    onDrawBehind {
+        val played = length * fraction().coerceIn(0f, 1f)
+        val remainingStart = if (played > 0f) start + played + 5.5.dp.toPx() else start
+        if (start + length > remainingStart) {
+            drawLine(track, Offset(remainingStart, center), Offset(start + length, center),
+                trackStrokeWidth, StrokeCap.Round)
+            drawCircle(progress.copy(alpha = .75f), 1.3.dp.toPx(), Offset(start + length, center))
+        }
+        if (played <= 0f) return@onDrawBehind
+        val amplitude = maxAmplitude * waveHeight()
+        if (amplitude <= .01f) {
+            drawLine(progress, Offset(start, center), Offset(start + played, center), strokeWidth, StrokeCap.Round)
+            return@onDrawBehind
+        }
+        val shift = phase()
+        var x = 0f
+        var y = center + amplitude * sin(shift)
+        var slope = amplitude * frequency * cos(shift)
+        wave.rewind()
+        wave.moveTo(start, y)
+        while (x < played) {
+            val next = (x + step).coerceAtMost(played)
+            val angle = next * frequency + shift
+            val nextY = center + amplitude * sin(angle)
+            val nextSlope = amplitude * frequency * cos(angle)
+            val handle = (next - x) / 3f
+            wave.cubicTo(start + x + handle, y + slope * handle,
+                start + next - handle, nextY - nextSlope * handle, start + next, nextY)
+            x = next
+            y = nextY
+            slope = nextSlope
+        }
+        drawPath(wave, progress, style = stroke)
+    }
 }

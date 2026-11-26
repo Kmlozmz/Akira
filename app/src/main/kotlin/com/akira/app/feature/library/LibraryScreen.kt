@@ -273,7 +273,6 @@ fun LibraryScreen(
     val serviceSong by musicService.currentSong.collectAsStateWithLifecycle()
     val serviceRepeatMode by musicService.repeatMode.collectAsStateWithLifecycle()
     val isShuffleActive by musicService.shuffleMode.collectAsStateWithLifecycle()
-    val durationMs by musicService.durationMs.collectAsStateWithLifecycle()
 
     var localCurrentSong by remember { mutableStateOf<Song?>(if (openPlayerFromWidget || openPlayerFromMediaSession) AkiraWidgets.currentSong(context) else null) }
     LaunchedEffect(onlineEnabled, isConnected, onlineSessionReady, onlineAccount, userPrefs?.autoResume) {
@@ -519,7 +518,7 @@ fun LibraryScreen(
     }
 
     fun seekTo(fraction: Float) {
-        val dur = durationMs.takeIf { it > 0 } ?: (currentSong?.durationMs ?: 0L)
+        val dur = musicService.durationMs.value.takeIf { it > 0 } ?: (currentSong?.durationMs ?: 0L)
         if (dur > 0) {
             musicService.seekTo((fraction * dur).toLong())
         }
@@ -686,7 +685,7 @@ fun LibraryScreen(
             val classicDock = !com.akira.app.core.design.glass.LocalGlassStyleEnabled.current
             val dockPosition = if (classicDock && currentSong != null) musicService.currentPositionMs.collectAsStateWithLifecycle() else null
             val dockDuration = if (classicDock && currentSong != null) musicService.durationMs.collectAsStateWithLifecycle() else null
-            val loading by musicService.isLoading.collectAsStateWithLifecycle()
+            val loading = musicService.isLoading.collectAsStateWithLifecycle()
             var dockSettleJob by remember { mutableStateOf<Job?>(null) }
             val liveReduced by androidx.compose.runtime.rememberUpdatedState(homeMotionReduced)
             val dockPull = remember(dockState, fullScreenHeightDp, dockDensity) {
@@ -801,14 +800,15 @@ fun LibraryScreen(
                     onBack={selectedAlbumFilter=null;selectedAlbumKey=null;selectedArtistFilter=null})
             } else if (screen == HomeDestination.LIBRARY) {
                 homeStateHolder.SaveableStateProvider("local-library-browse") {
-                    LibraryBrowseScreen(wholeLibrary, currentSong, isPlaying,
+                    val orderedLibrary by libraryViewModel.orderedLibrary.collectAsStateWithLifecycle()
+                    LibraryBrowseScreen(wholeLibrary, orderedLibrary.songs, currentSong, isPlaying,
                         with(dockDensity) { dockState.heightPx.toDp() } + 24.dp,
-                        musicService, currentSortOrder, { showSortBottomSheet = true }, { openSettings() },
+                        musicService, { showSortBottomSheet = true }, { openSettings() },
                         onAlbum = { song -> selectedAlbumFilter = song.album; selectedAlbumKey = albumKeyOf(song) },
                         onArtist = { selectedArtistFilter = it },
                         onPlay = { song, queue -> localCurrentSong = song; musicService.playSong(song, queue) },
-                        onMore = { songForOptions = it }, initialized = libraryState.initialized,
-                        failed = libraryState.loadFailed, onRetry = libraryViewModel::retryLoad)
+                        onMore = { songForOptions = it }, initialized = orderedLibrary.initialized,
+                        failed = orderedLibrary.loadFailed, onRetry = libraryViewModel::retryLoad)
                 }
             } else {
             var rootScrollOffset by rememberSaveable(screen) { mutableStateOf(0f) }
@@ -1089,7 +1089,9 @@ fun LibraryScreen(
                         HomeDestination.SEARCH -> com.akira.app.core.design.components.localizedText("Search","Buscar")
                         else -> com.akira.app.core.design.components.localizedText("Home","Inicio")
                     },
-                    previewSongs = songsList.take(4), previewSong = currentSong,
+                    previewSongs = remember(songsList) {
+                        songsList.asSequence().distinctBy { it.albumArtUri ?: it.album }.take(3).toList()
+                    }, previewSong = currentSong,
                     onBack = { closeSettings() },
                     onTestCrossfade = {
                         val curDuration = musicService.durationMs.value
@@ -1136,7 +1138,7 @@ fun LibraryScreen(
                     destination=next
                     if(next==HomeDestination.SEARCH){libraryViewModel.setCategory("Tracks");selectedAlbumFilter=null;selectedArtistFilter=null;selectedFolderFilter=null}
                 }
-            }, state = dockState, song = currentSong, isPlaying = isPlaying, isLoading = loading,
+            }, state = dockState, song = currentSong, isPlaying = isPlaying, loadingState = loading,
                 artworkVisible = miniVisible,
                 onPlayPause = { togglePlayPause() }, onNext = { playNext() }, onPrevious = { playPrevious() },
                 onHoldStart = musicService::beginTemporaryDoubleSpeed,
@@ -1154,6 +1156,7 @@ fun LibraryScreen(
                     val duration = dockDuration?.value ?: 0L
                     if (duration > 0L) (dockPosition?.value ?: 0L).toFloat() / duration else 0f
                 },
+                trackAccent = if (classicDock && dynamicColorEnabled && currentSong != null) effectivePrimary else null,
                 modifier=Modifier.align(Alignment.BottomCenter)
                     .then(if (classicDock) Modifier else Modifier.widthIn(max = 440.dp)).fillMaxWidth()
                     .onSizeChanged { dockState.heightPx = it.height }
@@ -1454,11 +1457,12 @@ private fun UnifiedPlayerContainer(
                     val h=(from+(target.height-from)*p).roundToInt().coerceAtLeast(1)
                     val child=measurable.measure(androidx.compose.ui.unit.Constraints.fixed(w,h))
                     layout(w,h){child.place(0,0)}
-                }.then(if(fullStyle)Modifier.playerArtworkFade(playerConfig.screenWidthDp*density.density) {
+                }.then(if(fullStyle)Modifier.playerArtworkFade(playerConfig.screenWidthDp*density.density, completeDuringTravel = true) {
                     playerArtworkTravelProgress(playerExpansionProgress.value)*artworkMask
                 } else Modifier)) {
-                    if (!currentSongTarget.albumArtUri.isNullOrBlank()) AsyncImage(artworkRequest, null,
-                        contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    if (!currentSongTarget.albumArtUri.isNullOrBlank()) com.akira.app.core.widget.WidgetTransitionArtwork(
+                        currentSongTarget.albumArtUri, Modifier.fillMaxSize(), imageRequest = artworkRequest,
+                        reportWidgetTransition = false)
                     else Icon(Icons.Rounded.MusicNote, null, tint = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.align(Alignment.Center).size(76.dp).graphicsLayer {
                             val p=playerArtworkTravelProgress(playerExpansionProgress.value)

@@ -30,13 +30,12 @@ import com.akira.app.core.design.theme.CurrentAkiraFontFamily as AkiraFontFamily
 internal val HiddenLibraryHeader: () -> Float = { 0f }
 
 internal fun Modifier.libraryHeaderScrim(color: Color, progress: () -> Float): Modifier = drawWithCache {
-    val fraction = progress()
     val gradient = Brush.verticalGradient(
-        0f to color.copy(alpha = .98f * fraction),
-        .52f to color.copy(alpha = .88f * fraction),
+        0f to color.copy(alpha = .98f),
+        .52f to color.copy(alpha = .88f),
         1f to Color.Transparent,
     )
-    onDrawBehind { drawRect(gradient) }
+    onDrawBehind { drawRect(gradient, alpha = progress()) }
 }
 
 internal class LibraryChromeState(initialCategory: Boolean = false) {
@@ -60,12 +59,14 @@ internal val LocalLibraryChromeActive = staticCompositionLocalOf { true }
     val state = rememberSaveable(saver = Saver<LibraryChromeState, Boolean>(
         save = { it.category }, restore = { LibraryChromeState(it) })) { LibraryChromeState() }
     val reduced = LocalContentMotionReduced.current
-    val categoryProgress by animateFloatAsState(if (state.category) 1f else 0f,
+    val categoryProgress = animateFloatAsState(if (state.category) 1f else 0f,
         if (reduced) snap() else tween(300, easing = PageCollapseEasing), label = "libraryChromeScene")
+    val showBack by remember { derivedStateOf { state.category || categoryProgress.value > .001f } }
+    val showProfile by remember { derivedStateOf { !state.category || categoryProgress.value < .999f } }
     val gutter = AkiraNavigationMetrics.Gutter
     val rowTop = AkiraNavigationMetrics.HeaderTop
     val target = AkiraNavigationMetrics.Target
-    val end by animateDpAsState(if (state.category) gutter else gutter + AkiraNavigationMetrics.AvatarSurface + AkiraNavigationMetrics.GroupGap,
+    val end = animateDpAsState(if (state.category) gutter else gutter + AkiraNavigationMetrics.AvatarSurface + AkiraNavigationMetrics.GroupGap,
         if (reduced) snap() else tween(300, easing = PageCollapseEasing), label = "libraryChromeTravel")
     val color = MaterialTheme.colorScheme.background
     val fallback = rememberCanvasBackdrop { drawRect(color) }
@@ -76,23 +77,24 @@ internal val LocalLibraryChromeActive = staticCompositionLocalOf { true }
         CompositionLocalProvider(LocalPageHeaderBackdrop provides backdrop, LocalAppBackdrop provides backdrop) {
             Box(Modifier.fillMaxWidth().height(inset + 102.dp)
                 .libraryHeaderScrim(color) { state.scrim() }) {
-                if (categoryProgress > .001f) Box(Modifier.padding(top = inset + rowTop,
+                if (showBack) Box(Modifier.padding(top = inset + rowTop,
                     start = gutter - (target - AkiraNavigationMetrics.BackSurface) / 2)
-                    .graphicsLayer { alpha = categoryProgress }) {
-                    PageBackButton({ state.onBack() })
+                    .graphicsLayer { alpha = categoryProgress.value }) {
+                    DrawBackButton({ state.onBack() }, enabled = state.category)
                 }
                 Box(Modifier.padding(top = inset + rowTop, start = 80.dp, end = 148.dp).fillMaxWidth().height(target),
                     contentAlignment = Alignment.Center) {
-                    Text(state.title, Modifier.graphicsLayer { alpha = state.collapse() * categoryProgress },
+                    Text(state.title, Modifier.graphicsLayer { alpha = state.collapse() * categoryProgress.value },
                         fontFamily = AkiraFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp,
                         textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Box(Modifier.align(Alignment.TopEnd).padding(top = inset + rowTop, end = end)) {
+                Box(Modifier.align(Alignment.TopEnd).padding(top = inset + rowTop, end = gutter)
+                    .graphicsLayer { translationX = (gutter - end.value).toPx() }) {
                     LibraryActionCapsule(state.icon, state.description, { state.onFirst() }, { state.onMore() })
                 }
-                if (categoryProgress < .999f) Box(Modifier.align(Alignment.TopEnd).padding(top = inset + rowTop,
+                if (showProfile) Box(Modifier.align(Alignment.TopEnd).padding(top = inset + rowTop,
                     end = gutter - (target - AkiraNavigationMetrics.AvatarSurface) / 2)
-                    .graphicsLayer { alpha = 1f - categoryProgress; translationX = 48.dp.toPx() * categoryProgress }) {
+                    .graphicsLayer { alpha = 1f - categoryProgress.value; translationX = 48.dp.toPx() * categoryProgress.value }) {
                     AkiraAccountButton({ state.onProfile() }, Modifier.size(target), alwaysShowProfile = true)
                 }
             }

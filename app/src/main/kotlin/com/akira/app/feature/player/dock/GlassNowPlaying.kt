@@ -23,11 +23,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import coil.compose.AsyncImage
 import com.akira.app.core.model.Song
 import com.akira.app.core.design.components.localizedText
 import com.akira.app.core.design.components.LocalContentMotionReduced
 import com.akira.app.core.design.components.akiraTransportPress
+import kotlinx.coroutines.delay
 @Composable
 internal fun GlassNowPlaying(
     song: Song,
@@ -48,6 +48,7 @@ internal fun GlassNowPlaying(
     pull: MiniPlayerPull?,
     modifier: Modifier = Modifier,
     drawGlass: Boolean = true,
+    classicAccent: Color? = null,
 ) {
     val ink = rememberGlassInk(contentColor)
     val resolvedContentColor = ink.color
@@ -57,6 +58,11 @@ internal fun GlassNowPlaying(
     SideEffect {swipe.update(song);swipe.reduced=reduced}
     DisposableEffect(swipe) {onDispose {swipe.dispose()}}
     val visibleSong=swipe.shownSong
+    val loadingIndicator by produceState(false, isLoading) {
+        // Gapless local tracks can buffer for only a few frames on a skip.
+        if (isLoading) delay(150)
+        value = isLoading
+    }
     var nextPulse by remember {mutableIntStateOf(0)}
     val pressSource = remember { MutableInteractionSource() }
     val foldDeformation=LocalGlassDeformation.current
@@ -72,13 +78,20 @@ internal fun GlassNowPlaying(
     val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
     val compact = compactFraction.coerceIn(0f, 1f)
     val expanded = 1f - compact
-    val artSize = if (drawGlass) (34f - 2f * compact).dp else 39.dp
-    val glyphSlot = if (drawGlass) (34f - 2f * compact).dp else 44.dp
+    val artSize = if (drawGlass) (34f - 2f * compact).dp else 42.dp
+    val artCorner = if (drawGlass) (8f - 2f * compact).dp else 10.dp
+    val glyphSlot = if (drawGlass) (34f - 2f * compact).dp else 40.dp
     val glyphSize = if (drawGlass) (28f - 4f * compact).dp else 24.dp
-    val classicActionShape = RoundedCornerShape(14.dp)
-    val classicActionColor = MaterialTheme.colorScheme.secondaryContainer
-    val classicActionInk = MaterialTheme.colorScheme.onSecondaryContainer
-    val classicNextColor = resolvedContentColor.copy(alpha = .10f)
+    val colors = MaterialTheme.colorScheme
+    val classicActionColor = classicAccent ?: colors.secondaryContainer
+    val classicActionInk = if (classicAccent == null) colors.onSecondaryContainer
+        else if (classicActionColor.luminance() > .34f) Color(0xFF1B1818) else Color.White
+    val classicNextColor = (classicAccent ?: resolvedContentColor).copy(alpha = .16f)
+    val actionCorner = if (drawGlass) null else animateDpAsState(
+        if (isPlaying || loadingIndicator) 13.dp else 20.dp,
+        if (reduced) snap() else tween(145), label = "classicTransportCorner",
+    )
+    val playSlot = if (drawGlass) glyphSlot else 50.dp
 
     CompositionLocalProvider(LocalGlassDeformation provides {
         (foldDeformation()+response.amount()*.35f).coerceIn(0f,1f)
@@ -134,14 +147,16 @@ internal fun GlassNowPlaying(
                             .size(artSize)
                             // Opening the full player uses these actual live bounds,
                             // including an interrupted fold between the two densities.
-                            .onGloballyPositioned { onArtPositioned(it, (8f - 2f * compact).dp) }
+                            .onGloballyPositioned { onArtPositioned(it, artCorner) }
                             .graphicsLayer { alpha = if (artworkVisible) 1f else 0f }
-                            .clip(RoundedCornerShape((8f - 2f * compact).dp))
+                            .clip(RoundedCornerShape(artCorner))
                             .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (!visibleSong.albumArtUri.isNullOrBlank()) AsyncImage(com.akira.app.feature.player.rememberPlayerArtworkRequest(visibleSong.albumArtUri), null,
-                            contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                        if (!visibleSong.albumArtUri.isNullOrBlank()) com.akira.app.core.widget.WidgetTransitionArtwork(
+                            visibleSong.albumArtUri, Modifier.fillMaxSize(),
+                            imageRequest = com.akira.app.feature.player.rememberPlayerArtworkRequest(visibleSong.albumArtUri, thumbnail = true),
+                            reportWidgetTransition = false)
                         else Icon(Icons.Rounded.MusicNote, null, tint = resolvedContentColor.copy(alpha = .65f), modifier = Modifier.size(20.dp))
                     }
                     Spacer(Modifier.width((10f - 2f * compact).dp))
@@ -162,29 +177,25 @@ internal fun GlassNowPlaying(
                     }
                 }
             }
-            if (isLoading) {
-                Box(Modifier.size(glyphSlot), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(
-                        color = resolvedContentColor,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size((22f - 4f * compact).dp),
-                    )
-                }
-            } else {
-                MiniControlButton(
-                    onClick = {
-                        onPlayPause()
-                    },
-                    modifier = Modifier.size(glyphSlot).then(if (drawGlass) Modifier else
-                        Modifier.background(classicActionColor, classicActionShape)),
-                ) {
+            MiniControlButton(
+                onClick = onPlayPause,
+                enabled = !loadingIndicator,
+                modifier = Modifier.width(playSlot).height(glyphSlot),
+                surface = if (actionCorner == null) Modifier else Modifier.background(
+                    if (loadingIndicator) classicNextColor else classicActionColor, RoundedCornerShape(actionCorner.value)),
+            ) {
                     com.akira.app.core.design.components.AkiraAnimatedGlyph(
                         icon = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                         label = localizedText(if (isPlaying) "Pause" else "Play", if (isPlaying) "Pausar" else "Reproducir"),
                         tint = if (drawGlass) resolvedContentColor else classicActionInk,
-                        modifier = Modifier.size(glyphSize),
+                        modifier = Modifier.size(glyphSize).graphicsLayer { alpha = if (loadingIndicator) 0f else 1f }
+                            .then(if (loadingIndicator) Modifier.clearAndSetSemantics {} else Modifier),
                     )
-                }
+                    if (loadingIndicator) CircularProgressIndicator(
+                        color = resolvedContentColor,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size((22f - 4f * compact).dp),
+                    )
             }
             // Dropped inline: the collapsed row is sharing its width with the
             // tab pill and the Search circle, and the title is what has to
@@ -199,12 +210,12 @@ internal fun GlassNowPlaying(
                     enabled = !controlsLocked,
                     onHoldStart = onHoldStart,
                     modifier = Modifier.width(glyphSlot * expanded).height(glyphSlot)
-                        .then(if (drawGlass) Modifier else Modifier.background(classicNextColor, classicActionShape))
                         .graphicsLayer { alpha = expanded }
                         .then(if (expanded < .5f) Modifier.clearAndSetSemantics {} else Modifier),
+                    surface = if (drawGlass) Modifier else Modifier.background(classicNextColor, RoundedCornerShape(13.dp)),
                 ) {
                     MiniPlayerNextGlyph(
-                        tint = resolvedContentColor.copy(alpha = if (controlsLocked) 0.3f else 1f),
+                        tint = resolvedContentColor.copy(alpha = if (controlsLocked) .3f else 1f),
                         trigger = nextPulse,
                     )
                 }
@@ -218,11 +229,12 @@ internal fun GlassNowPlaying(
 
 @Composable
 private fun MiniControlButton(onClick: () -> Unit, modifier: Modifier=Modifier,
-    enabled: Boolean=true,onHoldStart: (() -> (() -> Unit))?=null,content: @Composable () -> Unit) {
+    enabled: Boolean=true,onHoldStart: (() -> (() -> Unit))?=null,
+    surface: Modifier = Modifier, content: @Composable () -> Unit) {
     var pressed by remember {mutableStateOf(false)}
     val response=com.akira.app.core.design.components.rememberAkiraPressResponse(pressed, contactLighting = false)
     Box(modifier.then(response.modifier).then(if(enabled)Modifier.akiraTransportPress(onClick,onHoldStart,
-        onPressedChanged={pressed=it}) else Modifier),
+        onPressedChanged={pressed=it}) else Modifier).then(surface),
         contentAlignment=Alignment.Center) { content() }
 }
 

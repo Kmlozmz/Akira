@@ -169,6 +169,7 @@ fun FloatingTabBar(
     shapes: FloatingTabBarShapes = FloatingTabBarDefaults.shapes(),
     sizes: FloatingTabBarSizes = FloatingTabBarDefaults.sizes(),
     elevations: FloatingTabBarElevations = FloatingTabBarDefaults.elevations(),
+    iconOnlyIndicator: Boolean = false,
     contentKey: Any? = null,
     content: FloatingTabBarScope.() -> Unit
 ) {
@@ -192,6 +193,7 @@ fun FloatingTabBar(
         shapes = shapes,
         sizes = sizes,
         elevations = elevations,
+        iconOnlyIndicator = iconOnlyIndicator,
         contentKey = contentKey,
         content = content
     )
@@ -231,6 +233,7 @@ fun FloatingTabBar(
     shapes: FloatingTabBarShapes = FloatingTabBarDefaults.shapes(),
     sizes: FloatingTabBarSizes = FloatingTabBarDefaults.sizes(),
     elevations: FloatingTabBarElevations = FloatingTabBarDefaults.elevations(),
+    iconOnlyIndicator: Boolean = false,
     contentKey: Any? = null,
     content: FloatingTabBarScope.() -> Unit
 ) {
@@ -292,7 +295,7 @@ fun FloatingTabBar(
                 compactHeight,(47f+14f*density.fontScale).dp,
                 scope.expandedTabs.size,
                 scope.expandedTabs.indexOfFirst { it.key==selectedTabKey },
-                sizes.tabBarContentPadding,sizes.tabSpacing,colors.indicatorColor,folding,
+                sizes.tabBarContentPadding,sizes.tabSpacing,colors.indicatorColor,folding && !iconOnlyIndicator,
                 Modifier.matchParentSize().then(navigationModifier).graphicsLayer { alpha = 1f-replacementProgress })
             AnimatedContent(
                 targetState = scrollConnection.isInline,
@@ -330,6 +333,7 @@ fun FloatingTabBar(
                             shapes = shapes,
                             sizes = layoutSizes,
                             elevations = elevations,
+                            iconOnlyIndicator = iconOnlyIndicator,
                             tabBarContentModifier = tabBarContentModifier,
                             animatedVisibilityScope = this@AnimatedContent,
                             replacement = replacement,
@@ -757,6 +761,7 @@ private fun SharedTransitionScope.ExpandedBar(
     shapes: FloatingTabBarShapes,
     sizes: FloatingTabBarSizes,
     elevations: FloatingTabBarElevations,
+    iconOnlyIndicator: Boolean,
     tabBarContentModifier: @Composable () -> Modifier,
     animatedVisibilityScope: AnimatedVisibilityScope,
     replacement: DockNavigationReplacement?,
@@ -792,6 +797,7 @@ private fun SharedTransitionScope.ExpandedBar(
                 tabs = scope.expandedTabs,
                 selectedTabKey = selectedTabKey,
                 shapes = shapes, sizes = sizes, colors = colors, elevations = elevations,
+                iconOnlyIndicator = iconOnlyIndicator,
                 animatedVisibilityScope = animatedVisibilityScope,
                 tabBarContentModifier = tabBarContentModifier,
                 modifier = Modifier.weight(1f).then(navigationModifier)
@@ -859,6 +865,7 @@ private fun SharedTransitionScope.ExpandedTabs(
     sizes: FloatingTabBarSizes,
     colors: FloatingTabBarColors,
     elevations: FloatingTabBarElevations,
+    iconOnlyIndicator: Boolean,
     animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier,
     tabBarContentModifier: @Composable () -> Modifier
@@ -881,11 +888,12 @@ private fun SharedTransitionScope.ExpandedTabs(
     pill.reduceMotion = reduceAnimation
     // The lens samples the recorded page, and "reduce dynamic blur" stops that
     // recording. There the flat pill carries the whole motion on its own.
-    val glassPill = LocalLiquidGlassEnabled.current && isGlassSupported() && !reduceAnimation
+    val glassPill = !iconOnlyIndicator && LocalLiquidGlassEnabled.current && isGlassSupported() && !reduceAnimation
     val barGlass = LocalDockNavigationGlass.current ?: rememberLayerBackdrop()
     val tabRow = rememberLayerBackdrop()
 
     var rowSize by remember { mutableStateOf(IntSize.Zero) }
+    var titleHeightPx by remember { mutableIntStateOf(0) }
     var lastHapticTab by remember { mutableIntStateOf(selectedTabIndex) }
     var lastSelectedTabIndex by remember { mutableIntStateOf(selectedTabIndex) }
     val density = LocalDensity.current
@@ -913,6 +921,14 @@ private fun SharedTransitionScope.ExpandedTabs(
     val padBottomPx = with(density) { contentPadding.calculateBottomPadding().toPx() }
     val rowHeightPx = rowSize.height.toFloat()
     val restSize = Size(tabWidthPx, rowHeightPx)
+    val iconPillWidthPx = minOf(
+        (tabWidthPx - with(density) { 8.dp.toPx() }).coerceAtLeast(0f),
+        with(density) { 62.dp.toPx() }
+    )
+    val iconPillHeightPx = with(density) { 32.dp.toPx() }
+    val resolvedTitleHeightPx = if (titleHeightPx > 0) titleHeightPx.toFloat() else with(density) { 16.dp.toPx() }
+    val pillSize = if (iconOnlyIndicator) Size(iconPillWidthPx, iconPillHeightPx) else restSize
+    val pillCenterY = if (iconOnlyIndicator) (rowHeightPx - resolvedTitleHeightPx) * .5f else rowHeightPx / 2f
     val liftedHeightPx = rowHeightPx + padTopPx + padBottomPx +
         with(density) { PILL_GROW_HEIGHT.toPx() }
     val liftedSize = if (rowHeightPx > 0f) {
@@ -923,7 +939,7 @@ private fun SharedTransitionScope.ExpandedTabs(
     // Where the pill's centre is in the row, for a position in tab steps.
     val pillCenterInRow: (Float) -> Offset = { position ->
         val x = position * tabStepPx + tabWidthPx / 2f
-        Offset(if (isRtl) rowSize.width - x else x, rowHeightPx / 2f)
+        Offset(if (isRtl) rowSize.width - x else x, pillCenterY)
     }
     val showPill = !LocalDockTargetInline.current && selectedTabIndex >= 0 && tabWidthPx > 0f
 
@@ -953,7 +969,7 @@ private fun SharedTransitionScope.ExpandedTabs(
     ) {
         CompositionLocalProvider(LocalGlassExport provides barGlass) {
             Box(Modifier.padding(contentPadding)) {
-                if (showPill && !LocalDockMorphActive.current && (!glassPill || pill.isFlat)) {
+                if (showPill && (!LocalDockMorphActive.current || iconOnlyIndicator) && (!glassPill || pill.isFlat)) {
                     FlatSelectionPill(
                         color = colors.indicatorColor,
                         modifier = Modifier
@@ -963,7 +979,7 @@ private fun SharedTransitionScope.ExpandedTabs(
                                     pill.position.coerceIn(0f, (tabCount - 1).coerceAtLeast(0).toFloat())) },
                                 // Without the lens, expansion/squash was clipped by
                                 // the bar. A flat indicator only travels horizontally.
-                                size = { if (glassPill) pill.liveSize(restSize, liftedSize) else restSize },
+                                size = { if (glassPill) pill.liveSize(restSize, liftedSize) else pillSize },
                             ),
                     )
                 }
@@ -1033,6 +1049,7 @@ private fun SharedTransitionScope.ExpandedTabs(
                         Tab(
                             icon = {
                                 Box(
+                                    contentAlignment = Alignment.Center,
                                     modifier = (if (tab.key == inlineTab?.key || tab.key == scope.standaloneTab?.key) {
                                         Modifier.sharedElement(
                                             sharedContentState = rememberSharedContentState(if (tab.key == scope.standaloneTab?.key) "standalone-icon" else "tab#${tab.key}-icon"),
@@ -1045,7 +1062,8 @@ private fun SharedTransitionScope.ExpandedTabs(
                                             sharedTransitionScope = this@ExpandedTabs,
                                             animatedVisibilityScope = animatedVisibilityScope
                                         )
-                                    }).graphicsLayer {
+                                    }).then(if (iconOnlyIndicator) Modifier.height(32.dp) else Modifier)
+                                    .graphicsLayer {
                                         scaleX = iconScale
                                         scaleY = iconScale
                                     }
@@ -1058,7 +1076,9 @@ private fun SharedTransitionScope.ExpandedTabs(
                                     Modifier.animateEnterExitTab(
                                         sharedTransitionScope = this@ExpandedTabs,
                                         animatedVisibilityScope = animatedVisibilityScope
-                                    )
+                                    ).then(if (iconOnlyIndicator) Modifier.onSizeChanged {
+                                        if (it.height > 0 && it.height != titleHeightPx) titleHeightPx = it.height
+                                    } else Modifier)
                                 ) {
                                     tab.title()
                                 }
