@@ -33,11 +33,15 @@ import com.akira.app.core.media.MediaItemMapper.queueIdentity
 import com.akira.app.core.media.MediaItemMapper.toSong
 import com.akira.app.core.media.MediaItemMapper.onlineQueueGeneration
 import com.akira.app.core.datastore.UserPreferencesRepository
+import com.akira.app.core.widget.WidgetPlaybackQueue
+import com.akira.app.core.widget.WidgetPlaybackStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.combine
@@ -61,6 +65,8 @@ class MusicLibraryService : MediaLibraryService() {
     private lateinit var sessionDeckA: QueueTransactionPlayer
     private lateinit var sessionDeckB: QueueTransactionPlayer
     private var editingQueue=false
+    private var widgetQueue: Pair<ExoPlayer, WidgetPlaybackQueue>? = null
+    private var widgetPublication: Job? = null
     private fun sessionPlayer(player: ExoPlayer)=if(player===deckA)sessionDeckA else sessionDeckB
     private lateinit var crossfadeEngine: CrossfadeEngine
     private lateinit var sleepTimerManager: SleepTimerManager
@@ -186,7 +192,7 @@ class MusicLibraryService : MediaLibraryService() {
                 recordOnlineListening(player)
                 com.akira.app.core.audio.AudioFxAvailability.select(player.audioSessionId)
                 mediaLibrarySession?.setPlayer(sessionPlayer(player))
-                publishWidgets()
+                scheduleWidgetPublication()
                 player.currentMediaItem?.mediaId?.let { id ->
                     serviceScope.launch {
                         recordRecentPlay(id)
@@ -298,7 +304,7 @@ class MusicLibraryService : MediaLibraryService() {
                 }
                 // Retain the configuration and retry when an uninitialized deck obtains a valid audio session.
                 currentEqualizerPrefs = prefs
-                publishWidgets()
+                scheduleWidgetPublication()
                 updateNormalization(deckA)
                 updateNormalization(deckB)
                 applyEqualizer(deckA)
@@ -385,27 +391,34 @@ class MusicLibraryService : MediaLibraryService() {
         val prefs = currentEqualizerPrefs ?: return
         if (!prefs.autoplay) return
         val player = activeDeck
-        val traversal = playbackQueueIndexes(player)
-        val upcoming = remainingQueueIndexes(traversal, player.currentMediaItemIndex)
-        if (upcoming.isEmpty() || upcoming.size > 2) return
+        val queue = cachedPlaybackQueue(player)
+        val traversal = queue.indexes
+        val position = queue.positionOf(player.currentMediaItemIndex)
+        if (position < 0 || traversal.size - position > 2) return
+        val upcoming = traversal.subList(position, traversal.size)
         autoplayFilling = true
         try {
             val currentEntry = player.currentMediaItem?.queueIdentity()
             val queued = upcoming.map { player.getMediaItemAt(it).mediaId }.toSet()
             val favorites = com.akira.app.core.database.AppDatabase.getInstance(this)
-                .favoritesDao().observeFavorites().first().map { it.songId }.toSet()
+                .favoritesDao().observeFavorites().first()
             val current = player.currentMediaItem?.mediaMetadata ?: return
-            val selected = AutoplaySelector.select(
-                autoplayLibrary.map { it.copy(isFavorite = it.id in favorites) },
-                current.artist?.toString().orEmpty(), current.genre?.toString().orEmpty(),
-                excludedIds = queued + recentAutoplayIds
-            )
-            if (player === activeDeck && player.currentMediaItem?.queueIdentity() == currentEntry &&
+            val excluded = queued + recentAutoplayIds
+            val library = autoplayLibrary
+            val selected = withContext(Dispatchers.Default) {
+                val favoriteIds = favorites.mapTo(HashSet()) { it.songId }
+                AutoplaySelector.select(
+                    library.map { it.copy(isFavorite = it.id in favoriteIds) },
+                    current.artist?.toString().orEmpty(), current.genre?.toString().orEmpty(),
+                    excludedIds = excluded,
+                )
+            }
+            val autoplayEnabled = prefsRepo.userPreferences.first().autoplay
+            if (autoplayEnabled && player === activeDeck && player.currentMediaItem?.queueIdentity() == currentEntry &&
                 player.playWhenReady && player.repeatMode == Player.REPEAT_MODE_OFF &&
                 SleepTimerBus.activeMode.value == 0L && playbackQueueIndexes(player) == traversal &&
                 upcoming.map { player.getMediaItemAt(it).mediaId }.toSet() == queued &&
-                !com.akira.app.core.online.OnlineRepository.get(this).enabled.value &&
-                prefsRepo.userPreferences.first().autoplay && selected.isNotEmpty()) {
+                !com.akira.app.core.online.OnlineRepository.get(this).enabled.value && selected.isNotEmpty()) {
                 val firstAdded = player.mediaItemCount
                 player.addMediaItems(selected.map { it.toMediaItem() })
                 if (player.shuffleModeEnabled) {
@@ -503,7 +516,7 @@ class MusicLibraryService : MediaLibraryService() {
                 serviceScope.launch {
                     prefsRepo.setShuffle(shuffleModeEnabled)
                 }
-                publishWidgets()
+                scheduleWidgetPublication()
             }
         }
         override fun onRepeatModeChanged(repeatMode: Int) {
@@ -523,7 +536,7 @@ class MusicLibraryService : MediaLibraryService() {
             updateNormalization(player)
             if (player == activeDeck) {
                 recordOnlineListening(player)
-                publishWidgets()
+                scheduleWidgetPublication()
                 mediaItem?.mediaId?.let { id ->
                     serviceScope.launch {
                         recordRecentPlay(id)
@@ -534,12 +547,15 @@ class MusicLibraryService : MediaLibraryService() {
         }
 
         override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
-            if (::activeDeck.isInitialized && player === activeDeck) publishWidgets()
+            if (widgetQueue?.first === player && reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) {
+                widgetQueue = null
+            }
+            if (::activeDeck.isInitialized && player === activeDeck) scheduleWidgetPublication()
         }
 
         /** Apply EQ when the decoder creates its audioSessionId, not only when preferences change. */
         override fun onPlaybackStateChanged(playbackState: Int) {
-            if (player == activeDeck) publishWidgets()
+            if (player == activeDeck) scheduleWidgetPublication()
             if (playbackState == Player.STATE_READY) {
                 applyEqualizer(player)
             }
@@ -552,7 +568,7 @@ class MusicLibraryService : MediaLibraryService() {
             if (player !== activeDeck) return
             if(!playWhenReady && reason==Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM &&
                 ::crossfadeEngine.isInitialized && crossfadeEngine.isMixing)return
-            publishWidgets()
+            scheduleWidgetPublication()
             if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM &&
                 SleepTimerBus.activeMode.value == SleepTimerBus.END_OF_SONG) {
                 sleepTimerManager.onSongEndedNaturally()
@@ -595,7 +611,7 @@ class MusicLibraryService : MediaLibraryService() {
         }
 
         override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
-            if (!editingQueue && ::activeDeck.isInitialized && player === activeDeck) com.akira.app.core.widget.WidgetPlaybackStore.capture(this@MusicLibraryService, player)
+            if (!editingQueue && ::activeDeck.isInitialized && player === activeDeck) scheduleWidgetPublication()
             if (reason == Player.DISCONTINUITY_REASON_SEEK && oldPosition.mediaItem?.mediaId == newPosition.mediaItem?.mediaId) {
                 if (newPosition.positionMs == 0L) playTrackers.remove(player)
                 else playTrackers[player]?.second?.seek()
@@ -683,13 +699,23 @@ class MusicLibraryService : MediaLibraryService() {
         super.onDestroy()
     }
 
+    private fun scheduleWidgetPublication() {
+        if (editingQueue || widgetPublication?.isActive == true) return
+        widgetPublication = serviceScope.launch { publishWidgets() }
+    }
+
+    private fun cachedPlaybackQueue(player: ExoPlayer): WidgetPlaybackQueue = widgetQueue?.takeIf { (deck, cached) ->
+        deck === player && cached.songs.size == player.mediaItemCount && cached.shuffle == player.shuffleModeEnabled
+    }?.second ?: WidgetPlaybackQueue(player).also { widgetQueue = player to it }
+
     private fun publishWidgets() {
         if(editingQueue)return
         if (!::activeDeck.isInitialized) return
         val song = activeDeck.currentMediaItem?.toSong() ?: return
         // A remote controller can still hold the pre-edit shuffled timeline.
         // Publish the actual service traversal with the playlist metadata.
-        val order=playbackQueueIndexes(activeDeck).map {activeDeck.getMediaItemAt(it).queueIdentity()}
+        val queue = cachedPlaybackQueue(activeDeck)
+        val order = queue.order
         val metadata=activeDeck.playlistMetadata
         if(metadata.extras?.getStringArrayList(QueueEditCommand.SERVICE_ORDER)!=order ||
             metadata.extras?.getBoolean(QueueEditCommand.SERVICE_SHUFFLE)!=activeDeck.shuffleModeEnabled) {
@@ -698,7 +724,7 @@ class MusicLibraryService : MediaLibraryService() {
                 putBoolean(QueueEditCommand.SERVICE_SHUFFLE,activeDeck.shuffleModeEnabled)
             }).build()
         }
-        com.akira.app.core.widget.WidgetPlaybackStore.capture(this, activeDeck)
+        WidgetPlaybackStore.capture(this, activeDeck, queue)
         com.akira.app.core.widget.AkiraWidgets.publish(this, song,
             activeDeck.playWhenReady && activeDeck.playbackState != Player.STATE_ENDED,
             currentEqualizerPrefs ?: com.akira.app.core.datastore.UserPreferences(), activeDeck.hasNextMediaItem())
@@ -792,9 +818,11 @@ class MusicLibraryService : MediaLibraryService() {
     } finally {
         editingQueue=false
         transaction.end()
+        widgetQueue = null
+        widgetPublication?.cancel()
         publishWidgets()
         if (deletionSourceOnline != null && activeDeck.mediaItemCount == 0) {
-            com.akira.app.core.widget.WidgetPlaybackStore.capture(this, activeDeck, deletionSourceOnline)
+            WidgetPlaybackStore.capture(this, activeDeck, WidgetPlaybackQueue(activeDeck), deletionSourceOnline)
             com.akira.app.core.widget.AkiraWidgets.publish(this, null, false,
                 currentEqualizerPrefs ?: com.akira.app.core.datastore.UserPreferences(), false)
         }

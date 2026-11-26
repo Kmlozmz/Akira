@@ -31,13 +31,13 @@ internal fun LivePlayerArtworkReflection(
     val mask = remember {
         Brush.verticalGradient(
             0f to Color.Transparent,
-            .23f to Color.Black.copy(alpha = .28f),
-            .48f to Color.Black.copy(alpha = .97f),
-            .76f to Color.Black.copy(alpha = .92f),
-            1f to Color.Black.copy(alpha = .68f),
+            .22f to Color.Black.copy(alpha = .12f),
+            .48f to Color.Black.copy(alpha = .62f),
+            .72f to Color.Black.copy(alpha = .37f),
+            1f to Color.Transparent,
         )
     }
-    val radius = with(LocalDensity.current) { 39.dp.toPx() }
+    val radius = with(LocalDensity.current) { 37.dp.toPx() }
     DownscaledBlur(
         radius = { radius },
         tileMode = Shader.TileMode.CLAMP,
@@ -49,13 +49,13 @@ internal fun LivePlayerArtworkReflection(
         val fullHeight = strip.height / .59f
         val floor = artworkReflectionFloor(fullHeight, artwork(), fullBleed = true)
         val line = floor - (fullHeight - strip.height)
-        val reflectedHeight = (strip.height - line).coerceAtLeast(1f) + radius
-        val reflectedWidth = strip.width * 1.18f
+        val reflectedHeight = minOf((strip.height - line).coerceAtLeast(1f), source.height * .60f) + radius
+        val reflectedWidth = strip.width
         translate(left = (strip.width - reflectedWidth) / 2f, top = line + reflectedHeight) {
             scale(reflectedWidth / source.width, -reflectedHeight / source.height, pivot = Offset.Zero) {
                 clipRect(right = source.width.toFloat(), bottom = source.height.toFloat()) {
                     drawLayer(mediaLayer)
-                    drawRect(Color.Black.copy(alpha = .21f), size = Size(source.width.toFloat(), source.height.toFloat()))
+                    drawRect(Color.Black.copy(alpha = .28f), size = Size(source.width.toFloat(), source.height.toFloat()))
                 }
             }
         }

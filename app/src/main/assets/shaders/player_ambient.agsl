@@ -2,18 +2,58 @@ uniform float2 viewport;
 uniform float4 baseColor;
 uniform float4 palette[5];
 uniform float4 fields[5];
+uniform float4 beat;
+uniform float4 motion;
+uniform float4 framing;
 
 half4 main(float2 position) {
-    float2 uv=position/viewport;
-    float3 color=baseColor.rgb*.04;
-    float total=.04;
-    for(int i=0;i<5;i++) {
-        float2 delta=uv-fields[i].xy;
-        float weight=exp(-dot(delta,delta)/fields[i].z);
-        color+=palette[i].rgb*weight;
-        total+=weight;
+    float2 uv = position / viewport;
+    float t = motion.x;
+    float react = clamp(framing.z, 0.0, 1.4);
+    float isOverlay = step(framing.x + 0.001, framing.y);
+
+    float warpAmp = (0.085 + 0.075 * beat.x + 0.070 * motion.y) * react;
+    float2 wuv = uv;
+    wuv.x += warpAmp * sin(uv.y * 4.5 + t * 1.25) * cos(uv.x * 2.7 - t * 0.78);
+    wuv.y += warpAmp * cos(uv.x * 4.0 - t * 1.05) * sin(uv.y * 3.0 + t * 0.90);
+
+    float2 origin = float2(0.5 + clamp(motion.z, -0.35, 0.35) * 0.25, 0.44 + clamp(motion.w, -0.35, 0.35) * 0.18);
+    float2 toPixel = wuv - origin;
+    float dist = length(toPixel) + 0.0001;
+    float kickWave = beat.z * react * 0.075 * exp(-dist * 2.4) * sin(dist * 9.5 - t * 2.5);
+    wuv -= (toPixel / dist) * kickWave;
+
+    float spreadScale = mix(1.0, 0.52, isOverlay);
+    float3 color = baseColor.rgb * 0.05;
+    float total = 0.05;
+    float peakWeight = 0.0;
+    float weightedEnergy = 0.0;
+    for (int i = 0; i < 5; i++) {
+        float2 delta = wuv - fields[i].xy;
+        float spread = max(fields[i].z * spreadScale, 0.018);
+        float raw = exp(-dot(delta, delta) / spread);
+        float weight = raw * max(fields[i].w, 0.05);
+        color += palette[i].rgb * weight;
+        total += weight;
+        peakWeight = max(peakWeight, raw);
+        weightedEnergy += raw;
     }
-    color/=total;
-    color*=1.-mix(.03,.12,clamp(uv.y,0.,1.));
-    return half4(color,1.);
+    color /= total;
+
+    float lowerBand = smoothstep(0.28, 0.62, uv.y) * (1.0 - smoothstep(0.78, 1.04, uv.y));
+    float energyGlow = (beat.x * 0.09 + beat.z * 0.18 + beat.y * 0.06 + beat.w * 0.10) * react * lowerBand;
+    color = clamp(color * (1.0 + energyGlow), 0.0, 0.74);
+    color *= 1.0 - mix(0.06, 0.24, clamp(uv.y, 0.0, 1.0));
+
+    float dither = (fract(sin(dot(position, float2(12.9898, 78.233))) * 43758.5453) - 0.5) / 255.0;
+    color = clamp(color + dither, 0.0, 1.0);
+
+    float alpha = framing.w;
+    if (isOverlay > 0.5) {
+        float kickRing = beat.z * react * 0.42 * exp(-abs(dist - (0.16 + (1.0 - beat.z) * 0.36)) * 6.0);
+        float lobeDensity = clamp(peakWeight * 0.65 + weightedEnergy * 0.18 + kickRing, 0.0, 1.0);
+        float fieldMask = clamp(0.14 + 0.78 * lobeDensity + (beat.x * 0.12 + beat.y * 0.08) * react, 0.12, 0.96);
+        alpha *= smoothstep(framing.x, framing.y, uv.y) * fieldMask;
+    }
+    return half4(color * alpha, alpha);
 }

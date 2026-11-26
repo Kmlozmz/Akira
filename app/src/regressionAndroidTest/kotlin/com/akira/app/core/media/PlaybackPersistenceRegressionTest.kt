@@ -15,6 +15,7 @@ import com.akira.app.core.widget.WidgetQueueSnapshot
 import java.io.File
 import java.util.UUID
 import java.lang.reflect.Proxy
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
@@ -83,6 +84,33 @@ class PlaybackPersistenceRegressionTest {
         assertEquals(song(), SourceQueueStore.read(context, false)?.songs?.single())
         SourceQueueStore.write(context, snapshot.copy(songs = emptyList(), order = emptyList()))
         assertNull(SourceQueueStore.read(context, false))
+    }
+
+    @Test fun cursorUpdatesLeaveThePlaylistUnchangedAndCannotAttachToAReplacement() {
+        val context = isolatedContext()
+        val track = song()
+        val second = track.copy(id = "456", queueEntryId = "next")
+        val queue = WidgetQueueSnapshot(listOf(track, second), 0, 123, false, 0)
+        val file = File(context.noBackupFilesDir, "offline-queue.json")
+        file.writeText(JSONObject().put("songs", JSONArray().put(WidgetPlaybackStore.encodeSong(track)))
+            .put("order", JSONArray(listOf(track.queueEntryId))).put("position", 55).toString())
+        assertEquals(55L, SourceQueueStore.read(context, false)?.positionMs)
+
+        SourceQueueStore.write(context, queue)
+        val playlistBytes = file.readBytes()
+        SourceQueueStore.write(context, queue.copy(index = 1, positionMs = 4_567, repeat = 2))
+        assertArrayEquals(playlistBytes, file.readBytes())
+        val resumed = checkNotNull(SourceQueueStore.read(context, false))
+        assertEquals(1, resumed.safeIndex)
+        assertEquals(4_567L, resumed.positionMs)
+        assertEquals(2, resumed.repeat)
+
+        val bookmark = File(context.noBackupFilesDir, "offline-queue.json.cursor")
+        assertTrue(bookmark.isFile)
+        SourceQueueStore.write(context, queue.copy(songs = listOf(second), order = listOf(second.queueEntryId), positionMs = 99))
+        val replaced = checkNotNull(SourceQueueStore.read(context, false))
+        assertEquals(0, replaced.safeIndex)
+        assertEquals(99L, replaced.positionMs)
     }
 
     @Test fun continuouslyPlayingIncomingDeckRecordsAtHandoverAndStaleDeckIsIgnoredAfterLogout() {

@@ -30,6 +30,9 @@ import androidx.media3.exoplayer.ExoPlayer
 internal fun MotionArtworkVideo(artwork: MotionArtwork,isPlaying: Boolean,modifier: Modifier=Modifier,
     onPlayer: ((ExoPlayer)->Unit)?=null,
     onBlend: ((Float) -> Unit)? = null,
+    onLiveSample: ((LiveArtworkSample?) -> Unit)? = null,
+    presented: Boolean = true,
+    retainPresentedFrame: Boolean = false,
 ) {
     val context=LocalContext.current
     val lifecycle=LocalLifecycleOwner.current.lifecycle
@@ -42,10 +45,7 @@ internal fun MotionArtworkVideo(artwork: MotionArtwork,isPlaying: Boolean,modifi
         (multiWindow && lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
     val texture=remember(context,artwork) {TextureView(context).apply {isOpaque=false;isClickable=false;isFocusable=false;importantForAccessibility=android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO}}
     val player=remember(context,artwork) {
-        ExoPlayer.Builder(context.applicationContext)
-            .setLoadControl(androidx.media3.exoplayer.DefaultLoadControl.Builder()
-                .setBackBuffer(30_000,true).build())
-            .build().apply {
+        ExoPlayer.Builder(context.applicationContext).build().apply {
             trackSelectionParameters=trackSelectionParameters.buildUpon()
                 .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO,true).setMaxVideoSize(2560,2560)
                 .setMaxVideoBitrate(16_000_000).setForceHighestSupportedBitrate(true).build()
@@ -56,12 +56,21 @@ internal fun MotionArtworkVideo(artwork: MotionArtwork,isPlaying: Boolean,modifi
     }
     DisposableEffect(player,lifecycle) {
         var video=VideoSize.UNKNOWN
+        val matrix = Matrix()
+        var cropWidth = 0
+        var cropHeight = 0
+        var cropRatio = 0f
         fun crop() {
             val w=texture.width.toFloat();val h=texture.height.toFloat()
             if(w<=0 || h<=0 || video.width<=0 || video.height<=0)return
             val ratio=video.width*video.pixelWidthHeightRatio/video.height
+            if (texture.width == cropWidth && texture.height == cropHeight && ratio == cropRatio) return
+            cropWidth = texture.width
+            cropHeight = texture.height
+            cropRatio = ratio
             val scaleX=maxOf(1f,ratio/(w/h));val scaleY=maxOf(1f,(w/h)/ratio)
-            texture.setTransform(Matrix().apply {setScale(scaleX,scaleY,w/2,h/2)})
+            matrix.setScale(scaleX,scaleY,w/2,h/2)
+            texture.setTransform(matrix)
         }
         val layout=android.view.View.OnLayoutChangeListener {_,_,_,_,_,_,_,_,_ ->crop()}
         texture.addOnLayoutChangeListener(layout)
@@ -101,12 +110,53 @@ internal fun MotionArtworkVideo(artwork: MotionArtwork,isPlaying: Boolean,modifi
         if(visible && !failed && player.playbackState==Player.STATE_IDLE && player.mediaItemCount>0)player.prepare()
         player.playWhenReady=isPlaying && !failed && visible
     }
-    val alpha=animateFloatAsState(if(ready && !failed)1f else 0f,tween(350),label="motionSleeve")
+    var hasPresented by remember(artwork, source) { mutableStateOf(false) }
+    SideEffect {
+        if (retainPresentedFrame && ready && !failed && presented) hasPresented = true
+    }
+    val showFrame = ready && !failed && (presented || hasPresented)
+    val alpha = animateFloatAsState(if (showFrame) 1f else 0f,
+        if (showFrame) tween(260) else androidx.compose.animation.core.snap(), label = "motionSleeve")
+    val currentPresentation by rememberUpdatedState(showFrame)
     if (onBlend != null) {
         val report by rememberUpdatedState(onBlend)
         LaunchedEffect(alpha, source) {
-            snapshotFlow { alpha.value }.collect { report(it) }
+            snapshotFlow { if (currentPresentation) alpha.value else 0f }.collect { report(it) }
         }
     }
-    AndroidView(factory={texture},modifier=modifier.graphicsLayer {this.alpha=alpha.value})
+    if (onLiveSample != null) {
+        val reportSample by rememberUpdatedState(onLiveSample)
+        val sampler = remember(artwork) { LiveArtworkSampler(12) }
+        DisposableEffect(artwork) {
+            onDispose { reportSample(null) }
+        }
+        LaunchedEffect(texture, showFrame, isPlaying, multiWindow) {
+            if (!showFrame || !isPlaying) {
+                sampler.reset()
+                reportSample(null)
+                return@LaunchedEffect
+            }
+            val sampleBitmap = android.graphics.Bitmap.createBitmap(12, 12, android.graphics.Bitmap.Config.ARGB_8888)
+            val pixels = IntArray(12 * 12)
+            try {
+                while (true) {
+                    if (visiblePlaybackAllowed() && texture.isAvailable && texture.width > 0 && texture.height > 0) {
+                        val captured = runCatching { texture.getBitmap(sampleBitmap) }.getOrNull()
+                        if (captured != null) {
+                            captured.getPixels(pixels, 0, 12, 0, 0, 12, 12)
+                            reportSample(sampler.analyze(pixels))
+                        }
+                    }
+                    kotlinx.coroutines.delay(95L)
+                }
+            } finally {
+                sampleBitmap.recycle()
+            }
+        }
+    }
+    key(texture) {
+        AndroidView(factory = { texture }, modifier = modifier.graphicsLayer {
+            this.alpha = if (currentPresentation) alpha.value else 0f
+        })
+    }
 }

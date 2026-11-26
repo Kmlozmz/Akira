@@ -3,7 +3,6 @@ package com.akira.app.core.design.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.interaction.*
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -12,6 +11,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -36,7 +37,7 @@ internal fun AkiraSlider(value: Float, onValueChange: (Float)->Unit, label: Stri
     onFinished: ()->Unit = {}, tint: Color = Color.White, volume: Boolean = false,
     onActiveChanged: (Boolean)->Unit = {},
     restingThickness: Dp = 6.dp, externalActive: Boolean = false, enabled: Boolean = true,
-    steps: Int = 0, animatedThumb: Boolean = false) {
+    steps: Int = 0, animatedThumb: Boolean = false, frostColors: List<Color>? = null) {
     val haptics = com.akira.app.core.design.util.rememberAkiraHaptics()
     val gate = remember(valueRange.start, valueRange.endInclusive, steps) {
         com.akira.app.core.design.util.SliderHapticGate(valueRange.start, valueRange.endInclusive, if (steps > 0) steps + 1 else 50)
@@ -78,7 +79,7 @@ internal fun AkiraSlider(value: Float, onValueChange: (Float)->Unit, label: Stri
         if(reduced)snap() else spring(.78f,1100f),label="transportThickness")
     val scale by animateFloatAsState(if(active)1.035f else 1f,
         if(reduced)snap() else spring(.72f,1100f),label="transportStretch")
-    val fillAlpha by animateFloatAsState(if(active).96f else .65f,
+    val fillAlpha by animateFloatAsState(if(active).96f else if(frostColors != null) .77f else .65f,
         if(reduced)snap() else tween(100),label="transportFill")
     val rtl=LocalLayoutDirection.current==LayoutDirection.Rtl
     val colors=SliderDefaults.colors(activeTrackColor=tint.copy(alpha=if(active)1f else .72f),
@@ -106,14 +107,26 @@ internal fun AkiraSlider(value: Float, onValueChange: (Float)->Unit, label: Stri
             },
         valueRange=valueRange,onValueChangeFinished=onFinished,interactionSource=interactions,enabled=enabled,steps=steps,
         colors=colors,thumb={ if(animatedThumb) Box(Modifier.size(28.dp,20.dp).background(if(enabled)tint else tint.copy(alpha=.38f), androidx.compose.foundation.shape.CircleShape)) },track={ sliderState ->
-            Canvas(Modifier.fillMaxWidth().height(thickness)) {
+            Spacer(Modifier.fillMaxWidth().height(thickness).drawWithCache {
                 val outline=Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(Rect(Offset.Zero,size),CornerRadius(size.height/2))) }
-                val fraction=((sliderState.value-valueRange.start)/(valueRange.endInclusive-valueRange.start).coerceAtLeast(.001f)).coerceIn(0f,1f)
-                clipPath(outline) {
-                    drawRect(tint.copy(alpha=.25f))
+                val frost = frostColors?.let { Brush.horizontalGradient(it, endX = size.width) }
+                onDrawBehind {
+                    val fraction=((sliderState.value-valueRange.start)/(valueRange.endInclusive-valueRange.start).coerceAtLeast(.001f)).coerceIn(0f,1f)
                     val width=size.width*fraction
-                    drawRect(tint.copy(alpha=fillAlpha),Offset(if(rtl)size.width-width else 0f,0f),Size(width,size.height))
+                    val x = if (rtl) size.width - width else 0f
+                    clipPath(outline) {
+                        if (frost == null) {
+                            drawRect(tint.copy(alpha=.25f))
+                            drawRect(tint.copy(alpha=fillAlpha),Offset(x,0f),Size(width,size.height))
+                        } else {
+                            // Transmit the already blurred player scene in both segments.
+                            drawRect(frost, alpha = .35f)
+                            if (width > 0f) {
+                                drawRect(frost, Offset(x, 0f), Size(width, size.height), alpha = fillAlpha)
+                            }
+                        }
+                    }
                 }
-            }
+            })
         })
 }

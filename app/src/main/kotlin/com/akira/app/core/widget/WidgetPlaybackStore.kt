@@ -6,6 +6,7 @@ import com.akira.app.core.media.MediaItemMapper.toSong
 import com.akira.app.core.media.MediaItemMapper.onlineQueueGeneration
 import com.akira.app.core.model.Song
 import com.akira.app.core.design.theme.PlayerTone
+import com.akira.app.core.online.SourceQueueStore
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import org.json.JSONArray
@@ -21,53 +22,70 @@ internal data class WidgetQueueSnapshot(val songs: List<Song>, val index: Int, v
     }
 }
 
+/** Immutable playlist data shared by position and transport updates until a queue edit. */
+internal class WidgetPlaybackQueue(player: Player) {
+    val songs = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).toSong() }
+    val indexes = com.akira.app.core.media.playbackQueueIndexes(player)
+    val order = indexes.map { songs[it].queueEntryId }
+    private val positions = IntArray(songs.size) { -1 }.apply {
+        indexes.forEachIndexed { position, index -> this[index] = position }
+    }
+    val shuffle = player.shuffleModeEnabled
+    val onlineGeneration = if (songs.isEmpty()) com.akira.app.core.online.SourceQueueStore.onlineGeneration
+        else player.getMediaItemAt(0).onlineQueueGeneration()
+
+    fun positionOf(index: Int) = positions.getOrElse(index) { -1 }
+}
+
 /** Save queue events off the UI thread. Conflation keeps a complete latest snapshot, never a partial edit. */
 internal object WidgetPlaybackStore {
+    private const val LAST_SOURCE_ONLINE = "last_queue_online"
     private val updates = Channel<Pair<Context, WidgetQueueSnapshot>>(Channel.CONFLATED)
     private val writer = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     init {
         writer.launch {
-            var lastSongs: List<Song> = emptyList()
-            var lastGeneration = -1L
             for ((context, snapshot) in updates) runCatching {
-                com.akira.app.core.online.SourceQueueStore.writeIfCurrent(snapshot) {
+                SourceQueueStore.writeIfCurrent(snapshot) {
+                    if (!SourceQueueStore.write(context, snapshot)) return@writeIfCurrent
                     val store = context.getSharedPreferences("akira_widget", Context.MODE_PRIVATE)
-                    val edit = store.edit()
-                    if (snapshot.songs != lastSongs || snapshot.onlineGeneration != lastGeneration || !store.contains("queue")) {
-                        val queue = JSONArray()
-                        snapshot.songs.forEach { queue.put(encodeSong(it)) }
-                        edit.putString("queue", queue.toString())
-                    }
-                    edit.putInt("queue_index", snapshot.safeIndex).putLong("queue_position", snapshot.safePosition)
+                    // Validate the durable queue before retiring the legacy large preference entries.
+                    store.edit().remove("queue").remove("queue_order")
+                        .putBoolean(LAST_SOURCE_ONLINE, snapshot.sourceOnline)
+                        .putInt("queue_index", snapshot.safeIndex).putLong("queue_position", snapshot.safePosition)
                         .putInt("queue_count", snapshot.songs.size)
-                        .putString("queue_order", JSONArray(snapshot.order).toString())
                         .putBoolean("queue_shuffle", snapshot.shuffle).putInt("queue_repeat", snapshot.repeat).apply()
-                    lastSongs = snapshot.songs
-                    lastGeneration = snapshot.onlineGeneration
-                    com.akira.app.core.online.SourceQueueStore.write(context, snapshot)
                 }
             }.onFailure { com.akira.app.core.logging.AkiraLog.e("Widget", "Queue snapshot failed", it) }
         }
     }
-    fun capture(context: Context, player: Player, emptySourceOnline: Boolean? = null) {
+    fun capture(context: Context, player: Player, queue: WidgetPlaybackQueue, emptySourceOnline: Boolean? = null) {
         // Ordinary source switching keeps its parked bookmark. A deletion can
         // explicitly enqueue an empty snapshot to supersede older writes.
-        if (player.mediaItemCount == 0 && emptySourceOnline == null) return
-        val songs = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).toSong() }
-        val generation = if (songs.isEmpty()) com.akira.app.core.online.SourceQueueStore.onlineGeneration
-            else player.getMediaItemAt(0).onlineQueueGeneration()
+        val songs = queue.songs
+        if (songs.isEmpty() && emptySourceOnline == null) return
+        val generation = queue.onlineGeneration
         val online = songs.firstOrNull()?.contentUri?.startsWith("akira-youtube:") ?: emptySourceOnline ?: false
         // Do not let a stale deck displace a newer valid snapshot in the
         // conflated channel. The writer checks again at the commit boundary.
         if (online && generation != com.akira.app.core.online.SourceQueueStore.onlineGeneration) return
         updates.trySend(context.applicationContext to WidgetQueueSnapshot(songs, player.currentMediaItemIndex,
             player.currentPosition, player.shuffleModeEnabled, player.repeatMode,
-            com.akira.app.core.media.playbackQueueIndexes(player).map { songs[it].queueEntryId },
+            queue.order,
             generation, online))
     }
-    fun read(context: Context): WidgetQueueSnapshot? = runCatching {
-        val generation = com.akira.app.core.online.SourceQueueStore.onlineGeneration
+    fun snapshotIsOnline(context: Context): Boolean {
         val store = context.getSharedPreferences("akira_widget", Context.MODE_PRIVATE)
+        return if (store.contains(LAST_SOURCE_ONLINE)) store.getBoolean(LAST_SOURCE_ONLINE, false)
+        else read(context)?.sourceOnline == true
+    }
+
+    fun read(context: Context): WidgetQueueSnapshot? = runCatching {
+        val generation = SourceQueueStore.onlineGeneration
+        val store = context.getSharedPreferences("akira_widget", Context.MODE_PRIVATE)
+        if (store.contains(LAST_SOURCE_ONLINE)) {
+            return@runCatching SourceQueueStore.read(context, store.getBoolean(LAST_SOURCE_ONLINE, false))
+                ?.takeIf { !it.sourceOnline || generation == SourceQueueStore.onlineGeneration }
+        }
         val raw = store.getString("queue", null) ?: return@runCatching null
         val array = JSONArray(raw)
         val songs = (0 until array.length()).map { decodeSong(array.getJSONObject(it)) }
@@ -77,7 +95,7 @@ internal object WidgetPlaybackStore {
             store.getString("queue_order", null)?.let { rawOrder ->
                 val ids = JSONArray(rawOrder); (0 until ids.length()).map { ids.getString(it) }
             } ?: songs.map { it.queueEntryId }, onlineGeneration = generation)
-            .takeIf { !it.sourceOnline || generation == com.akira.app.core.online.SourceQueueStore.onlineGeneration }
+            .takeIf { !it.sourceOnline || generation == SourceQueueStore.onlineGeneration }
     }.getOrNull()
 
     fun encodeSong(song: Song): JSONObject = JSONObject().put("id", song.id).put("entry", song.queueEntryId)

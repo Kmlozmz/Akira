@@ -32,7 +32,8 @@ class OnboardingActivity : ComponentActivity() {
                 SideEffect { WindowCompat.getInsetsController(window, window.decorView).apply {
                     isAppearanceLightStatusBars = light; isAppearanceLightNavigationBars = light
                 } }
-                val strings = if (prefs.language == "es" || (prefs.language == "SYSTEM" && java.util.Locale.getDefault().language.startsWith("es"))) StringsSpanish else StringsEnglish
+                val platformLanguage = androidx.compose.ui.platform.LocalLocale.current.platformLocale.language
+                val strings = if (prefs.language == "es" || (prefs.language == "SYSTEM" && platformLanguage.startsWith("es"))) StringsSpanish else StringsEnglish
                 val glass = rememberSharedGlassMaterial()
                 CompositionLocalProvider(LocalStrings provides strings, LocalSharedGlassMaterial provides glass) {
                     OnboardingScreen(repo, onComplete = {

@@ -34,22 +34,22 @@ import com.akira.app.core.i18n.LocalStrings
 
 @Composable
 internal fun PlayerTrackActions(isFavorite: Boolean, ink: Color, referencePortrait: Boolean,
-    onFavorite: () -> Unit, onMore: () -> Unit) {
+    onFavorite: () -> Unit, onMore: () -> Unit, surfaceTint: Color? = null) {
     val strings = LocalStrings.current
     val glyphInk = if (referencePortrait) Color.White else ink
     Row(verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(if (referencePortrait) 0.dp else 2.dp)) {
         PlayerTrackActionButton(strings.favorite, glyphInk, isFavorite, false,
-            if (isFavorite) 24.dp else 22.dp, onFavorite)
+            if (isFavorite) 24.dp else 22.dp, onFavorite, surfaceTint)
         PlayerTrackActionButton(strings.options, glyphInk, false, true,
-            if (referencePortrait) 24.dp else 22.dp, onMore)
+            if (referencePortrait) 24.dp else 22.dp, onMore, surfaceTint)
     }
 }
 
 /** The optical menu inherits the complete flat face, including its glyph. */
 @Composable
 private fun PlayerTrackActionButton(label: String, ink: Color, favorite: Boolean,
-    menu: Boolean, glyphSize: Dp, onClick: () -> Unit) {
+    menu: Boolean, glyphSize: Dp, onClick: () -> Unit, surfaceTint: Color?) {
     val faceSize = 30.dp
     val source = rememberAkiraMenuSource(hasOwnSurface = true)
     source.visualInsetPx = with(androidx.compose.ui.platform.LocalDensity.current) { 9.dp.toPx() }
@@ -72,7 +72,7 @@ private fun PlayerTrackActionButton(label: String, ink: Color, favorite: Boolean
     val haptics = rememberAkiraHaptics()
     SideEffect {
         source.flatSourceSurface = true
-        source.surfaceContent = { PlayerActionFace(ink, favorite, menu, faceSize, glyphSize) }
+        source.surfaceContent = { PlayerActionFace(ink, favorite, menu, faceSize, glyphSize, surfaceTint) }
     }
     Box(Modifier.then(if (menu) source.modifier else Modifier).size(48.dp)
         .semantics { if (!menu) selected = favorite }
@@ -80,14 +80,14 @@ private fun PlayerTrackActionButton(label: String, ink: Color, favorite: Boolean
             onClick = { if (menu) source.open(onClick) else { haptics.light(); onClick() } }),
         contentAlignment = Alignment.Center) {
         Box(Modifier.graphicsLayer { scaleX = scale * activation.value; scaleY = scaleX }) {
-            PlayerActionFace(ink, favorite, menu, faceSize, glyphSize, label)
+            PlayerActionFace(ink, favorite, menu, faceSize, glyphSize, surfaceTint, label)
         }
     }
 }
 
 @Composable
 private fun PlayerActionFace(ink: Color, favorite: Boolean, menu: Boolean,
-    faceSize: Dp, glyphSize: Dp, label: String? = null) {
+    faceSize: Dp, glyphSize: Dp, surfaceTint: Color?, label: String? = null) {
     if (favorite && !menu) {
         Box(Modifier.size(faceSize).drawWithCache {
             // Same filled-star geometry as AkiraIcons.StarFilled, cut out of
@@ -110,10 +110,11 @@ private fun PlayerActionFace(ink: Color, favorite: Boolean, menu: Boolean,
                 lineTo(dx + 9.3f * unit, dy + 8.7f * unit)
                 close()
             }
-            onDrawBehind { drawPath(face, ink) }
+            onDrawBehind { drawPath(face, surfaceTint?.copy(alpha = .63f) ?: ink) }
         }.semantics { if (label != null) contentDescription = label })
     } else {
-        Box(Modifier.size(faceSize).background(Color.White.copy(alpha = .13f), CircleShape),
+        val surface = surfaceTint?.copy(alpha = .24f) ?: Color.White.copy(alpha = .13f)
+        Box(Modifier.size(faceSize).background(surface, CircleShape),
             contentAlignment = Alignment.Center) {
             Icon(if (menu) AkiraIcons.MoreHoriz else AkiraIcons.Star,
                 label, Modifier.size(glyphSize), tint = ink.copy(alpha = .94f))

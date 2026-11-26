@@ -11,6 +11,6 @@ internal fun AkiraPlayerSlider(value:Float,onValueChange:(Float)->Unit,label:Str
     modifier:Modifier=Modifier,valueRange:ClosedFloatingPointRange<Float> = 0f..1f,
     onFinished:()->Unit={},tint:Color=Color.White,volume:Boolean=false,onActiveChanged:(Boolean)->Unit={},
     restingThickness:Dp=6.dp,externalActive:Boolean=false,enabled:Boolean=true,
-    steps:Int=0,animatedThumb:Boolean=false)=
+    steps:Int=0,animatedThumb:Boolean=false,frostColors:List<Color>?=null)=
     com.akira.app.core.design.components.AkiraSlider(value,onValueChange,label,modifier,valueRange,
-        onFinished,tint,volume,onActiveChanged,restingThickness,externalActive,enabled,steps,animatedThumb)
+        onFinished,tint,volume,onActiveChanged,restingThickness,externalActive,enabled,steps,animatedThumb,frostColors)

@@ -43,7 +43,7 @@ class PlayerArtworkAtmosphereDeviceTest {
                         val atmosphere = rememberPlayerArtworkAtmosphere(artwork.toURI().toString(), 0L)
                         if (atmosphere != null) {
                             Box(Modifier.size(180.dp, 260.dp)
-                                .playerArtworkAtmosphere(atmosphere, phase = { 0f }, opacity = { 1f })
+                                .playerArtworkAtmosphere(atmosphere, opacity = { 1f })
                                 .onGloballyPositioned { bounds.set(it.boundsInWindow()) })
                         }
                     }

@@ -141,22 +141,34 @@ internal fun WidgetLaunchBackdrop(state: WidgetLaunchState) {
 }
 
 @Composable
-internal fun WidgetTransitionArtwork(uri: String?, modifier: Modifier = Modifier, decodeSize: Int? = null, imageRequest: coil.request.ImageRequest? = null) {
+internal fun WidgetTransitionArtwork(uri: String?, modifier: Modifier = Modifier, decodeSize: Int? = null,
+    imageRequest: coil.request.ImageRequest? = null, reportWidgetTransition: Boolean = true,
+    onArtworkReady: () -> Unit = {}) {
     val context = LocalContext.current
-    val activity = context as? MainActivity
+    val activity = (context as? MainActivity).takeIf { reportWidgetTransition }
     val model = imageRequest ?: remember(uri,decodeSize,context) {
         if(decodeSize == null) uri else coil.request.ImageRequest.Builder(context)
             .data(uri).size(decodeSize.coerceAtLeast(1)).crossfade(false).build()
     }
     LaunchedEffect(uri) { if (uri.isNullOrBlank()) activity?.widgetArtworkReady = true }
-    val cached = WidgetArtwork.peek(uri)?.asImageBitmap()?.let { androidx.compose.ui.graphics.painter.BitmapPainter(it) }
-    AsyncImage(model, null, placeholder = cached, contentScale = ContentScale.Crop,
-        onSuccess = { activity?.widgetArtworkReady = true; activity?.widgetLaunchMotion?.contentReady = true },
+    var retainedArtwork by remember { mutableStateOf<androidx.compose.ui.graphics.painter.BitmapPainter?>(null) }
+    val cached = remember(uri) {
+        WidgetArtwork.peek(uri)?.asImageBitmap()?.let { androidx.compose.ui.graphics.painter.BitmapPainter(it) }
+    }
+    AsyncImage(model, null, placeholder = cached ?: retainedArtwork, contentScale = ContentScale.Crop,
+        onSuccess = {
+            val bitmap = (it.result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
+            if (bitmap != null) retainedArtwork = androidx.compose.ui.graphics.painter.BitmapPainter(bitmap.asImageBitmap())
+            activity?.widgetArtworkReady = true
+            activity?.widgetLaunchMotion?.contentReady = true
+            onArtworkReady()
+        },
         onError = {
             if (com.akira.app.BuildConfig.DEBUG) android.util.Log.d("AkiraArtwork", "expanded decode failed", it.result.throwable)
             activity?.widgetArtworkReady = true; activity?.widgetLaunchMotion?.contentReady = true
+            onArtworkReady()
         },
-        modifier = modifier.onGloballyPositioned { coordinates ->
+        modifier = if (!reportWidgetTransition) modifier else modifier.onGloballyPositioned { coordinates ->
             activity?.widgetLaunchMotion?.takeIf { !it.finished }?.artworkTarget = coordinates.boundsInWindow()
         })
 }

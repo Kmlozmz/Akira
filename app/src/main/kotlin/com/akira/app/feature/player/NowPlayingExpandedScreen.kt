@@ -75,6 +75,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.onClick
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import androidx.compose.material.icons.Icons
 import android.content.ContentResolver
@@ -106,6 +107,7 @@ import com.akira.app.core.design.glass.LocalAppBackdrop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -293,6 +295,8 @@ internal fun NowPlayingExpandedScreen(
     var artworkRoot by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
     var artworkCoordinates by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
     var reportedArtworkRadius by remember { mutableStateOf(20.dp) }
+    var expandedCoverBounds by remember(artworkMotion) { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+    var reportingExpandedCover by remember { mutableStateOf(false) }
     fun reportArtwork() {
         val root = artworkRoot; val art = artworkCoordinates
         if (root?.isAttached == true && art?.isAttached == true) {
@@ -300,6 +304,7 @@ internal fun NowPlayingExpandedScreen(
             // without clipping them to the travelling parent surface.
             val bounds = root.localBoundingBoxOf(art, clipBounds = false)
             if (bounds.width > 0f && bounds.height > 0f) {
+                if (reportingExpandedCover) expandedCoverBounds = bounds
                 val scale = bounds.width / art.size.width.coerceAtLeast(1)
                 val radius=reportedArtworkRadius*scale
                 artworkMotion.target=ArtworkTarget(bounds,with(artworkDensity){radius.toPx()},
@@ -308,8 +313,14 @@ internal fun NowPlayingExpandedScreen(
             }
         }
     }
-    fun artworkAnchor(radius: androidx.compose.ui.unit.Dp, active: Boolean = true): Modifier = Modifier.onGloballyPositioned { coords ->
-        if(active) { artworkCoordinates = coords; reportedArtworkRadius = radius; reportArtwork() }
+    fun artworkAnchor(radius: androidx.compose.ui.unit.Dp, active: Boolean = true,
+        expandedCover: Boolean = false): Modifier = Modifier.onGloballyPositioned { coords ->
+        if(active) {
+            artworkCoordinates = coords
+            reportedArtworkRadius = radius
+            reportingExpandedCover = expandedCover
+            reportArtwork()
+        }
     }.graphicsLayer { alpha = 0f }
     LaunchedEffect(playerExpansionProgress) {
         androidx.compose.runtime.snapshotFlow { playerExpansionProgress.value >= .999f }
@@ -379,9 +390,6 @@ internal fun NowPlayingExpandedScreen(
     var showAudioOutputSheet by remember { mutableStateOf(false) }
     val timerSource=com.akira.app.core.design.components.rememberAkiraMenuSource(icon=AkiraIcons.SleepTimer,hideOnOpen=false)
 
-    val queue by musicService.currentQueue.collectAsStateWithLifecycle()
-    val currentMediaItemIndex by musicService.currentMediaItemIndex.collectAsStateWithLifecycle()
-
     val prefsRepo = remember { UserPreferencesRepository(context) }
     val initialPlayerUi=remember(context) { com.akira.app.core.datastore.AppUiSnapshot.read(context) }
     val userPrefs by prefsRepo.userPreferences.collectAsStateWithLifecycle(initialValue = initialPlayerUi)
@@ -406,12 +414,35 @@ internal fun NowPlayingExpandedScreen(
     val atmosphere = rememberPlayerArtworkAtmosphere(
         song.albumArtUri.takeIf { referencePortrait && userPrefs?.dynamicColor != false },
         song.dateModifiedSec,
-    ).takeIf { mainPortrait }
+    )
     val playerInk = if (referencePortrait) {
         androidx.compose.ui.graphics.lerp(Color.White, artworkPrimaryColor, if (mainPortrait) .05f else .10f)
     } else Color.White
     val transportInk = playerInk
-    val footerInk = atmosphere?.let { androidx.compose.ui.graphics.lerp(playerInk, it.footer, .22f) } ?: playerInk
+    val reduceTransparency = com.akira.app.core.design.glass.LocalReduceTransparency.current
+    val frostColors = remember(artworkColors, reduceTransparency) {
+        if (reduceTransparency) null else {
+            val secondary = artworkColors.accents.getOrNull(1) ?: artworkColors.right
+            listOf(
+                androidx.compose.ui.graphics.lerp(artworkColors.left, Color.White, .57f),
+                androidx.compose.ui.graphics.lerp(artworkColors.primary, Color.White, .90f),
+                androidx.compose.ui.graphics.lerp(secondary, Color.White, .56f),
+            )
+        }
+    }
+    val footerInk = frostColors?.first()?.let { androidx.compose.ui.graphics.lerp(it, Color.White, .46f) }
+        ?: playerInk
+    val footerFrostColors = remember(frostColors) {
+        frostColors?.map { androidx.compose.ui.graphics.lerp(it, Color.White, .35f) }
+    }
+    val footerVeil = remember {
+        Brush.verticalGradient(
+            0f to Color.Transparent,
+            .44f to Color.Black.copy(alpha = .16f),
+            .72f to Color.Black.copy(alpha = .36f),
+            1f to Color.Black.copy(alpha = .27f),
+        )
+    }
     val playerTop = 4.dp
     val handleHeight = if (landscape || compactPortrait) 18.dp else if (mainPortrait) 28.dp else 34.dp
     val headerGap = if (compactPortrait) 8.dp else if (mainPortrait) 11.dp else 16.dp
@@ -563,27 +594,40 @@ internal fun NowPlayingExpandedScreen(
     val lyricLines = loadedLyrics.synced
     val plainLyricLines = loadedLyrics.plain
 
-    val servicePositionMs by musicService.currentPositionMs.collectAsStateWithLifecycle()
+    val servicePositionMs = musicService.currentPositionMs.collectAsStateWithLifecycle()
+    val serviceDurationMs = musicService.durationMs.collectAsStateWithLifecycle()
     val widgetConnected by musicService.isConnected.collectAsStateWithLifecycle()
-    val widgetMotion = (context as? com.akira.app.MainActivity)?.widgetLaunchMotion
+    val hostActivity = context as? com.akira.app.MainActivity
+    val widgetMotion = hostActivity?.widgetLaunchMotion
     val widgetWindow = widgetMotion != null || context is com.akira.app.core.widget.WidgetLaunchActivity
-    val seedMatchesSong = (context as? com.akira.app.MainActivity)?.widgetInitialSongId == song.id
+    val seedMatchesSong = hostActivity?.widgetInitialSongId == song.id
     val widgetPosition = remember(song.id, widgetMotion) { (widgetMotion?.initialPositionMs
-        ?: if (widgetWindow) (context as? com.akira.app.MainActivity)?.widgetInitialPositionMs ?: 0L else 0L)
+        ?: if (widgetWindow) hostActivity?.widgetInitialPositionMs ?: 0L else 0L)
         .coerceIn(0L, song.durationMs.coerceAtLeast(0L)) }
     var widgetPositionReady by remember(song.id, widgetMotion) { mutableStateOf(!widgetWindow || !seedMatchesSong) }
-    LaunchedEffect(widgetConnected, servicePositionMs) {
-        if (widgetConnected && (musicService.mediaController?.mediaItemCount ?: 0) > 0 &&
-            (widgetPosition == 0L || kotlin.math.abs(servicePositionMs - widgetPosition) < 2000L)) widgetPositionReady = true
+    LaunchedEffect(widgetConnected, widgetPositionReady, widgetPosition) {
+        if (widgetConnected && !widgetPositionReady) {
+            androidx.compose.runtime.snapshotFlow { servicePositionMs.value }.first { position ->
+                (musicService.mediaController?.mediaItemCount ?: 0) > 0 &&
+                    (widgetPosition == 0L || kotlin.math.abs(position - widgetPosition) < 2000L)
+            }
+            widgetPositionReady = true
+        }
     }
     LaunchedEffect(song.id, widgetMotion) {
         if (widgetWindow) { kotlinx.coroutines.delay(3000); widgetPositionReady = true }
     }
-    val currentMs = if (widgetWindow && !widgetPositionReady) widgetPosition
-        else if (widgetWindow) musicService.mediaController?.currentPosition?.coerceAtLeast(0L) ?: servicePositionMs else servicePositionMs
+    fun currentMs(): Long {
+        val position = servicePositionMs.value
+        return when {
+            widgetWindow && !widgetPositionReady -> widgetPosition
+            widgetWindow -> musicService.mediaController?.currentPosition?.coerceAtLeast(0L) ?: position
+            else -> position
+        }
+    }
     lyricsEditor?.let { (editedSong, initialLyrics) ->
         val key = com.akira.app.core.model.SongKey.of(editedSong).encoded
-        LyricsEditorScreen(editedSong, initialLyrics, currentMs.takeIf { song.id == editedSong.id },
+        LyricsEditorScreen(editedSong, initialLyrics, currentMs().takeIf { song.id == editedSong.id },
             { lyricsEditor = null }, editorSaving) { edited ->
             scope.launch {
                 editorSaving = true
@@ -598,17 +642,10 @@ internal fun NowPlayingExpandedScreen(
             }
         }
     }
-    val durationMs by musicService.durationMs.collectAsStateWithLifecycle()
-    val progress = if (durationMs > 0) (currentMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f
-
-    val currentDisplayProgress = if (isSeeking) seekFraction else progress
-    val safeDurationMs = durationMs.takeIf { it > 0 } ?: song.durationMs
-    val currentPositionMs = (currentDisplayProgress * safeDurationMs).toLong()
-    val remainingMs = (safeDurationMs - currentPositionMs).coerceAtLeast(0L)
-
-    val lyricActiveLineKey = remember(lyricLines, currentPositionMs) {
-        if (lyricLines.isEmpty()) -1
-        else lyricLines.indexOfLast { it.timeMs <= currentPositionMs }.coerceAtLeast(0)
+    fun displayedProgress(duration: Long): Float = when {
+        isSeeking -> seekFraction
+        duration > 0 -> (currentMs().toFloat() / duration).coerceIn(0f, 1f)
+        else -> 0f
     }
 
     LaunchedEffect(showControlsOnScroll, isQueueOpen, isLyricsOpen, loadedLyrics.hasLyrics, isSeeking, volumeDragging, transportPressed) {
@@ -651,21 +688,33 @@ internal fun NowPlayingExpandedScreen(
     val currentCancelSettle by rememberUpdatedState(onCancelSettle)
     val currentSettle by rememberUpdatedState(onSettle)
     val currentDraggingChanged by rememberUpdatedState(onDraggingChanged)
+    val settled by remember(playerExpansionProgress) {
+        derivedStateOf { playerExpansionProgress.value >= .999f }
+    }
+    val backgroundMotion = userPrefs?.backgroundMotion != false && !playerMotionReduced
+    val backgroundIntensity = userPrefs?.backgroundIntensity ?: .7f
+    val beatState = rememberPlaybackBeatState(settled && isPlaying && backgroundMotion)
+    var liveArtworkSample by remember(song.id) { mutableStateOf<LiveArtworkSample?>(null) }
     Box(
         modifier = modifier.layerBackdrop(menuBackdrop).graphicsLayer {
             val outputSceneBlur=if(showAudioOutputSheet)14f*outputSource.presentationProgress() else 0f
             renderEffect=com.akira.app.core.design.rendering.BlurEffectCache.get(outputSceneBlur*density.density)
         }.then(if (atmosphere != null) {
-            val phase = rememberAmbientPhase(userPrefs?.backgroundMotion != false)
-            Modifier.playerArtworkAtmosphere(atmosphere, phase = { phase.value }, floor = { height ->
-                artworkReflectionFloor(height, artworkMotion.target?.bounds, fullBleedArtwork)
+            Modifier.playerArtworkAtmosphere(atmosphere, floor = { height ->
+                artworkReflectionFloor(height, expandedCoverBounds, fullBleedArtwork)
             }) {
                 com.akira.app.feature.player.dock.playerMaterialReveal(playerExpansionProgress.value)
             }
         } else {
-            Modifier.playerDynamicBackdrop(artworkColors, userPrefs?.backgroundMotion != false,
+            Modifier.playerDynamicBackdrop(
+                artworkColors,
+                userPrefs?.backgroundMotion != false,
                 opacity = { com.akira.app.feature.player.dock.playerMaterialReveal(playerExpansionProgress.value) },
-                subdued = !fullBleedArtwork || isLyricsOpen || isQueueOpen)
+                subdued = !fullBleedArtwork || isLyricsOpen || isQueueOpen,
+                beatState = beatState,
+                liveArtwork = liveArtworkSample,
+                intensity = backgroundIntensity,
+            )
         })
             .onGloballyPositioned { artworkRoot = it; reportArtwork() }
             .fillMaxSize()
@@ -779,37 +828,65 @@ internal fun NowPlayingExpandedScreen(
             else if (isLyricsOpen) isLyricsOpen = false
         }
 
-        val settled by remember(playerExpansionProgress) {
-            derivedStateOf { playerExpansionProgress.value >= .999f }
+        var artworkReady by remember(song.albumArtUri) { mutableStateOf(song.albumArtUri.isNullOrBlank()) }
+        var retainedVideo by remember { mutableStateOf<MotionArtwork?>(null) }
+        val currentVideo = motionArtwork.takeIf { motionAllowed && (artworkReady || retainedVideo == null) }
+        val videoArtwork = currentVideo ?: retainedVideo.takeIf { motionAllowed && !artworkReady }
+        SideEffect {
+            if (currentVideo != null || artworkReady || !motionAllowed) retainedVideo = currentVideo
         }
-        val videoArtwork = motionArtwork.takeIf { motionAllowed }
         val videoBlend = remember(videoArtwork) { mutableFloatStateOf(0f) }
         val mediaLayer = androidx.compose.ui.graphics.rememberGraphicsLayer()
-        if (settled && mainPortrait && fullBleedArtwork && videoArtwork != null &&
+        if (settled && mainPortrait && fullBleedArtwork && !song.albumArtUri.isNullOrBlank() &&
             userPrefs?.dynamicColor != false && android.os.Build.VERSION.SDK_INT >= 31
         ) {
+            val reflectionReady = artworkReady || videoBlend.floatValue > 0f
+            val fullCover by remember(artworkMotion, reflectionReady) {
+                derivedStateOf { artworkMotion.isAtFullscreenCover && reflectionReady }
+            }
+            val reflectionReveal = animateFloatAsState(
+                if (fullCover) 1f else 0f,
+                if (playerMotionReduced) snap() else tween(200),
+                label = "artworkReflectionReveal",
+            )
             LivePlayerArtworkReflection(
                 mediaLayer = mediaLayer,
-                artwork = { artworkMotion.target?.bounds },
-                opacity = { if (artworkMotion.target?.radiusPx == 0f) videoBlend.floatValue else 0f },
+                artwork = { expandedCoverBounds },
+                opacity = { if (artworkMotion.isAtFullscreenCover) reflectionReveal.value else 0f },
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(.59f),
             )
+        }
+        if (settled && backgroundMotion && (atmosphere != null || fullBleedArtwork)) {
+            val glowDepth = if (isLyricsOpen || isQueueOpen) .45f else 1f
+            PlayerArtworkGlow(
+                colors = artworkColors,
+                beatState = beatState,
+                liveArtwork = liveArtworkSample,
+                moving = true,
+                intensity = backgroundIntensity,
+                opacity = { com.akira.app.feature.player.dock.playerMaterialReveal(playerExpansionProgress.value) * glowDepth },
+                modifier = Modifier.matchParentSize(),
+            )
+        }
+        if (referencePortrait) {
+            // The brightest part of the reflected cover can pass under the footer.
+            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(.32f)
+                .graphicsLayer { alpha = controlsAlphaOf() }.background(footerVeil))
         }
         travellingArtwork?.invoke()
         // The video is a native AndroidView. Keep it beneath metadata and controls:
         // a visually transparent part of its texture still owns pointer hit testing.
         PlayerArtworkSurface(artworkMotion, song, playerExpansionProgress, config.screenWidthDp * density.density,
             motionArtwork = videoArtwork,
-            showMotionArtwork = mainPortrait,
+            showMotionArtwork = settled && mainPortrait,
+            playMotionArtwork = currentVideo != null,
+            fullBleed = fullBleedArtwork,
+            expandedCoverBounds = { expandedCoverBounds },
             mediaLayer = mediaLayer,
             onVideoBlend = { videoBlend.floatValue = it },
+            onLiveSample = if (backgroundMotion) { sample -> liveArtworkSample = sample } else null,
+            onArtworkReady = { artworkReady = true },
         )
-        if (settled && mainPortrait && isPlaying && !playerMotionReduced &&
-            userPrefs?.backgroundMotion != false && (atmosphere != null || fullBleedArtwork)
-        ) {
-            PlayerRhythmLighting(song.id, artworkColors, Modifier.matchParentSize())
-        }
-
         // Page changes share one artwork owner and one transport.
         AkiraExpandedPlayerLayout(wide=landscape,
             modifier = Modifier
@@ -865,6 +942,8 @@ internal fun NowPlayingExpandedScreen(
             Box(Modifier.fillMaxWidth().weight(1f).graphicsLayer { alpha = detailEntrance.value }) {
                     when (page) {
                         ExpandedPage.QUEUE -> {
+                            val queue by musicService.currentQueue.collectAsStateWithLifecycle()
+                            val currentMediaItemIndex by musicService.currentMediaItemIndex.collectAsStateWithLifecycle()
                             QueueHero(
                                 currentSong = song.copy(isFavorite=isFavorite),
                                 queue = queue,
@@ -974,14 +1053,16 @@ internal fun NowPlayingExpandedScreen(
                                 }
                             }
                         },
-                        currentPositionMs = currentPositionMs,
+                        positionMs = {
+                            val duration = serviceDurationMs.value
+                            (displayedProgress(duration) * (duration.takeIf { it > 0 } ?: song.durationMs)).toLong()
+                        },
                         onSeekLyric = { timeMs: Long ->
                             playHapticFeedback()
-                            val dur = durationMs.takeIf { it > 0 } ?: (song.durationMs.takeIf { it > 0 } ?: 1L)
+                            val dur = serviceDurationMs.value.takeIf { it > 0 } ?: song.durationMs.coerceAtLeast(1L)
                             widgetPositionReady = true
                             onSeekTo((timeMs.toFloat() / dur.toFloat()).coerceIn(0f, 1f))
                         },
-                        activeLineKey = lyricActiveLineKey,
                         isPlaying = isPlaying,
                         isFavorite = isFavorite,
                         onToggleFavorite = {
@@ -1034,7 +1115,7 @@ internal fun NowPlayingExpandedScreen(
                     } else Modifier
                 )) {
                     Box(modifier=artworkAnchor(if(fullBleedArtwork)0.dp else 20.dp,
-                        !isLyricsOpen && !isQueueOpen).fillMaxSize(),contentAlignment=Alignment.Center) {
+                        !isLyricsOpen && !isQueueOpen, expandedCover = true).fillMaxSize(),contentAlignment=Alignment.Center) {
                         // Measurement anchor only. PlayerArtworkSurface owns the image.
                     }
                 }
@@ -1094,7 +1175,7 @@ internal fun NowPlayingExpandedScreen(
                         }
                     }
 
-                    PlayerTrackActions(isFavorite,playerInk,referencePortrait,
+                    PlayerTrackActions(isFavorite,playerInk,referencePortrait, surfaceTint = frostColors?.first(),
                         onFavorite={onToggleFavorite(song)},onMore={showOptionsSheet=true})
                 }
                 }
@@ -1105,7 +1186,7 @@ internal fun NowPlayingExpandedScreen(
             val metadataGap = when {
                 landscape -> 20.dp
                 compactPortrait -> if (mainPortrait) 14.dp else 10.dp
-                mainPortrait -> 46.dp
+                mainPortrait -> 16.dp
                 else -> 30.dp
             }
             Box(Modifier.fillMaxWidth().height(metadataGap),contentAlignment=Alignment.Center) {
@@ -1136,6 +1217,11 @@ internal fun NowPlayingExpandedScreen(
                         }
                 ) {
                 Column(modifier = Modifier.fillMaxWidth().padding(horizontal=if(referencePortrait)9.5.dp else 0.dp)) {
+                    val duration = serviceDurationMs.value
+                    val currentDisplayProgress = displayedProgress(duration)
+                    val safeDurationMs = duration.takeIf { it > 0 } ?: song.durationMs
+                    val currentPositionMs = (currentDisplayProgress * safeDurationMs).toLong()
+                    val remainingMs = (safeDurationMs - currentPositionMs).coerceAtLeast(0L)
                     AkiraPlayerSlider(currentDisplayProgress, {
                         if (!isSeeking) playHapticFeedback()
                         widgetPositionReady=true;isSeeking=true;seekFraction=it
@@ -1143,6 +1229,7 @@ internal fun NowPlayingExpandedScreen(
                         onFinished={isSeeking=false;playHapticFeedback();onSeekTo(seekFraction)},
                         onActiveChanged={ if(!it)isSeeking=false },
                         tint=playerInk, restingThickness=if(referencePortrait)7.25.dp else 6.dp,
+                        frostColors=frostColors,
                         modifier=Modifier.fillMaxWidth().height(20.dp))
 
                     Row(
@@ -1153,7 +1240,7 @@ internal fun NowPlayingExpandedScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                            PlayerTimestamp(formatDuration(currentPositionMs), referencePortrait)
+                            PlayerTimestamp(formatDuration(currentPositionMs), referencePortrait, frostColors?.first() ?: playerInk)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         qualityInfo?.let { AudioQualityBadge(song, it, onOpenAudioSettings) }
@@ -1187,7 +1274,8 @@ internal fun NowPlayingExpandedScreen(
                         }
                         }
                         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                            PlayerTimestamp(strings.ui(com.akira.app.core.i18n.AkiraUiText.S2, formatDuration(remainingMs)), referencePortrait)
+                            PlayerTimestamp(strings.ui(com.akira.app.core.i18n.AkiraUiText.S2, formatDuration(remainingMs)),
+                                referencePortrait, frostColors?.last() ?: playerInk)
                         }
                     }
                 }
@@ -1262,7 +1350,7 @@ internal fun NowPlayingExpandedScreen(
                     Icon(
                         imageVector = if(referencePortrait)AkiraPlayerGlyphs.VolumeLow else Icons.AutoMirrored.Rounded.VolumeDown,
                         contentDescription = strings.volume,
-                        tint = footerInk.copy(alpha = if (atmosphere != null) .67f else .55f),
+                        tint = footerInk.copy(alpha = .88f),
                         modifier = Modifier.size(20.dp)
                     )
 
@@ -1273,12 +1361,13 @@ internal fun NowPlayingExpandedScreen(
                         onFinished={ volumeDragging=false },
                         onActiveChanged={ volumeDragging=it },
                         tint=footerInk, restingThickness=if(referencePortrait)7.25.dp else 6.dp,
+                        frostColors=footerFrostColors,
                         modifier=Modifier.weight(1f).height(18.dp))
 
                     Icon(
                         imageVector = if(referencePortrait)AkiraPlayerGlyphs.VolumeHigh else Icons.AutoMirrored.Rounded.VolumeUp,
                         contentDescription = strings.volume,
-                        tint = footerInk.copy(alpha = if (atmosphere != null) .67f else .55f),
+                        tint = footerInk.copy(alpha = .88f),
                         modifier = Modifier.padding(start=if(referencePortrait)6.5.dp else 0.dp).size(20.dp)
                     )
                 }
@@ -1307,7 +1396,7 @@ internal fun NowPlayingExpandedScreen(
                         label = "lyrics_bg_scale"
                     )
                     val lyricsAlpha by animateFloatAsState(
-                        targetValue = if (isLyricsOpen) 1.0f else 0.62f,
+                        targetValue = if (isLyricsOpen) 1.0f else 0.88f,
                         animationSpec = tween(150),
                         label = "lyrics_glyph_alpha"
                     )
@@ -1335,7 +1424,7 @@ internal fun NowPlayingExpandedScreen(
                                         scaleY = lyricsActiveBgScale
                                         alpha = lyricsActiveBgScale
                                     }
-                                    .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(14.dp))
+                                    .background(footerInk.copy(alpha = 0.21f), RoundedCornerShape(14.dp))
                             )
                         }
                         Icon(
@@ -1359,7 +1448,7 @@ internal fun NowPlayingExpandedScreen(
                         Icon(
                             imageVector = if(referencePortrait)AkiraPlayerGlyphs.Airplay else AkiraIcons.Airplay,
                             contentDescription = strings.audioOutput,
-                            tint = footerInk.copy(alpha = if (atmosphere != null) .70f else .62f),
+                            tint = footerInk.copy(alpha = .88f),
                             modifier = Modifier.size(26.dp)
                         )
                     }
@@ -1370,7 +1459,7 @@ internal fun NowPlayingExpandedScreen(
                         label = "queue_bg_scale"
                     )
                     val queueAlpha by animateFloatAsState(
-                        targetValue = if (isQueueOpen) 1.0f else 0.62f,
+                        targetValue = if (isQueueOpen) 1.0f else 0.88f,
                         animationSpec = tween(150),
                         label = "queue_glyph_alpha"
                     )
@@ -1398,7 +1487,7 @@ internal fun NowPlayingExpandedScreen(
                                         scaleY = queueActiveBgScale
                                         alpha = queueActiveBgScale
                                     }
-                                    .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(14.dp))
+                                    .background(footerInk.copy(alpha = 0.21f), RoundedCornerShape(14.dp))
                             )
                         }
                         Icon(

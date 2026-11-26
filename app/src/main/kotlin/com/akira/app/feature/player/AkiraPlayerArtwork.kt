@@ -94,7 +94,7 @@ internal fun playerArtworkBase(primary: Color): Color {
  * the differently shaded backdrop meets the artwork. Foreground controls are
  * outside this isolated layer and remain sharp. */
 @androidx.compose.runtime.Composable
-internal fun Modifier.playerArtworkFade(fullWidthPx: Float,
+internal fun Modifier.playerArtworkFade(fullWidthPx: Float, completeDuringTravel: Boolean = false,
     strength: () -> Float = { 1f }): Modifier {
     // The travelling cover changes size every frame; compile once per owner,
     // outside drawWithCache's size-dependent block.
@@ -114,8 +114,12 @@ internal fun Modifier.playerArtworkFade(fullWidthPx: Float,
             drawContent()
             // DstIn's source-over-equivalent for strength 0..1: interpolate
             // the mask alpha towards opaque without ever fading the image twice.
-            val cover=((size.width/fullWidthPx.coerceAtLeast(1f)-.24f)/.76f).coerceIn(0f,1f)
-            val amount=strength().coerceIn(0f,1f)*cover*cover*(3f-2f*cover)
+            val widthFraction = size.width / fullWidthPx.coerceAtLeast(1f)
+            val reveal = strength().coerceIn(0f, 1f)
+            val amount = if (completeDuringTravel) playerArtworkEdgeFade(widthFraction, reveal) else {
+                val cover = ((widthFraction - .24f) / .76f).coerceIn(0f, 1f)
+                reveal * cover * cover * (3f - 2f * cover)
+            }
             if(amount>0f) {
                 if(android.os.Build.VERSION.SDK_INT>=33 && shader!=null && curvedMask!=null) {
                     shader.setFloatUniform("amount",amount)
@@ -134,6 +138,16 @@ internal fun Modifier.playerArtworkFade(fullWidthPx: Float,
             }
         }
     }
+}
+
+internal fun playerArtworkEdgeFade(widthFraction: Float, strength: Float): Float {
+    fun smooth(value: Float): Float {
+        val t = value.coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
+    }
+    // Finish feathering the edge before a growing rectangle reaches its final size.
+    // The small, square thumbnail still resolves to an unmasked sleeve.
+    return smooth((widthFraction - .24f) / .48f) * smooth(strength / .60f)
 }
 
 private const val ArtworkMaskShader="""
@@ -155,17 +169,18 @@ internal fun Modifier.playerArtworkBackdrop(base: Color, left: Color = base, rig
     onDrawBehind { val alpha = opacity().coerceIn(0f,1f); drawRect(color, alpha=alpha);drawRect(shade, alpha=alpha) }
 }
 
-/** All three player states decode the same cover size; a thumbnail never replaces
- * the full-size bitmap halfway through the shared movement. */
+/** The dock decodes to its own size. The travelling and expanded cover share
+ * a full-size request and can reuse the dock bitmap until that request completes. */
 @androidx.compose.runtime.Composable
-internal fun rememberPlayerArtworkRequest(uri: String?): coil.request.ImageRequest {
+internal fun rememberPlayerArtworkRequest(uri: String?, thumbnail: Boolean = false): coil.request.ImageRequest {
     val context=androidx.compose.ui.platform.LocalContext.current
     val config=androidx.compose.ui.platform.LocalConfiguration.current
     val density=androidx.compose.ui.platform.LocalDensity.current
-    val width=(config.screenWidthDp*density.density).roundToInt().coerceAtLeast(1)
-    return androidx.compose.runtime.remember(uri,context,width) {
+    val previewWidth = (56 * density.density).roundToInt().coerceAtLeast(1)
+    val width = if (thumbnail) previewWidth else (config.screenWidthDp*density.density).roundToInt().coerceAtLeast(1)
+    return androidx.compose.runtime.remember(uri,context,width,previewWidth) {
         val key = "akira-player-art:v2:$width:$uri"
         coil.request.ImageRequest.Builder(context).data(uri).size(width)
-            .memoryCacheKey(key).placeholderMemoryCacheKey(key).crossfade(false).build()
+            .memoryCacheKey(key).placeholderMemoryCacheKey("akira-player-art:v2:$previewWidth:$uri").crossfade(false).build()
     }
 }

@@ -79,6 +79,7 @@ class MusicServiceConnection(
 
     private var progressJob: Job? = null
     private var queueIndexes: List<Int> = emptyList()
+    private var queuePositions = IntArray(0)
     private val temporarySpeedOwners=mutableSetOf<Any>()
     private var speedBeforeHold: androidx.media3.common.PlaybackParameters?=null
 
@@ -138,6 +139,8 @@ class MusicServiceConnection(
 
     private fun setupPlayerListener(player: Player) {
         player.addListener(object : Player.Listener {
+            private var queueChanged = false
+
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 updatePlaybackIntent(player)
                 if (isPlaying) startProgressTracker() else stopProgressTracker()
@@ -148,31 +151,13 @@ class MusicServiceConnection(
             }
 
             override fun onTimelineChanged(timeline: Timeline, reason: Int) {
-                syncQueue(player)
+                // Updating an item's source/duration doesn't replace playlist entries.
+                if (reason != Player.TIMELINE_CHANGE_REASON_SOURCE_UPDATE ||
+                    queuePositions.size != timeline.windowCount) queueChanged = true
             }
 
             override fun onPlaylistMetadataChanged(mediaMetadata: androidx.media3.common.MediaMetadata) {
-                syncQueue(player)
-            }
-
-            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                _audioFormat.value = null
-                _playbackError.value = false
-                _currentSong.value = mediaItem?.toSong()
-                _durationMs.value = player.duration.coerceAtLeast(0L)
-                _currentPositionMs.value = player.currentPosition.coerceAtLeast(0L)
-                // Timeline events own the queue snapshot. Skipping a song does
-                // not require decoding thousands of metadata bundles again.
-                _currentMediaItemIndex.value = queueIndexes.indexOf(player.currentMediaItemIndex).coerceAtLeast(0)
-            }
-
-            override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
-                // Occurrences can share a mediaId. A seek still changes the
-                // queue cursor even when the controller coalesces item events.
-                _currentSong.value = player.currentMediaItem?.toSong()
-                _currentMediaItemIndex.value = queueIndexes.indexOf(player.currentMediaItemIndex).coerceAtLeast(0)
-                _currentPositionMs.value = player.currentPosition.coerceAtLeast(0L)
-                _durationMs.value = player.duration.coerceAtLeast(0L)
+                queueChanged = true
             }
 
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
@@ -189,7 +174,7 @@ class MusicServiceConnection(
 
             override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
                 _shuffleMode.value = shuffleModeEnabled
-                syncQueue(player)
+                queueChanged = true
             }
 
             override fun onRepeatModeChanged(repeatMode: Int) {
@@ -197,8 +182,19 @@ class MusicServiceConnection(
             }
 
             override fun onEvents(player: Player, events: Player.Events) {
-                if (events.contains(Player.EVENT_TRACKS_CHANGED) ||
-                    events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) syncAudioFormat(player)
+                if (queueChanged) {
+                    queueChanged = false
+                    syncQueue(player)
+                }
+                val trackChanged = events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)
+                if (trackChanged) _playbackError.value = false
+                if (trackChanged || events.contains(Player.EVENT_POSITION_DISCONTINUITY)) {
+                    _currentSong.value = player.currentMediaItem?.toSong()
+                    updateQueueCursor(player)
+                    _currentPositionMs.value = player.currentPosition.coerceAtLeast(0L)
+                    _durationMs.value = player.duration.coerceAtLeast(0L)
+                }
+                if (trackChanged || events.contains(Player.EVENT_TRACKS_CHANGED)) syncAudioFormat(player)
             }
         })
     }
@@ -239,9 +235,16 @@ class MusicServiceConnection(
             metadata.getStringArrayList(QueueEditCommand.SERVICE_ORDER) else null
         val indexes = queueIndexesFromServiceOrder(physical.map {it.queueIdentity()},serviceOrder) {playbackQueueIndexes(player)}
         queueIndexes = indexes
+        queuePositions = IntArray(count) { -1 }.apply {
+            indexes.forEachIndexed { position, physicalIndex -> this[physicalIndex] = position }
+        }
         for (i in indexes) items.add(physical[i].toSong())
         _currentQueue.value = items
-        _currentMediaItemIndex.value = indexes.indexOf(player.currentMediaItemIndex).coerceAtLeast(0)
+        updateQueueCursor(player)
+    }
+
+    private fun updateQueueCursor(player: Player) {
+        _currentMediaItemIndex.value = queuePositions.getOrElse(player.currentMediaItemIndex) { 0 }.coerceAtLeast(0)
     }
 
     private fun startProgressTracker() {

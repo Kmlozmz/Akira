@@ -389,8 +389,7 @@ internal fun LyricsHero(
     song: Song,
     lyricLines: List<LyricLine>,
     plainLyricLines: List<String>,
-    currentPositionMs: Long,
-    activeLineKey: Int,
+    positionMs: () -> Long,
     isPlaying: Boolean = true,
     onSeekLyric: (Long) -> Unit,
     isFavorite: Boolean,
@@ -419,6 +418,7 @@ internal fun LyricsHero(
     actionsReferencePortrait: Boolean = true,
     actionsInk: Color = Color.White
 ) {
+    val currentPositionMs = positionMs()
     val listState = rememberLazyListState()
     val isSynced = lyricLines.isNotEmpty()
     val density = LocalDensity.current

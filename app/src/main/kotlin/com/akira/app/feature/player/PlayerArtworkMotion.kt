@@ -22,7 +22,9 @@ import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -33,13 +35,7 @@ import com.akira.app.core.design.motion.ElasticGlassShape
 import com.akira.app.core.design.rendering.DownscaledBlur
 import com.akira.app.core.model.Song
 import com.akira.app.core.design.components.LocalContentMotionReduced
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-
-private val ArtworkRectConverter = TwoWayConverter<Rect, AnimationVector4D>(
-    { AnimationVector4D(it.left,it.top,it.right,it.bottom) },
-    { Rect(it.v1,it.v2,it.v3,it.v4) })
 
 internal data class ArtworkTarget(val bounds: Rect, val radiusPx: Float, val mask: Float)
 
@@ -49,10 +45,13 @@ internal data class ArtworkTarget(val bounds: Rect, val radiusPx: Float, val mas
 @Stable
 internal class PlayerArtworkMotion {
     var target by mutableStateOf<ArtworkTarget?>(null)
-    var ready by mutableStateOf(false)
-    val bounds = Animatable(Rect.Zero,ArtworkRectConverter)
-    val radius = Animatable(0f)
-    val mask = Animatable(0f)
+    var frame by mutableStateOf<ArtworkTarget?>(null)
+    val ready get() = frame != null
+    val bounds get() = frame?.bounds ?: Rect.Zero
+    val radius get() = frame?.radiusPx ?: 0f
+    val mask get() = frame?.mask ?: 0f
+    val isAtFullscreenCover: Boolean
+        get() = target?.mask == 1f && frame == target
 }
 
 @Composable
@@ -67,23 +66,22 @@ internal fun rememberPlayerArtworkMotion(expansion: Animatable<Float,*>,
     val latestBounds by rememberUpdatedState(onBounds)
     LaunchedEffect(motion,target,settled,reduced) {
         val end=target ?: return@LaunchedEffect
-        if(motion.ready)latestBounds?.invoke(motion.bounds.value,with(density){motion.radius.value.toDp()},motion.mask.value)
-        if(!motion.ready) {
-            motion.bounds.snapTo(end.bounds);motion.radius.snapTo(end.radiusPx);motion.mask.snapTo(end.mask)
-            motion.ready=true
-        } else if(!settled)return@LaunchedEffect
-        else if(reduced) {
-            motion.bounds.snapTo(end.bounds);motion.radius.snapTo(end.radiusPx);motion.mask.snapTo(end.mask)
-        } else coroutineScope {
-            // A cover changes presentation; it is not a menu materializing from
-            // a button. All edges settle directly, with no elastic overshoot.
-            launch { motion.bounds.animateTo(end.bounds,spring(1f,850f,Rect(.5f,.5f,.5f,.5f))) }
-            launch { motion.radius.animateTo(end.radiusPx,spring(1f,850f,.1f)) }
-            launch { motion.mask.animateTo(end.mask,spring(1f,850f,.001f)) }
+        val start = motion.frame
+        if (start != null && !settled) return@LaunchedEffect
+        if (start != null && start != end && !reduced) {
+            // Publish one frame so the fade can never lag behind the resized cover.
+            animate(0f, 1f, animationSpec = tween(270, easing = FastOutSlowInEasing)) { fraction, _ ->
+                motion.frame = ArtworkTarget(
+                    lerp(start.bounds, end.bounds, fraction),
+                    androidx.compose.ui.util.lerp(start.radiusPx, end.radiusPx, fraction),
+                    androidx.compose.ui.util.lerp(start.mask, end.mask, fraction),
+                )
+            }
         }
+        motion.frame = end
     }
     LaunchedEffect(motion,density) {
-        snapshotFlow { if(motion.ready)Triple(motion.bounds.value,motion.radius.value,motion.mask.value) else null }
+        snapshotFlow { motion.frame }
             .collect { frame -> frame?.let { (bounds,radius,mask) ->
                 latestBounds?.invoke(bounds,with(density){radius.toDp()},mask)
             } }
@@ -95,15 +93,25 @@ internal fun rememberPlayerArtworkMotion(expansion: Animatable<Float,*>,
 internal fun PlayerArtworkSurface(motion: PlayerArtworkMotion, song: Song,
     expansion: Animatable<Float,*>, fullWidthPx: Float, motionArtwork: MotionArtwork?=null,
     showMotionArtwork: Boolean,
+    playMotionArtwork: Boolean,
+    fullBleed: Boolean,
+    expandedCoverBounds: () -> Rect?,
     mediaLayer: GraphicsLayer,
     onVideoBlend: (Float) -> Unit,
+    onLiveSample: ((LiveArtworkSample?) -> Unit)? = null,
+    onArtworkReady: () -> Unit,
 ) {
     val density=LocalDensity.current
     val outline=remember(motion,density) {
-        ElasticGlassShape({motion.radius.value},{0f},{androidx.compose.ui.geometry.Offset.Zero},density)
+        ElasticGlassShape({motion.radius},{0f},{androidx.compose.ui.geometry.Offset.Zero},density)
     }
-    val needsMask by remember(motion) { derivedStateOf { motion.mask.value>.001f || motion.target?.mask==1f } }
-    val softEdge = needsMask && android.os.Build.VERSION.SDK_INT >= 31
+    val softEdge = fullBleed && android.os.Build.VERSION.SDK_INT >= 31
+    val recordEdge by remember(motion, softEdge) {
+        derivedStateOf { softEdge && motion.mask > .001f }
+    }
+    val showVideo by remember(motion, showMotionArtwork) {
+        derivedStateOf { showMotionArtwork && motion.isAtFullscreenCover }
+    }
     val blurMask = remember {
         Brush.verticalGradient(
             0f to Color.Transparent,
@@ -115,28 +123,31 @@ internal fun PlayerArtworkSurface(motion: PlayerArtworkMotion, song: Song,
     val blurRadius = with(density) { 29.dp.toPx() }
     Box(Modifier.graphicsLayer {
         alpha=if(motion.ready)playerArtworkSettledAlpha(expansion.value) else 0f
-        translationX=motion.bounds.value.left;translationY=motion.bounds.value.top
+        translationX=motion.bounds.left;translationY=motion.bounds.top
         shape=outline
-        shadowElevation=24.dp.toPx()*(1f-motion.mask.value).coerceIn(0f,1f)*
-            ((motion.bounds.value.width/fullWidthPx-.15f)/.7f).coerceIn(0f,1f)
+        shadowElevation=24.dp.toPx()*(1f-motion.mask).coerceIn(0f,1f)*
+            ((motion.bounds.width/fullWidthPx-.15f)/.7f).coerceIn(0f,1f)
     }.layout { measurable,_ ->
-        val rect=motion.bounds.value
+        val rect=motion.bounds
         val width=rect.width.roundToInt().coerceAtLeast(1)
         val height=rect.height.roundToInt().coerceAtLeast(1)
         val child=measurable.measure(androidx.compose.ui.unit.Constraints.fixed(width,height))
         layout(width,height) { child.place(0,0) }
     }.clip(outline)
-        .then(if(needsMask)Modifier.playerArtworkFade(fullWidthPx){motion.mask.value} else Modifier)
+        .then(if(fullBleed)Modifier.playerArtworkFade(fullWidthPx, completeDuringTravel = true){motion.mask} else Modifier)
         .background(Color.Transparent),contentAlignment=Alignment.Center) {
         Box(Modifier.fillMaxSize().then(if (softEdge) Modifier.drawWithContent {
-            mediaLayer.record { this@drawWithContent.drawContent() }
-            drawLayer(mediaLayer)
+            if (recordEdge) {
+                mediaLayer.record { this@drawWithContent.drawContent() }
+                drawLayer(mediaLayer)
+            } else drawContent()
         } else Modifier), contentAlignment = Alignment.Center) {
             if(!motion.ready) {
                 Spacer(Modifier.fillMaxSize())
             } else if(!song.albumArtUri.isNullOrBlank()) {
                 com.akira.app.core.widget.WidgetTransitionArtwork(song.albumArtUri,
-                    Modifier.fillMaxSize(),imageRequest=rememberPlayerArtworkRequest(song.albumArtUri))
+                    Modifier.fillMaxSize(),imageRequest=rememberPlayerArtworkRequest(song.albumArtUri),
+                    onArtworkReady = onArtworkReady)
             } else {
                 val activity=LocalActivity.current as? com.akira.app.MainActivity
                 LaunchedEffect(activity) { activity?.widgetArtworkReady=true;activity?.widgetLaunchMotion?.contentReady=true }
@@ -144,21 +155,35 @@ internal fun PlayerArtworkSurface(motion: PlayerArtworkMotion, song: Song,
                     activity?.widgetLaunchMotion?.takeIf { motion -> !motion.finished }?.artworkTarget=it.boundsInWindow()
                 },tint=Color.White)
             }
-            if(motionArtwork!=null && motion.ready) {
-                // Keep the prepared decoder, but only show video once the active
-                // anchor belongs to the full player. Detail thumbnails are static.
-                val visible = showMotionArtwork && motion.target?.radiusPx == 0f
-                MotionArtworkVideo(motionArtwork, isPlaying = visible, Modifier.fillMaxSize()
-                    .graphicsLayer { alpha = if (visible) 1f else 0f }, onBlend = onVideoBlend)
+            if (motionArtwork != null && motion.ready) {
+                // Keep the same paused editorial frame through both directions of the transition.
+                // The crop follows the moving width; using the height as a second scale can zoom it.
+                MotionArtworkVideo(motionArtwork, isPlaying = showVideo && playMotionArtwork, presented = showVideo,
+                    retainPresentedFrame = true,
+                    modifier = Modifier.fillMaxSize().layout { measurable, constraints ->
+                        val full = expandedCoverBounds()
+                        val width = full?.width?.roundToInt()?.coerceAtLeast(1) ?: constraints.maxWidth
+                        val height = full?.height?.roundToInt()?.coerceAtLeast(1) ?: constraints.maxHeight
+                        val texture = measurable.measure(androidx.compose.ui.unit.Constraints.fixed(width, height))
+                        layout(constraints.maxWidth, constraints.maxHeight) { texture.place(0, 0) }
+                    }.graphicsLayer {
+                        val viewport = motion.bounds
+                        val scale = (viewport.width / size.width.coerceAtLeast(1f)).coerceIn(0f, 1f)
+                        transformOrigin = TransformOrigin(0f, 0f)
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = (viewport.width - size.width * scale) / 2f
+                        translationY = (viewport.height - size.height * scale) / 2f
+                    }, onBlend = onVideoBlend, onLiveSample = onLiveSample)
             }
         }
-        if (softEdge) {
+        if (recordEdge) {
             DownscaledBlur(
                 radius = { blurRadius },
                 tileMode = android.graphics.Shader.TileMode.CLAMP,
                 mask = blurMask,
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(.55f)
-                    .graphicsLayer { alpha = motion.mask.value.coerceIn(0f, 1f) },
+                    .graphicsLayer { alpha = motion.mask.coerceIn(0f, 1f) },
             ) { strip ->
                 translate(top = strip.height - mediaLayer.size.height) { drawLayer(mediaLayer) }
             }
